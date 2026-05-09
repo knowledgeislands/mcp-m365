@@ -1,0 +1,87 @@
+{
+  "name": "@knowledgeislands/mcp-m365",
+  "description": "MCP to access Microsoft 365 (Outlook, OneDrive) via Microsoft Graph API",
+  "version": "1.0.0",
+  "author": "kris@kris.me.uk",
+  "homepage": "https://github.com/knowledgeislands/mcp-m365#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/knowledgeislands/mcp-m365.git"
+  },
+  "bugs": {
+    "url": "https://github.com/knowledgeislands/mcp-m365/issues"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "microsoft-365",
+    "outlook",
+    "onedrive",
+    "graph-api",
+    "claude",
+    "anthropic"
+  ],
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "dotenv": "^17.4.2"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.14",
+    "@types/node": "^25.6.2",
+    "@vitest/coverage-v8": "^4.1.5",
+    "husky": "^9.1.7",
+    "json5": "^2.2.3",
+    "lint-staged": "^17.0.3",
+    "markdownlint-cli2": "^0.22.1",
+    "prettier": "^3.8.3",
+    "syncpack": "^15.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3",
+    "vitest": "^4.1.5"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "license": "MIT",
+  "main": "dist/mcp-server/index.js",
+  "types": "dist/mcp-server/index.d.ts",
+  "bin": {
+    "mcp-m365": "dist/mcp-server/index.js",
+    "mcp-m365-auth": "dist/auth-server/index.js"
+  },
+  "files": [
+    "dist"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "scripts": {
+    "build": "tsc -p tsconfig.build.json",
+    "clean": "rm -rf {dist,node_modules}",
+    "dev:auth": "tsx watch src/auth-server/index.ts",
+    "dev:mcp": "tsx watch src/mcp-server/index.ts",
+    "format": "npx @biomejs/biome format --write",
+    "inspect": "npx @modelcontextprotocol/inspector tsx src/mcp-server/index.ts",
+    "lint:check": "npx @biomejs/biome check",
+    "lint:deps:missing": "npx depcheck --json | npx node-jq --sort-keys '.' | npx node-jq '.missing | keys | .[]' | xargs npm add -D",
+    "lint:deps:unused": "npx depcheck --json | npx node-jq --sort-keys '.' | npx node-jq '.devDependencies[]' | xargs npm uninstall",
+    "lint:fix": "npx @biomejs/biome check --write --unsafe",
+    "lint:md": "npx prettier --write \"**/*.md\" --ignore-path .gitignore && npx markdownlint-cli2",
+    "lint:package": "npx syncpack format",
+    "prepare": "husky",
+    "prepublishOnly": "npm run build",
+    "prestart:auth": "npm run build",
+    "prestart:mcp": "npm run build",
+    "start:auth": "node dist/auth-server/index.js",
+    "start:mcp": "node dist/mcp-server/index.js",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:watch": "vitest",
+    "typecheck": "tsc --noEmit",
+    "update:libs": "npx npm-check-updates"
+  },
+  "type": "module",
+  "lint-staged": {
+    "*.{ts,js,json,jsonc}": "npx @biomejs/biome check --write --no-errors-on-unmatched"
+  }
+}
