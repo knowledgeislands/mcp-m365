@@ -1,0 +1,225 @@
+/**
+ * Coverage tests for the small calendar handlers (list/cancel/decline/delete).
+ * `create` has its own focused test file.
+ */
+import type { Mock, MockInstance } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { callGraphAPI } from '../../utils/graph-api.js'
+import { ensureAuthenticated } from '../auth/index.js'
+import { handleAcceptEvent } from './accept.js'
+import { handleCancelEvent } from './cancel.js'
+import { handleDeclineEvent } from './decline.js'
+import { handleDeleteEvent } from './delete.js'
+import { handleListEvents } from './list.js'
+
+vi.mock('../../utils/graph-api')
+vi.mock('../auth')
+
+const mockCallGraphAPI = callGraphAPI as Mock
+const mockEnsureAuthenticated = ensureAuthenticated as Mock
+
+let consoleErrorSpy: MockInstance
+
+beforeEach(() => {
+  mockCallGraphAPI.mockReset()
+  mockEnsureAuthenticated.mockReset()
+  consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+})
+
+afterEach(() => {
+  consoleErrorSpy.mockRestore()
+})
+
+describe('handleListEvents', () => {
+  it('lists events in a sane default range', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({
+      value: [
+        {
+          id: 'e1',
+          subject: 'Standup',
+          start: { dateTime: '2026-05-09T09:00:00Z', timeZone: 'UTC' },
+          end: { dateTime: '2026-05-09T09:30:00Z', timeZone: 'UTC' },
+          location: { displayName: 'Room 1' },
+          bodyPreview: 'agenda'
+        }
+      ]
+    })
+
+    const result = await handleListEvents({})
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'GET', 'me/calendarView', null, expect.objectContaining({ $top: 10, $orderby: 'start/dateTime' }))
+    expect(result.content[0].text).toMatch(/Found 1 events/)
+    expect(result.content[0].text).toContain('Standup')
+    expect(result.content[0].text).toContain('Room 1')
+  })
+
+  it('reports "No calendar events found" when value is empty', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({ value: [] })
+    const r = await handleListEvents({})
+    expect(r.content[0].text).toBe('No calendar events found.')
+  })
+
+  it('rejects an invalid date range', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    const r = await handleListEvents({ startDateTime: '2026-05-10T00:00:00Z', endDateTime: '2026-05-01T00:00:00Z' })
+    expect(r.content[0].text).toMatch(/Invalid date range/)
+    expect(mockCallGraphAPI).not.toHaveBeenCalled()
+  })
+
+  it('handles authentication errors', async () => {
+    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
+    const r = await handleListEvents({})
+    expect(r.content[0].text).toMatch(/Authentication required/)
+  })
+
+  it('handles Graph API errors', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
+    const r = await handleListEvents({})
+    expect(r.content[0].text).toMatch(/Error listing events: boom/)
+  })
+
+  it('formats events without timezone offsets and locations', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({
+      value: [{ id: 'e2', subject: 'Solo', start: '2026-05-09T09:00:00Z', end: '2026-05-09T09:30:00Z', bodyPreview: '' }]
+    })
+    const r = await handleListEvents({})
+    expect(r.content[0].text).toContain('Location: No location')
+  })
+})
+
+describe('handleAcceptEvent', () => {
+  it('accepts an event with a default comment', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    const r = await handleAcceptEvent({ eventId: 'e1' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/accept', { comment: 'Accepted via API' })
+    expect(r.content[0].text).toMatch(/successfully accepted/)
+  })
+
+  it('uses the supplied comment when provided', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    await handleAcceptEvent({ eventId: 'e1', comment: 'see you' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/accept', { comment: 'see you' })
+  })
+
+  it('rejects when eventId is missing', async () => {
+    const r = await handleAcceptEvent({})
+    expect(r.content[0].text).toMatch(/required to accept/)
+  })
+
+  it('handles authentication errors', async () => {
+    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
+    const r = await handleAcceptEvent({ eventId: 'e1' })
+    expect(r.content[0].text).toMatch(/Authentication required/)
+  })
+
+  it('handles Graph API errors', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
+    const r = await handleAcceptEvent({ eventId: 'e1' })
+    expect(r.content[0].text).toMatch(/Error accepting event: boom/)
+  })
+})
+
+describe('handleCancelEvent', () => {
+  it('cancels an event with a default comment', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    const r = await handleCancelEvent({ eventId: 'e1' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/cancel', { comment: 'Cancelled via API' })
+    expect(r.content[0].text).toMatch(/successfully cancelled/)
+  })
+
+  it('uses the supplied comment when provided', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    await handleCancelEvent({ eventId: 'e1', comment: 'sick' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/cancel', { comment: 'sick' })
+  })
+
+  it('rejects when eventId is missing', async () => {
+    const r = await handleCancelEvent({})
+    expect(r.content[0].text).toMatch(/required to cancel/)
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+  })
+
+  it('handles authentication errors', async () => {
+    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
+    const r = await handleCancelEvent({ eventId: 'e1' })
+    expect(r.content[0].text).toMatch(/Authentication required/)
+  })
+
+  it('handles Graph API errors', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
+    const r = await handleCancelEvent({ eventId: 'e1' })
+    expect(r.content[0].text).toMatch(/Error cancelling event: boom/)
+  })
+})
+
+describe('handleDeclineEvent', () => {
+  it('declines with a default comment', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    const r = await handleDeclineEvent({ eventId: 'e2' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e2/decline', { comment: 'Declined via API' })
+    expect(r.content[0].text).toMatch(/successfully declined/)
+  })
+
+  it('uses the supplied comment when provided', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    await handleDeclineEvent({ eventId: 'e2', comment: 'conflict' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e2/decline', { comment: 'conflict' })
+  })
+
+  it('rejects when eventId is missing', async () => {
+    const r = await handleDeclineEvent({})
+    expect(r.content[0].text).toMatch(/required to decline/)
+  })
+
+  it('handles authentication errors', async () => {
+    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
+    const r = await handleDeclineEvent({ eventId: 'e2' })
+    expect(r.content[0].text).toMatch(/Authentication required/)
+  })
+
+  it('handles Graph API errors', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
+    const r = await handleDeclineEvent({ eventId: 'e2' })
+    expect(r.content[0].text).toMatch(/Error declining event: boom/)
+  })
+})
+
+describe('handleDeleteEvent', () => {
+  it('deletes by eventId', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    const r = await handleDeleteEvent({ eventId: 'e3' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'DELETE', 'me/events/e3')
+    expect(r.content[0].text).toMatch(/successfully deleted/)
+  })
+
+  it('rejects when eventId is missing', async () => {
+    const r = await handleDeleteEvent({})
+    expect(r.content[0].text).toMatch(/required to delete/)
+  })
+
+  it('handles authentication errors', async () => {
+    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
+    const r = await handleDeleteEvent({ eventId: 'e3' })
+    expect(r.content[0].text).toMatch(/Authentication required/)
+  })
+
+  it('handles Graph API errors', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
+    const r = await handleDeleteEvent({ eventId: 'e3' })
+    expect(r.content[0].text).toMatch(/Error deleting event: boom/)
+  })
+})

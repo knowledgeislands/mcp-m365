@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "mcp-m365": {
+      "command": "node",
+      "args": ["/path/to/mcp-m365/dist/mcp-server/index.js"],
+      "env": {
+        "M365_CLIENT_ID": "your-client-id-here",
+        "M365_CLIENT_SECRET": "your-client-secret-here"
+      }
+    }
+  }
+}
