@@ -12,6 +12,8 @@ An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 s
 - **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool annotations.
 - **Modular structure** — service modules under `src/tools/<service>/` keep email, calendar, folder, rules, and OneDrive logic isolated.
 
+**Quality:** 387 tests; ~95% line / ~97% function coverage, with all destructive paths covered.
+
 ## Available Tools
 
 Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
@@ -97,6 +99,34 @@ When both are provided, `folderId` takes precedence and is used directly.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `M365_CLIENT_ID`/`M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `npm run dev:auth` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
+
+## Example Conversations
+
+Concrete asks you might make of Claude with this server connected.
+
+**Triage by sender and date range:**
+
+> "Find unread emails from `finance@acme.com` received after 2026-04-01 and read the most recent one."
+
+Claude calls [`search-emails`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`, `receivedAfter: "2026-04-01T00:00:00Z"`, then `read-email` on the top result. Both honour mail-folder scoping (`folder` name or explicit `folderId`).
+
+**Draft a reply to a meeting:**
+
+> "Find Alice's invite for tomorrow's planning sync and draft a reply confirming I'll be there."
+
+Claude uses `search-emails` + `read-email` to locate the invite, then [`draft-email`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `send-email` — the server exposes both; calendar invites can be accepted directly via [`accept-event`](#outlook-email--calendar).)
+
+**Upload a file to OneDrive:**
+
+> "Upload `~/Documents/Q2-report.pdf` to OneDrive under `Projects/2026/Q2`. The folder doesn't exist yet — create it."
+
+Claude calls [`onedrive-create-folder`](#onedrive) for the missing path, then [`onedrive-upload`](#onedrive) for the file (or [`onedrive-upload-large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
+
+**Review the week's calendar:**
+
+> "Show me my calendar for next week and accept the marketing review invite if it's still open."
+
+Claude calls [`list-events`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`accept-event`](#outlook-email--calendar) to send the acceptance.
 
 ## Installation
 
