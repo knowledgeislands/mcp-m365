@@ -84,6 +84,23 @@ const parseAuditLogMode = (raw: string | undefined): AuditLogMode => {
 
 export const AUDIT_LOG_MODE: AuditLogMode = parseAuditLogMode(process.env.MCP_M365_AUDIT_LOG)
 
+/**
+ * Size-based audit-log rotation. After each append, if `audit.jsonl` exceeds
+ * MCP_M365_AUDIT_LOG_MAX_BYTES (default 10 MiB), it's renamed to `audit.jsonl.1`
+ * and older rotations shift up. MCP_M365_AUDIT_LOG_KEEP (default 5) controls
+ * how many rotated files survive. Set MAX_BYTES=0 to disable rotation.
+ */
+const parseNonNegativeInt = (raw: string | undefined, fallback: number, varName: string): number => {
+  if (raw === undefined || raw.trim() === '') return fallback
+  const n = Number.parseInt(raw, 10)
+  if (!Number.isFinite(n) || n < 0) {
+    throw new Error(`Invalid ${varName}="${raw}" — expected a non-negative integer.`)
+  }
+  return n
+}
+export const AUDIT_LOG_MAX_BYTES: number = parseNonNegativeInt(process.env.MCP_M365_AUDIT_LOG_MAX_BYTES, 10 * 1024 * 1024, 'MCP_M365_AUDIT_LOG_MAX_BYTES')
+export const AUDIT_LOG_KEEP: number = parseNonNegativeInt(process.env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP')
+
 export default {
   SERVER_NAME,
   SERVER_VERSION,

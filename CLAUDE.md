@@ -104,19 +104,21 @@ Auth tools are server-level; resource tools are grouped by Graph API area.
 
 ### Environment Variables
 
-| Name                       | Required | Default                                  | Purpose                                                                  |
-| -------------------------- | -------- | ---------------------------------------- | ------------------------------------------------------------------------ |
-| `MCP_M365_CLIENT_ID`       | yes      | —                                        | Azure app (client) ID.                                                   |
-| `MCP_M365_CLIENT_SECRET`   | yes      | —                                        | Azure client secret **value** (not the Secret ID).                       |
-| `MCP_M365_TENANT_ID`       | no       | `common`                                 | Azure tenant GUID. Use a specific GUID for single-tenant apps.           |
-| `MCP_M365_AUTHORITY_HOST`  | no       | `https://login.microsoftonline.com`      | Override for sovereign clouds (US Gov, China, etc).                      |
-| `MCP_M365_REDIRECT_URI`    | no       | `http://localhost:3333/auth/callback`    | Must match the URI registered in Azure.                                  |
-| `MCP_M365_SCOPES`          | no       | (canonical list in `src/config.ts`)      | Space-separated OAuth scopes. Defaults include `offline_access`.         |
-| `MCP_M365_AUTH_PORT`       | no       | `3333`                                   | Auth server port. Must match the port in `MCP_M365_REDIRECT_URI`.        |
-| `MCP_M365_TOKEN_ENDPOINT`  | no       | derived from authority + tenant          | Override only if your authority uses a non-standard token endpoint path. |
-| `MCP_M365_AUDIT_LOG`       | no       | `writes`                                 | Scope of the JSONL audit log: `off` (disabled), `writes` (state-mutating tools), `all` (every tool). Unknown values abort startup. |
-| `MCP_M365_AUDIT_LOG_PATH`  | no       | `~/.local/state/mcp-m365/audit.jsonl`    | Audit log file path. Created with mode `0o600`. See [src/utils/audit-log.ts](./src/utils/audit-log.ts). |
-| `NODE_ENV`                 | no       | —                                        | `dev:*`/`inspect` scripts set `development` so `.env.development` loads. |
+| Name | Required | Default | Purpose |
+| --- | --- | --- | --- |
+| `MCP_M365_CLIENT_ID` | yes | — | Azure app (client) ID. |
+| `MCP_M365_CLIENT_SECRET` | yes | — | Azure client secret **value** (not the Secret ID). |
+| `MCP_M365_TENANT_ID` | no | `common` | Azure tenant GUID. Use a specific GUID for single-tenant apps. |
+| `MCP_M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | Override for sovereign clouds (US Gov, China, etc). |
+| `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | Must match the URI registered in Azure. |
+| `MCP_M365_SCOPES` | no | (canonical list in `src/config.ts`) | Space-separated OAuth scopes. Defaults include `offline_access`. |
+| `MCP_M365_AUTH_PORT` | no | `3333` | Auth server port. Must match the port in `MCP_M365_REDIRECT_URI`. |
+| `MCP_M365_TOKEN_ENDPOINT` | no | derived from authority + tenant | Override only if your authority uses a non-standard token endpoint path. |
+| `MCP_M365_AUDIT_LOG` | no | `writes` | Scope of the JSONL audit log: `off` (disabled), `writes` (state-mutating tools), `all` (every tool). Unknown values abort startup. |
+| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Audit log file path. Created with mode `0o600`. See [src/utils/audit-log.ts](./src/utils/audit-log.ts). |
+| `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size threshold for rotation. When live `audit.jsonl` exceeds this after an append, it's renamed to `audit.jsonl.1` and older rotations shift up. `0` disables rotation. |
+| `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated files to retain. Oldest beyond this is dropped. `0` truncates without preserving history. |
+| `NODE_ENV` | no | — | `dev:*`/`inspect` scripts set `development` so `.env.development` loads. |
 
 `src/config.ts` calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup, try/caught so a missing file is fine. Claude Desktop doesn't set `NODE_ENV`, so production env comes from the Claude Desktop config `env` block.
 

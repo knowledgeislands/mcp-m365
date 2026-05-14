@@ -79,16 +79,16 @@ When both are provided, `folderId` takes precedence and is used directly.
 
 ### OneDrive
 
-| Tool | Description |
-| --- | --- |
-| `onedrive-list` | List files in a path. |
-| `onedrive-search` | Search files by query. |
-| `onedrive-download` | Get download URL. |
-| `onedrive-upload` | Upload small file (<4 MB). |
-| `onedrive-upload-large` | Chunked upload (>4 MB). |
-| `onedrive-share` | Create sharing link. |
-| `onedrive-create-folder` | Create folder. |
-| `onedrive-delete` | Delete file or folder. |
+| Tool                     | Description                |
+| ------------------------ | -------------------------- |
+| `onedrive-list`          | List files in a path.      |
+| `onedrive-search`        | Search files by query.     |
+| `onedrive-download`      | Get download URL.          |
+| `onedrive-upload`        | Upload small file (<4 MB). |
+| `onedrive-upload-large`  | Chunked upload (>4 MB).    |
+| `onedrive-share`         | Create sharing link.       |
+| `onedrive-create-folder` | Create folder.             |
+| `onedrive-delete`        | Delete file or folder.     |
 
 ## Quick Start
 

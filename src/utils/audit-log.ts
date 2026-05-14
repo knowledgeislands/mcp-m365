@@ -13,7 +13,7 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { AUDIT_LOG_MODE, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
+import { AUDIT_LOG_KEEP, AUDIT_LOG_MAX_BYTES, AUDIT_LOG_MODE, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
 
 export type Role = 'auditor' | 'cleaner'
 
@@ -66,6 +66,40 @@ const sanitizeArgs = (args: unknown): unknown => {
 // keep 0o644). `appendFile`'s `mode` option only applies on creation.
 let chmodEnsured = false
 
+/**
+ * If the live log is over the size cap, shift `.1` → `.2` → … → `.N` (dropping
+ * the oldest) and rename the live file to `.1`. Mode `0o600` is preserved by
+ * `fs.rename`. Best-effort: any failure logs to stderr and leaves the file in
+ * place so the next append still succeeds.
+ */
+const rotateIfNeeded = async (): Promise<void> => {
+  if (AUDIT_LOG_MAX_BYTES === 0) return
+  let size: number
+  try {
+    size = (await fs.stat(AUDIT_LOG_PATH)).size
+  } catch {
+    return
+  }
+  if (size <= AUDIT_LOG_MAX_BYTES) return
+  try {
+    if (AUDIT_LOG_KEEP > 0) {
+      await fs.rm(`${AUDIT_LOG_PATH}.${AUDIT_LOG_KEEP}`, { force: true })
+      for (let i = AUDIT_LOG_KEEP - 1; i >= 1; i--) {
+        try {
+          await fs.rename(`${AUDIT_LOG_PATH}.${i}`, `${AUDIT_LOG_PATH}.${i + 1}`)
+        } catch {
+          // missing slot — fine, rotation history may not be full yet
+        }
+      }
+      await fs.rename(AUDIT_LOG_PATH, `${AUDIT_LOG_PATH}.1`)
+    } else {
+      await fs.rm(AUDIT_LOG_PATH, { force: true })
+    }
+  } catch (err) {
+    console.error(`[audit-log] rotation failed: ${err instanceof Error ? err.message : String(err)}`)
+  }
+}
+
 export const appendAuditEvent = async (event: AuditEvent): Promise<void> => {
   try {
     await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true })
@@ -78,6 +112,7 @@ export const appendAuditEvent = async (event: AuditEvent): Promise<void> => {
       }
       chmodEnsured = true
     }
+    await rotateIfNeeded()
   } catch (err) {
     console.error(`[audit-log] failed to write: ${err instanceof Error ? err.message : String(err)}`)
   }
