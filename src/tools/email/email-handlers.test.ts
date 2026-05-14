@@ -234,7 +234,7 @@ describe('handleDeleteEmail', () => {
   it('moves to Deleted Items by default', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'd-id' })
-    const r = await handleDeleteEmail({ id: 'm1' })
+    const r = await handleDeleteEmail({ id: 'm1', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/messages/m1/move', { destinationId: 'deleteditems' })
     expect(r.content[0].text).toContain('Email moved to Deleted Items. ID: d-id')
   })
@@ -242,9 +242,25 @@ describe('handleDeleteEmail', () => {
   it('permanently deletes when permanent=true', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleDeleteEmail({ id: 'm1', permanent: true })
+    const r = await handleDeleteEmail({ id: 'm1', permanent: true, dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/messages/m1/permanentDelete')
     expect(r.content[0].text).toBe('Email permanently deleted.')
+  })
+
+  it('returns a [dry_run] preview without deleting by default', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'm1', subject: 'Receipt', from: { emailAddress: { address: 'biller@x' } }, receivedDateTime: '2026-01-04T00:00Z' })
+    const r = await handleDeleteEmail({ id: 'm1' })
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'GET', expect.stringContaining('me/messages/m1?'))
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would move to Deleted Items: "Receipt" from biller@x/)
+  })
+
+  it('reports the permanent-delete verb in the dry_run preview when permanent=true', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'm1', subject: 'Receipt' })
+    const r = await handleDeleteEmail({ id: 'm1', permanent: true })
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would permanently delete: "Receipt"/)
   })
 
   it('rejects when id is missing', async () => {
@@ -255,20 +271,20 @@ describe('handleDeleteEmail', () => {
   it('handles UNAUTHORIZED as an auth error', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('UNAUTHORIZED'))
-    const r = await handleDeleteEmail({ id: 'm1' })
+    const r = await handleDeleteEmail({ id: 'm1', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleDeleteEmail({ id: 'm1' })
+    const r = await handleDeleteEmail({ id: 'm1', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles other Graph API errors', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleDeleteEmail({ id: 'm1' })
+    const r = await handleDeleteEmail({ id: 'm1', dry_run: false })
     expect(r.content[0].text).toMatch(/Failed to delete email: boom/)
   })
 })

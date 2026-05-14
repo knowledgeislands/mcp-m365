@@ -129,7 +129,7 @@ describe('handleCancelEvent', () => {
   it('cancels an event with a default comment', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleCancelEvent({ eventId: 'e1' })
+    const r = await handleCancelEvent({ eventId: 'e1', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/cancel', { comment: 'Cancelled via API' })
     expect(r.content[0].text).toMatch(/successfully cancelled/)
   })
@@ -137,8 +137,17 @@ describe('handleCancelEvent', () => {
   it('uses the supplied comment when provided', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    await handleCancelEvent({ eventId: 'e1', comment: 'sick' })
+    await handleCancelEvent({ eventId: 'e1', comment: 'sick', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e1/cancel', { comment: 'sick' })
+  })
+
+  it('returns a [dry_run] preview without calling cancel by default', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'e1', subject: 'Standup', start: { dateTime: '2026-01-01T09:00' } })
+    const r = await handleCancelEvent({ eventId: 'e1' })
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would cancel event e1: "Standup"/)
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'GET', expect.stringContaining('me/events/e1?'))
   })
 
   it('rejects when eventId is missing', async () => {
@@ -149,14 +158,14 @@ describe('handleCancelEvent', () => {
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleCancelEvent({ eventId: 'e1' })
+    const r = await handleCancelEvent({ eventId: 'e1', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles Graph API errors', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleCancelEvent({ eventId: 'e1' })
+    const r = await handleCancelEvent({ eventId: 'e1', dry_run: false })
     expect(r.content[0].text).toMatch(/Error cancelling event: boom/)
   })
 })
@@ -165,7 +174,7 @@ describe('handleDeclineEvent', () => {
   it('declines with a default comment', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleDeclineEvent({ eventId: 'e2' })
+    const r = await handleDeclineEvent({ eventId: 'e2', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e2/decline', { comment: 'Declined via API' })
     expect(r.content[0].text).toMatch(/successfully declined/)
   })
@@ -173,8 +182,16 @@ describe('handleDeclineEvent', () => {
   it('uses the supplied comment when provided', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    await handleDeclineEvent({ eventId: 'e2', comment: 'conflict' })
+    await handleDeclineEvent({ eventId: 'e2', comment: 'conflict', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'POST', 'me/events/e2/decline', { comment: 'conflict' })
+  })
+
+  it('returns a [dry_run] preview without calling decline by default', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'e2', subject: 'Review', start: { dateTime: '2026-01-02T10:00' } })
+    const r = await handleDeclineEvent({ eventId: 'e2' })
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would decline event e2: "Review"/)
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
   })
 
   it('rejects when eventId is missing', async () => {
@@ -184,14 +201,14 @@ describe('handleDeclineEvent', () => {
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleDeclineEvent({ eventId: 'e2' })
+    const r = await handleDeclineEvent({ eventId: 'e2', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles Graph API errors', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleDeclineEvent({ eventId: 'e2' })
+    const r = await handleDeclineEvent({ eventId: 'e2', dry_run: false })
     expect(r.content[0].text).toMatch(/Error declining event: boom/)
   })
 })
@@ -200,9 +217,18 @@ describe('handleDeleteEvent', () => {
   it('deletes by eventId', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleDeleteEvent({ eventId: 'e3' })
+    const r = await handleDeleteEvent({ eventId: 'e3', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'DELETE', 'me/events/e3')
     expect(r.content[0].text).toMatch(/successfully deleted/)
+  })
+
+  it('returns a [dry_run] preview without deleting by default', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'e3', subject: 'Old', start: { dateTime: '2026-01-03T11:00' }, end: { dateTime: '2026-01-03T12:00' } })
+    const r = await handleDeleteEvent({ eventId: 'e3' })
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would delete event e3: "Old"/)
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
+    expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'GET', expect.stringContaining('me/events/e3?'))
   })
 
   it('rejects when eventId is missing', async () => {
@@ -212,14 +238,14 @@ describe('handleDeleteEvent', () => {
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleDeleteEvent({ eventId: 'e3' })
+    const r = await handleDeleteEvent({ eventId: 'e3', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles Graph API errors', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleDeleteEvent({ eventId: 'e3' })
+    const r = await handleDeleteEvent({ eventId: 'e3', dry_run: false })
     expect(r.content[0].text).toMatch(/Error deleting event: boom/)
   })
 })

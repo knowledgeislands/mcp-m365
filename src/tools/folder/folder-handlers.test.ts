@@ -172,14 +172,14 @@ describe('handleDeleteFolder', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockGetFolderIdByName.mockResolvedValue('id-1')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleDeleteFolder({ folder: 'Old' })
+    const r = await handleDeleteFolder({ folder: 'Old', dry_run: false })
     expect(mockCallGraphAPI).toHaveBeenCalledWith('tok', 'DELETE', 'me/mailFolders/id-1')
     expect(r.content[0].text).toMatch(/Successfully deleted folder "Old"/)
   })
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleDeleteFolder({ folder: 'X' })
+    const r = await handleDeleteFolder({ folder: 'X', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
@@ -187,7 +187,7 @@ describe('handleDeleteFolder', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockGetFolderIdByName.mockResolvedValue('id-1')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleDeleteFolder({ folder: 'X' })
+    const r = await handleDeleteFolder({ folder: 'X', dry_run: false })
     expect(r.content[0].text).toMatch(/Error deleting folder.*boom/s)
   })
 })

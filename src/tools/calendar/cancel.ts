@@ -5,7 +5,7 @@ import { callGraphAPI } from '../../utils/graph-api.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleCancelEvent = async (args: any): Promise<any> => {
-  const { eventId, comment } = args
+  const { eventId, comment, dry_run = true } = args
 
   if (!eventId) {
     return {
@@ -17,6 +17,18 @@ export const handleCancelEvent = async (args: any): Promise<any> => {
     const accessToken = await ensureAuthenticated()
     const endpoint = `me/events/${eventId}/cancel`
     const body = { comment: comment || 'Cancelled via API' }
+
+    if (dry_run) {
+      const event = await callGraphAPI(accessToken, 'GET', `me/events/${eventId}?$select=id,subject,start`)
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `[dry_run] would cancel event ${eventId}: "${event?.subject ?? ''}" (${event?.start?.dateTime ?? '?'}). Pass dry_run: false to cancel.`
+          }
+        ]
+      }
+    }
 
     await callGraphAPI(accessToken, 'POST', endpoint, body)
 

@@ -42,11 +42,14 @@ export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
     'decline-event',
     {
-      description: 'Declines a calendar event',
-      inputSchema: {
-        eventId: z.string().describe('The ID of the event to decline'),
-        comment: z.string().optional().describe('Optional comment for declining the event')
-      },
+      description: 'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
+      inputSchema: z
+        .object({
+          eventId: z.string().min(1).describe('The ID of the event to decline'),
+          comment: z.string().optional().describe('Optional comment for declining the event'),
+          dry_run: z.boolean().optional().describe('Preview only; do not decline. Default true — pass false to actually decline.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleDeclineEvent
@@ -71,11 +74,14 @@ export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
     'cancel-event',
     {
-      description: 'Cancels a calendar event',
-      inputSchema: {
-        eventId: z.string().describe('The ID of the event to cancel'),
-        comment: z.string().optional().describe('Optional comment for cancelling the event')
-      },
+      description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
+      inputSchema: z
+        .object({
+          eventId: z.string().min(1).describe('The ID of the event to cancel'),
+          comment: z.string().optional().describe('Optional comment for cancelling the event'),
+          dry_run: z.boolean().optional().describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleCancelEvent
@@ -84,10 +90,13 @@ export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
     'delete-event',
     {
-      description: 'Deletes a calendar event',
-      inputSchema: {
-        eventId: z.string().describe('The ID of the event to delete')
-      },
+      description: 'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
+      inputSchema: z
+        .object({
+          eventId: z.string().min(1).describe('The ID of the event to delete'),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleDeleteEvent

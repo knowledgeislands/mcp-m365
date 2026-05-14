@@ -318,7 +318,7 @@ describe('handleDeleteItem', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValueOnce({ id: 'i', name: 'doc.md' })
     mockCallGraphAPI.mockResolvedValueOnce({})
-    const r = await handleDeleteItem({ itemId: 'i' })
+    const r = await handleDeleteItem({ itemId: 'i', dry_run: false })
     expect(r.content[0].text).toMatch(/Successfully deleted file "doc.md"/)
   })
 
@@ -326,27 +326,35 @@ describe('handleDeleteItem', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValueOnce({ id: 'i', name: 'Old', folder: { childCount: 0 } })
     mockCallGraphAPI.mockResolvedValueOnce({})
-    const r = await handleDeleteItem({ path: '/Old' })
+    const r = await handleDeleteItem({ path: '/Old', dry_run: false })
     expect(r.content[0].text).toMatch(/Successfully deleted folder "Old"/)
+  })
+
+  it('returns a [dry_run] preview without deleting by default', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValueOnce({ id: 'i', name: 'doc.md', size: 1234 })
+    const r = await handleDeleteItem({ itemId: 'i' })
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
+    expect(r.content[0].text).toMatch(/^\[dry_run\] would delete file "doc\.md"/)
   })
 
   it('reports not-found when GET returns no id', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleDeleteItem({ itemId: 'i' })
+    const r = await handleDeleteItem({ itemId: 'i', dry_run: false })
     expect(r.content[0].text).toBe('Item not found.')
   })
 
   it('handles authentication errors', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleDeleteItem({ itemId: 'i' })
+    const r = await handleDeleteItem({ itemId: 'i', dry_run: false })
     expect(r.content[0].text).toMatch(/Authentication required/)
   })
 
   it('handles Graph API errors', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleDeleteItem({ itemId: 'i' })
+    const r = await handleDeleteItem({ itemId: 'i', dry_run: false })
     expect(r.content[0].text).toMatch(/Error deleting item: boom/)
   })
 })

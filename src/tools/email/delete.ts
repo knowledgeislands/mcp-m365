@@ -7,6 +7,7 @@ import { ensureAuthenticated } from '../auth/index.js'
 export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
   const emailId = args.id
   const permanent = args.permanent === true
+  const dry_run = args.dry_run !== false
 
   if (!emailId) {
     return {
@@ -16,6 +17,19 @@ export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
 
   try {
     const accessToken = await ensureAuthenticated()
+
+    if (dry_run) {
+      const msg = await callGraphAPI(accessToken, 'GET', `me/messages/${encodeURIComponent(emailId)}?$select=id,subject,from,receivedDateTime`)
+      const verb = permanent ? 'permanently delete' : 'move to Deleted Items'
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `[dry_run] would ${verb}: "${msg?.subject ?? ''}" from ${msg?.from?.emailAddress?.address ?? '?'} (${msg?.receivedDateTime ?? '?'}). Pass dry_run: false to ${permanent ? 'permanently delete' : 'trash'}.`
+          }
+        ]
+      }
+    }
 
     if (permanent) {
       await callGraphAPI(accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/permanentDelete`)

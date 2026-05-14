@@ -111,11 +111,14 @@ export const registerOnedriveTools = (server: McpServer): void => {
   server.registerTool(
     'onedrive-delete',
     {
-      description: 'Delete a file or folder from OneDrive',
-      inputSchema: {
-        itemId: z.string().optional().describe('ID of the item to delete'),
-        path: z.string().optional().describe('Path to the item (alternative to itemId)')
-      },
+      description: 'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
+      inputSchema: z
+        .object({
+          itemId: z.string().min(1).optional().describe('ID of the item to delete'),
+          path: z.string().min(1).optional().describe('Path to the item (alternative to itemId)'),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleDeleteItem

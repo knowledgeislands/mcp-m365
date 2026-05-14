@@ -53,10 +53,13 @@ export const registerFolderTools = (server: McpServer): void => {
   server.registerTool(
     'delete-folder',
     {
-      description: 'Deletes an existing mail folder',
-      inputSchema: {
-        folder: z.string().describe("Folder to delete. Use a full custom path like 'Top/Sub'")
-      },
+      description: 'Deletes an existing mail folder. `dry_run` defaults to true — pass false to actually delete.',
+      inputSchema: z
+        .object({
+          folder: z.string().min(1).describe("Folder to delete. Use a full custom path like 'Top/Sub'"),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleDeleteFolder

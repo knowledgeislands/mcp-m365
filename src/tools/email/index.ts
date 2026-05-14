@@ -115,11 +115,15 @@ export const registerEmailTools = (server: McpServer): void => {
   server.registerTool(
     'delete-email',
     {
-      description: 'Deletes an email by moving it to Deleted Items (trash). Use permanent=true to hard delete.',
-      inputSchema: {
-        id: z.string().describe('ID of the email to delete'),
-        permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false')
-      },
+      description:
+        'Deletes an email by moving it to Deleted Items (trash). Use permanent=true to hard delete. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the message metadata and returns subject/sender/date.',
+      inputSchema: z
+        .object({
+          id: z.string().min(1).describe('ID of the email to delete'),
+          permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+        })
+        .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
     handleDeleteEmail

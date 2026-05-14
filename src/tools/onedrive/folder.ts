@@ -63,6 +63,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
 export const handleDeleteItem = async (args: any): Promise<any> => {
   const itemId = args.itemId
   const path = args.path
+  const dry_run = args.dry_run !== false
 
   if (!itemId && !path) {
     return {
@@ -91,6 +92,17 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
 
     const itemName = itemInfo.name
     const isFolder = !!itemInfo.folder
+
+    if (dry_run) {
+      return {
+        content: [
+          {
+            type: 'text',
+            text: `[dry_run] would delete ${isFolder ? 'folder' : 'file'} "${itemName}" (id: ${itemInfo.id}, size: ${itemInfo.size ?? '?'}B). Pass dry_run: false to delete.`
+          }
+        ]
+      }
+    }
 
     const deleteEndpoint = `me/drive/items/${itemInfo.id}`
     await callGraphAPI(accessToken, 'DELETE', deleteEndpoint)
