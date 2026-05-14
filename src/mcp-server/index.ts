@@ -13,14 +13,17 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import config from '../config.js'
 import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
+import { makeAuditedRegister } from '../utils/audit-log.js'
 
 console.error(`${config.SERVER_NAME} starting...`)
 console.error(`  SERVER_NAME=${config.SERVER_NAME}`)
+console.error(`  AUDIT_LOG_PATH=${config.AUDIT_LOG_PATH}${config.AUDIT_LOG_ALL ? ' (logging all roles)' : ' (writes only)'}`)
 
 const server = new McpServer({
   name: config.SERVER_NAME,
   version: config.SERVER_VERSION
 })
+server.registerTool = makeAuditedRegister(server)
 
 registerAuthTools(server)
 registerCalendarTools(server)

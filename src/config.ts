@@ -64,6 +64,11 @@ export const DEFAULT_TIMEZONE = 'Central European Standard Time'
 export const ONEDRIVE_SELECT_FIELDS = 'id,name,size,lastModifiedDateTime,webUrl,folder,file,parentReference'
 export const ONEDRIVE_UPLOAD_THRESHOLD = 4 * 1024 * 1024
 
+export const AUDIT_LOG_PATH: string = process.env.MCP_M365_AUDIT_LOG_PATH?.trim()
+  ? path.resolve(process.env.MCP_M365_AUDIT_LOG_PATH.trim())
+  : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl')
+export const AUDIT_LOG_ALL: boolean = process.env.MCP_M365_AUDIT_LOG_ALL === '1'
+
 export default {
   SERVER_NAME,
   SERVER_VERSION,
@@ -77,5 +82,7 @@ export default {
   MAX_RESULT_COUNT,
   DEFAULT_TIMEZONE,
   ONEDRIVE_SELECT_FIELDS,
-  ONEDRIVE_UPLOAD_THRESHOLD
+  ONEDRIVE_UPLOAD_THRESHOLD,
+  AUDIT_LOG_PATH,
+  AUDIT_LOG_ALL
 }

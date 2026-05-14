@@ -114,6 +114,8 @@ Auth tools are server-level; resource tools are grouped by Graph API area.
 | `MCP_M365_SCOPES`          | no       | (canonical list in `src/config.ts`)      | Space-separated OAuth scopes. Defaults include `offline_access`.         |
 | `MCP_M365_AUTH_PORT`       | no       | `3333`                                   | Auth server port. Must match the port in `MCP_M365_REDIRECT_URI`.        |
 | `MCP_M365_TOKEN_ENDPOINT`  | no       | derived from authority + tenant          | Override only if your authority uses a non-standard token endpoint path. |
+| `MCP_M365_AUDIT_LOG_PATH`  | no       | `~/.local/state/mcp-m365/audit.jsonl`    | JSONL audit log; one event per state-mutating tool invocation. See [src/utils/audit-log.ts](./src/utils/audit-log.ts). |
+| `MCP_M365_AUDIT_LOG_ALL`   | no       | unset                                    | Set to `1` to also log read-only tool invocations.                       |
 | `NODE_ENV`                 | no       | —                                        | `dev:*`/`inspect` scripts set `development` so `.env.development` loads. |
 
 `src/config.ts` calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup, try/caught so a missing file is fine. Claude Desktop doesn't set `NODE_ENV`, so production env comes from the Claude Desktop config `env` block.
