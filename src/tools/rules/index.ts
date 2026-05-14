@@ -3,13 +3,10 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { ADDITIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
 import { handleCreateRule } from './create.js'
 import { handleEditRuleSequence } from './edit-sequence.js'
 import { handleListRules } from './list.js'
-
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
-const STATE_CHANGE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
 
 export const registerRulesTools = (server: McpServer): void => {
   server.registerTool(
@@ -51,7 +48,7 @@ export const registerRulesTools = (server: McpServer): void => {
         ruleName: z.string().describe('Name of the rule to modify'),
         sequence: z.number().describe('New sequence value for the rule (lower numbers run first)')
       },
-      annotations: STATE_CHANGE_REMOTE
+      annotations: STATE_TOGGLE_REMOTE
     },
     handleEditRuleSequence
   )

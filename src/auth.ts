@@ -3,7 +3,7 @@ import { promises as fs } from 'node:fs'
 import https from 'node:https'
 import path from 'node:path'
 import querystring from 'node:querystring'
-import { M365_DEFAULT_SCOPES } from '../../config.js'
+import { AUTH_CONFIG, M365_DEFAULT_SCOPES } from './config.js'
 
 export interface TokenStorageConfig {
   tokenStorePath?: string
@@ -33,24 +33,24 @@ class TokenStorage {
   _refreshPromise: Promise<StoredTokens> | null
 
   constructor(config: TokenStorageConfig = {}) {
-    const tenantId = process.env.M365_TENANT_ID || 'common'
-    const authorityHost = (process.env.M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, '')
+    const tenantId = process.env.MCP_M365_TENANT_ID || 'common'
+    const authorityHost = (process.env.MCP_M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, '')
 
-    const clientId = process.env.M365_CLIENT_ID
-    const clientSecret = process.env.M365_CLIENT_SECRET
+    const clientId = process.env.MCP_M365_CLIENT_ID
+    const clientSecret = process.env.MCP_M365_CLIENT_SECRET
 
     this.config = {
       tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE || '', '.mcp-m365-tokens.json'),
       clientId: clientId || '',
       clientSecret: clientSecret || '',
-      redirectUri: process.env.M365_REDIRECT_URI || 'http://localhost:3333/auth/callback',
+      redirectUri: AUTH_CONFIG.redirectUri,
       // Use the canonical scope list from src/config.ts so the consent flow
       // (auth-server) and the refresh flow (here) cannot drift. Microsoft's
       // refresh endpoint treats `scope` as a subset request — a narrower list
       // here would silently downgrade access tokens on first refresh.
-      scopes: process.env.M365_SCOPES ? process.env.M365_SCOPES.split(/\s+/).filter(Boolean) : M365_DEFAULT_SCOPES,
+      scopes: process.env.MCP_M365_SCOPES ? process.env.MCP_M365_SCOPES.split(/\s+/).filter(Boolean) : M365_DEFAULT_SCOPES,
       tenantId,
-      tokenEndpoint: process.env.M365_TOKEN_ENDPOINT || `${authorityHost}/${tenantId}/oauth2/v2.0/token`,
+      tokenEndpoint: process.env.MCP_M365_TOKEN_ENDPOINT || `${authorityHost}/${tenantId}/oauth2/v2.0/token`,
       refreshTokenBuffer: 5 * 60 * 1000,
       ...config
     } as Required<TokenStorageConfig>
@@ -59,7 +59,7 @@ class TokenStorage {
     this._refreshPromise = null
 
     if (!this.config.clientId || !this.config.clientSecret) {
-      console.warn('TokenStorage: M365_CLIENT_ID or M365_CLIENT_SECRET is not configured. Token refresh will fail.')
+      console.warn('TokenStorage: MCP_M365_CLIENT_ID or MCP_M365_CLIENT_SECRET is not configured. Token refresh will fail.')
     }
   }
 
@@ -314,3 +314,12 @@ class TokenStorage {
 }
 
 export default TokenStorage
+
+/**
+ * Shared `TokenStorage` instance.
+ *
+ * Both `registerAuthTools` (for `ensureAuthenticated`) and `handleCheckAuthStatus`
+ * need to read the persisted token. Sharing one instance avoids duplicate
+ * caches and keeps refresh deduplication working across callers.
+ */
+export const tokenStorage = new TokenStorage()

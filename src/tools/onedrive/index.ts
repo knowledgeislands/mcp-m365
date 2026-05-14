@@ -3,6 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE } from '../../utils/annotations.js'
 import { handleDownload } from './download.js'
 import { handleCreateFolder, handleDeleteItem } from './folder.js'
 import { handleListFiles } from './list.js'
@@ -10,10 +11,6 @@ import { handleSearchFiles } from './search.js'
 import { handleShare } from './share.js'
 import { handleUpload } from './upload.js'
 import { handleUploadLarge } from './upload-large.js'
-
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
-const DESTRUCTIVE_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const
 
 export const registerOnedriveTools = (server: McpServer): void => {
   server.registerTool(

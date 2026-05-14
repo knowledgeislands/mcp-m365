@@ -3,17 +3,13 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
 import { handleAcceptEvent } from './accept.js'
 import { handleCancelEvent } from './cancel.js'
 import { handleCreateEvent } from './create.js'
 import { handleDeclineEvent } from './decline.js'
 import { handleDeleteEvent } from './delete.js'
 import { handleListEvents } from './list.js'
-
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
-const STATE_CHANGE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const DESTRUCTIVE_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const
 
 export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
@@ -38,7 +34,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         eventId: z.string().describe('The ID of the event to accept'),
         comment: z.string().optional().describe('Optional comment for accepting the event')
       },
-      annotations: STATE_CHANGE_REMOTE
+      annotations: STATE_TOGGLE_REMOTE
     },
     handleAcceptEvent
   )

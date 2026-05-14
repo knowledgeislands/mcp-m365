@@ -3,6 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
 import { handleDeleteEmail } from './delete.js'
 import { handleDraftEmail } from './draft.js'
 import { handleListEmails } from './list.js'
@@ -10,11 +11,6 @@ import { handleMarkAsRead } from './mark-as-read.js'
 import { handleReadEmail } from './read.js'
 import { handleSearchEmails } from './search.js'
 import { handleSendEmail } from './send.js'
-
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
-const STATE_TOGGLE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const DESTRUCTIVE_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const
 
 export const registerEmailTools = (server: McpServer): void => {
   server.registerTool(

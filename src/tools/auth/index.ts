@@ -7,7 +7,8 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { tokenStorage } from './storage.js'
+import { tokenStorage } from '../../auth.js'
+import { READ_ONLY, READ_ONLY_REMOTE } from '../../utils/annotations.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
 
 export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
@@ -22,9 +23,6 @@ export const ensureAuthenticated = async (forceNew = false): Promise<string> => 
 
   return accessToken
 }
-
-const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
 
 export const registerAuthTools = (server: McpServer): void => {
   server.registerTool(

@@ -96,7 +96,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 2. **Register an Azure app** — see [Azure App Registration](#azure-app-registration).
 3. **Configure environment** — copy `.env.example` to `.env.development` and add your Azure credentials.
 4. **Build**: `npm run build`.
-5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `M365_CLIENT_ID`/`M365_CLIENT_SECRET` (see [Configuration](#configuration)).
+5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `npm run dev:auth` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
@@ -153,7 +153,7 @@ npm install
 5. Account type: "Accounts in any organizational directory and personal Microsoft accounts".
 6. Redirect URI: Web → `http://localhost:3333/auth/callback`.
 7. Click "Register".
-8. Copy the "Application (client) ID" — you'll put it in `.env.development` as `M365_CLIENT_ID`.
+8. Copy the "Application (client) ID" — you'll put it in `.env.development` as `MCP_M365_CLIENT_ID`.
 
 ### API permissions
 
@@ -172,7 +172,7 @@ npm install
 1. Go to "Certificates & secrets" → "Client secrets".
 2. Click "New client secret".
 3. Add a description and select an expiration.
-4. **Copy the VALUE** (not the Secret ID) — you'll put it in `.env.development` as `M365_CLIENT_SECRET`.
+4. **Copy the VALUE** (not the Secret ID) — you'll put it in `.env.development` as `MCP_M365_CLIENT_SECRET`.
 
 ## Configuration
 
@@ -180,20 +180,20 @@ npm install
 
 | Name | Required | Default | Purpose |
 | --- | --- | --- | --- |
-| `M365_CLIENT_ID` | yes | — | Azure App Registration "Application (client) ID". |
-| `M365_CLIENT_SECRET` | yes | — | The client secret **VALUE** from "Certificates & secrets" (not the Secret ID). |
-| `M365_TENANT_ID` | recommended | `common` | Directory (tenant) ID. Set explicitly for single-tenant apps to avoid `/common` endpoint errors. |
-| `M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.). |
-| `M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
-| `M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
-| `M365_TOKEN_ENDPOINT` | no | `${M365_AUTHORITY_HOST}/${M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
+| `MCP_M365_CLIENT_ID` | yes | — | Azure App Registration "Application (client) ID". |
+| `MCP_M365_CLIENT_SECRET` | yes | — | The client secret **VALUE** from "Certificates & secrets" (not the Secret ID). |
+| `MCP_M365_TENANT_ID` | recommended | `common` | Directory (tenant) ID. Set explicitly for single-tenant apps to avoid `/common` endpoint errors. |
+| `MCP_M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.). |
+| `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
+| `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
+| `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
 | `NODE_ENV` | no | — | Dev convention. `dev:mcp`/`dev:auth`/`inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
 
 **Notes:**
 
 - Always use the client secret **VALUE**, never the Secret ID.
-- Set `M365_TENANT_ID` for single-tenant apps to avoid `/common` endpoint errors.
-- Use `M365_CLIENT_ID` and `M365_CLIENT_SECRET` consistently across `.env.development` and the Claude Desktop config.
+- Set `MCP_M365_TENANT_ID` for single-tenant apps to avoid `/common` endpoint errors.
+- Use `MCP_M365_CLIENT_ID` and `MCP_M365_CLIENT_SECRET` consistently across `.env.development` and the Claude Desktop config.
 
 ### Claude Desktop Configuration
 
@@ -206,8 +206,8 @@ Run `npm run build` first so `dist/mcp-server/index.js` exists, then add to your
       "command": "node",
       "args": ["/path/to/mcp-m365/dist/mcp-server/index.js"],
       "env": {
-        "M365_CLIENT_ID": "your-client-id",
-        "M365_CLIENT_SECRET": "your-client-secret"
+        "MCP_M365_CLIENT_ID": "your-client-id",
+        "MCP_M365_CLIENT_SECRET": "your-client-secret"
       }
     }
   }
@@ -256,7 +256,7 @@ npm run lint:md        # prettier + markdownlint for *.md
 
 ## Security Model
 
-- Secrets (`M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
+- Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
 - OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
 - The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
 - Tool annotations honestly mark destructive operations (`delete-email`, `delete-event`, `delete-folder`, `onedrive-delete`, etc.) so MCP clients can prompt before invoking them.

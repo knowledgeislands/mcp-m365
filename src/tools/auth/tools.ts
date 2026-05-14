@@ -6,8 +6,9 @@
  * measure: nothing in the MCP tool response surface should ever expose token
  * material to the LLM.
  */
+
+import { tokenStorage } from '../../auth.js'
 import config from '../../config.js'
-import { tokenStorage } from './storage.js'
 
 export const handleAbout = async (): Promise<any> => {
   return {

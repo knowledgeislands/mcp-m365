@@ -24,7 +24,7 @@ export const SERVER_VERSION = '1.0.0'
  *
  * `offline_access` is required to receive a refresh_token.
  *
- * Override at runtime via `M365_SCOPES` (space-separated).
+ * Override at runtime via `MCP_M365_SCOPES` (space-separated).
  */
 export const M365_DEFAULT_SCOPES = ['offline_access', 'User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.Read', 'Calendars.ReadWrite', 'Files.Read', 'Files.ReadWrite']
 
@@ -36,13 +36,16 @@ const parseScopes = (raw: string | undefined): string[] => {
     .filter(Boolean)
 }
 
+const AUTH_PORT = Number.parseInt(process.env.MCP_M365_AUTH_PORT || '3333', 10)
+
 export const AUTH_CONFIG = {
-  clientId: process.env.M365_CLIENT_ID || '',
-  clientSecret: process.env.M365_CLIENT_SECRET || '',
-  redirectUri: 'http://localhost:3333/auth/callback',
-  scopes: parseScopes(process.env.M365_SCOPES),
+  clientId: process.env.MCP_M365_CLIENT_ID || '',
+  clientSecret: process.env.MCP_M365_CLIENT_SECRET || '',
+  redirectUri: process.env.MCP_M365_REDIRECT_URI || `http://localhost:${AUTH_PORT}/auth/callback`,
+  scopes: parseScopes(process.env.MCP_M365_SCOPES),
   tokenStorePath: path.join(homeDir, '.mcp-m365-tokens.json'),
-  authServerUrl: 'http://localhost:3333'
+  authServerPort: AUTH_PORT,
+  authServerUrl: `http://localhost:${AUTH_PORT}`
 }
 
 export const GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0/'

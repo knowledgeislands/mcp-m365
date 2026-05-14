@@ -121,8 +121,8 @@ export const configError = (): string => {
         <div class="error-box">
           <p>Microsoft Graph API credentials are not set. Please set the following environment variables:</p>
           <ul>
-            <li><code>M365_CLIENT_ID</code></li>
-            <li><code>M365_CLIENT_SECRET</code></li>
+            <li><code>MCP_M365_CLIENT_ID</code></li>
+            <li><code>MCP_M365_CLIENT_SECRET</code></li>
           </ul>
         </div>
       </body>
@@ -130,7 +130,7 @@ export const configError = (): string => {
   `
 }
 
-export const rootInfo = (): string => {
+export const rootInfo = (authServerUrl: string): string => {
   return `
     <html>
       <head>
@@ -147,9 +147,9 @@ export const rootInfo = (): string => {
         <div class="info-box">
           <p>This server is running to handle Microsoft Graph API authentication callbacks.</p>
           <p>Don't navigate here directly. Instead, use the <code>authenticate</code> tool in Claude to start the authentication process.</p>
-          <p>Make sure you've set the <code>M365_CLIENT_ID</code> and <code>M365_CLIENT_SECRET</code> environment variables.</p>
+          <p>Make sure you've set the <code>MCP_M365_CLIENT_ID</code> and <code>MCP_M365_CLIENT_SECRET</code> environment variables.</p>
         </div>
-        <p>Server is running at http://localhost:3333</p>
+        <p>Server is running at ${authServerUrl}</p>
       </body>
     </html>
   `

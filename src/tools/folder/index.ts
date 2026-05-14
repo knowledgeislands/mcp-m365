@@ -3,16 +3,12 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
 import { handleCreateFolder } from './create.js'
 import { handleDeleteFolder } from './delete.js'
 import { handleListFolders } from './list.js'
 import { handleMoveEmails } from './move.js'
 import { handleRenameFolder } from './rename.js'
-
-const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
-const STATE_CHANGE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
-const DESTRUCTIVE_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const
 
 export const registerFolderTools = (server: McpServer): void => {
   server.registerTool(
@@ -49,7 +45,7 @@ export const registerFolderTools = (server: McpServer): void => {
         folder: z.string().describe("Folder to rename. Use a full custom path like 'Top/Sub'"),
         newName: z.string().describe('New leaf name for the folder')
       },
-      annotations: STATE_CHANGE_REMOTE
+      annotations: STATE_TOGGLE_REMOTE
     },
     handleRenameFolder
   )
@@ -75,7 +71,7 @@ export const registerFolderTools = (server: McpServer): void => {
         targetFolder: z.string().describe('Folder path to move emails to'),
         sourceFolder: z.string().optional().describe('Optional source folder path (default is inbox)')
       },
-      annotations: STATE_CHANGE_REMOTE
+      annotations: STATE_TOGGLE_REMOTE
     },
     handleMoveEmails
   )

@@ -1,6 +1,6 @@
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { tokenStorage } from './storage.js'
+import { tokenStorage } from '../../auth.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
 
 let getTokensSpy: Mock

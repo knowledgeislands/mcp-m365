@@ -3,7 +3,7 @@ import https from 'node:https'
 import path from 'node:path'
 import querystring from 'node:querystring'
 import type { Mock } from 'vitest'
-import TokenStorage from './token-storage.js'
+import TokenStorage from './auth.js'
 
 vi.mock('fs', () => ({
   promises: {
@@ -48,7 +48,7 @@ describe('TokenStorage', () => {
     it('should warn if client ID or secret is missing', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       new TokenStorage({ ...baseConfig, clientId: undefined as any })
-      expect(consoleWarnSpy).toHaveBeenCalledWith('TokenStorage: M365_CLIENT_ID or M365_CLIENT_SECRET is not configured. Token refresh will fail.')
+      expect(consoleWarnSpy).toHaveBeenCalledWith('TokenStorage: MCP_M365_CLIENT_ID or MCP_M365_CLIENT_SECRET is not configured. Token refresh will fail.')
       consoleWarnSpy.mockRestore()
     })
   })

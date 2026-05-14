@@ -4,7 +4,7 @@
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
-const ENV_KEYS = ['M365_CLIENT_ID', 'M365_CLIENT_SECRET', 'M365_SCOPES', 'HOME', 'USERPROFILE'] as const
+const ENV_KEYS = ['MCP_M365_CLIENT_ID', 'MCP_M365_CLIENT_SECRET', 'MCP_M365_SCOPES', 'HOME', 'USERPROFILE'] as const
 
 const snapshot: Record<string, string | undefined> = {}
 
@@ -21,26 +21,26 @@ afterEach(() => {
 })
 
 describe('parseScopes (via AUTH_CONFIG.scopes)', () => {
-  it('defaults to M365_DEFAULT_SCOPES when M365_SCOPES is unset', async () => {
-    delete process.env.M365_SCOPES
+  it('defaults to M365_DEFAULT_SCOPES when MCP_M365_SCOPES is unset', async () => {
+    delete process.env.MCP_M365_SCOPES
     const { AUTH_CONFIG, M365_DEFAULT_SCOPES } = await import('./config.js')
     expect(AUTH_CONFIG.scopes).toEqual(M365_DEFAULT_SCOPES)
   })
 
-  it('parses a space-separated M365_SCOPES value', async () => {
-    process.env.M365_SCOPES = 'offline_access User.Read Mail.Read'
+  it('parses a space-separated MCP_M365_SCOPES value', async () => {
+    process.env.MCP_M365_SCOPES = 'offline_access User.Read Mail.Read'
     const { AUTH_CONFIG } = await import('./config.js')
     expect(AUTH_CONFIG.scopes).toEqual(['offline_access', 'User.Read', 'Mail.Read'])
   })
 
   it('tolerates mixed whitespace (newlines, tabs, multiple spaces) between scopes', async () => {
-    process.env.M365_SCOPES = '  offline_access   User.Read\tMail.Read\n Mail.Send '
+    process.env.MCP_M365_SCOPES = '  offline_access   User.Read\tMail.Read\n Mail.Send '
     const { AUTH_CONFIG } = await import('./config.js')
     expect(AUTH_CONFIG.scopes).toEqual(['offline_access', 'User.Read', 'Mail.Read', 'Mail.Send'])
   })
 
-  it('falls back to the default when M365_SCOPES is set but empty/whitespace', async () => {
-    process.env.M365_SCOPES = '   '
+  it('falls back to the default when MCP_M365_SCOPES is set but empty/whitespace', async () => {
+    process.env.MCP_M365_SCOPES = '   '
     const { AUTH_CONFIG, M365_DEFAULT_SCOPES } = await import('./config.js')
     expect(AUTH_CONFIG.scopes).toEqual(M365_DEFAULT_SCOPES)
   })
@@ -88,16 +88,16 @@ describe('homeDir fallback chain (HOME || USERPROFILE || os.homedir() || "/tmp")
 
 describe('AUTH_CONFIG client credentials', () => {
   it('defaults clientId/clientSecret to empty strings when env vars are unset', async () => {
-    delete process.env.M365_CLIENT_ID
-    delete process.env.M365_CLIENT_SECRET
+    delete process.env.MCP_M365_CLIENT_ID
+    delete process.env.MCP_M365_CLIENT_SECRET
     const { AUTH_CONFIG } = await import('./config.js')
     expect(AUTH_CONFIG.clientId).toBe('')
     expect(AUTH_CONFIG.clientSecret).toBe('')
   })
 
   it('reads clientId/clientSecret from env when set', async () => {
-    process.env.M365_CLIENT_ID = 'my-client-id'
-    process.env.M365_CLIENT_SECRET = 'my-secret'
+    process.env.MCP_M365_CLIENT_ID = 'my-client-id'
+    process.env.MCP_M365_CLIENT_SECRET = 'my-secret'
     const { AUTH_CONFIG } = await import('./config.js')
     expect(AUTH_CONFIG.clientId).toBe('my-client-id')
     expect(AUTH_CONFIG.clientSecret).toBe('my-secret')

@@ -38,14 +38,14 @@ const parseScopes = (raw: string | undefined): string[] => {
 }
 
 const AUTH_CONFIG = {
-  clientId: process.env.M365_CLIENT_ID || '',
-  clientSecret: process.env.M365_CLIENT_SECRET || '',
-  tenantId: process.env.M365_TENANT_ID || 'common',
-  authorityHost: (process.env.M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, ''),
-  redirectUri: 'http://localhost:3333/auth/callback',
+  clientId: process.env.MCP_M365_CLIENT_ID || '',
+  clientSecret: process.env.MCP_M365_CLIENT_SECRET || '',
+  tenantId: process.env.MCP_M365_TENANT_ID || 'common',
+  authorityHost: (process.env.MCP_M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, ''),
+  redirectUri: SHARED_AUTH_CONFIG.redirectUri,
   // Canonical scope list lives in src/config.ts as M365_DEFAULT_SCOPES so the
-  // consent flow (here) and the refresh flow (token-storage) cannot drift.
-  scopes: parseScopes(process.env.M365_SCOPES),
+  // consent flow (here) and the refresh flow (src/auth.ts) cannot drift.
+  scopes: parseScopes(process.env.MCP_M365_SCOPES),
   tokenStorePath: SHARED_AUTH_CONFIG.tokenStorePath
 }
 
@@ -120,7 +120,7 @@ const server = http.createServer((req, res) => {
     res.end()
   } else if (pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html' })
-    res.end(templates.rootInfo())
+    res.end(templates.rootInfo(SHARED_AUTH_CONFIG.authServerUrl))
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain' })
     res.end('Not Found')
@@ -185,7 +185,7 @@ const exchangeCodeForTokens = (code: string): Promise<any> => {
   })
 }
 
-const PORT = 3333
+const PORT = SHARED_AUTH_CONFIG.authServerPort
 server.listen(PORT, () => {
   console.log(`Authentication server running at http://localhost:${PORT}`)
   console.log(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}`)
@@ -193,7 +193,7 @@ server.listen(PORT, () => {
 
   if (!AUTH_CONFIG.clientId || !AUTH_CONFIG.clientSecret) {
     console.log('\n⚠️  WARNING: Microsoft Graph API credentials are not set.')
-    console.log('   Please set the M365_CLIENT_ID and M365_CLIENT_SECRET environment variables.')
+    console.log('   Please set the MCP_M365_CLIENT_ID and MCP_M365_CLIENT_SECRET environment variables.')
   }
 })
 
