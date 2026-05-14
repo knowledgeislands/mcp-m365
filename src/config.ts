@@ -67,7 +67,22 @@ export const ONEDRIVE_UPLOAD_THRESHOLD = 4 * 1024 * 1024
 export const AUDIT_LOG_PATH: string = process.env.MCP_M365_AUDIT_LOG_PATH?.trim()
   ? path.resolve(process.env.MCP_M365_AUDIT_LOG_PATH.trim())
   : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl')
-export const AUDIT_LOG_ALL: boolean = process.env.MCP_M365_AUDIT_LOG_ALL === '1'
+
+/**
+ * Scope of tool invocations to record. Default `writes` logs state-mutating
+ * tools only; `all` adds read-only ones; `off` disables logging entirely (the
+ * wrapper short-circuits and never opens the file).
+ */
+export type AuditLogMode = 'off' | 'writes' | 'all'
+
+const parseAuditLogMode = (raw: string | undefined): AuditLogMode => {
+  const v = raw?.trim().toLowerCase()
+  if (v === undefined || v === '') return 'writes'
+  if (v === 'off' || v === 'writes' || v === 'all') return v
+  throw new Error(`Invalid MCP_M365_AUDIT_LOG="${raw}" — expected one of: off, writes, all.`)
+}
+
+export const AUDIT_LOG_MODE: AuditLogMode = parseAuditLogMode(process.env.MCP_M365_AUDIT_LOG)
 
 export default {
   SERVER_NAME,
@@ -84,5 +99,5 @@ export default {
   ONEDRIVE_SELECT_FIELDS,
   ONEDRIVE_UPLOAD_THRESHOLD,
   AUDIT_LOG_PATH,
-  AUDIT_LOG_ALL
+  AUDIT_LOG_MODE
 }

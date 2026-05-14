@@ -3,6 +3,7 @@
  */
 import config from '../../config.js'
 import { callGraphAPI } from '../../utils/graph-api.js'
+import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleListFiles = async (args: any): Promise<any> => {
@@ -16,8 +17,8 @@ export const handleListFiles = async (args: any): Promise<any> => {
     if (!path || path === '/' || path === 'root') {
       endpoint = 'me/drive/root/children'
     } else {
-      const normalizedPath = path.replace(/^\/+|\/+$/g, '')
-      endpoint = `me/drive/root:/${normalizedPath}:/children`
+      const safePath = sanitizeOneDrivePath(path)
+      endpoint = `me/drive/root:/${safePath}:/children`
     }
 
     const queryParams = {

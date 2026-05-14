@@ -29,7 +29,7 @@ export const registerAuthTools = (server: McpServer): void => {
     'about',
     {
       description: 'Returns information about this MCP M365 server',
-      inputSchema: {},
+      inputSchema: z.object({}).strict(),
       annotations: READ_ONLY
     },
     handleAbout
@@ -39,9 +39,11 @@ export const registerAuthTools = (server: McpServer): void => {
     'authenticate',
     {
       description: 'Authenticate with Microsoft Graph API to access Outlook data',
-      inputSchema: {
-        force: z.boolean().optional().describe('Force re-authentication even if already authenticated')
-      },
+      inputSchema: z
+        .object({
+          force: z.boolean().optional().describe('Force re-authentication even if already authenticated')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleAuthenticate
@@ -51,7 +53,7 @@ export const registerAuthTools = (server: McpServer): void => {
     'check-auth-status',
     {
       description: 'Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry metadata only — never the token values.',
-      inputSchema: {},
+      inputSchema: z.object({}).strict(),
       annotations: READ_ONLY
     },
     handleCheckAuthStatus

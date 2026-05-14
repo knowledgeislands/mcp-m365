@@ -17,7 +17,7 @@ import { makeAuditedRegister } from '../utils/audit-log.js'
 
 console.error(`${config.SERVER_NAME} starting...`)
 console.error(`  SERVER_NAME=${config.SERVER_NAME}`)
-console.error(`  AUDIT_LOG_PATH=${config.AUDIT_LOG_PATH}${config.AUDIT_LOG_ALL ? ' (logging all roles)' : ' (writes only)'}`)
+console.error(`  MCP_M365_AUDIT_LOG=${config.AUDIT_LOG_MODE}${config.AUDIT_LOG_MODE === 'off' ? '' : ` (path: ${config.AUDIT_LOG_PATH})`}`)
 
 const server = new McpServer({
   name: config.SERVER_NAME,

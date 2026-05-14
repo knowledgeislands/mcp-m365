@@ -13,9 +13,11 @@ export const registerRulesTools = (server: McpServer): void => {
     'list-rules',
     {
       description: 'Lists inbox rules in your Outlook account',
-      inputSchema: {
-        includeDetails: z.boolean().optional().describe('Include detailed rule conditions and actions')
-      },
+      inputSchema: z
+        .object({
+          includeDetails: z.boolean().optional().describe('Include detailed rule conditions and actions')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleListRules
@@ -25,16 +27,18 @@ export const registerRulesTools = (server: McpServer): void => {
     'create-rule',
     {
       description: 'Creates a new inbox rule',
-      inputSchema: {
-        name: z.string().describe('Name of the rule to create'),
-        fromAddresses: z.string().optional().describe('Comma-separated list of sender email addresses for the rule'),
-        containsSubject: z.string().optional().describe('Subject text the email must contain'),
-        hasAttachments: z.boolean().optional().describe('Whether the rule applies to emails with attachments'),
-        moveToFolder: z.string().optional().describe('Name of the folder to move matching emails to'),
-        markAsRead: z.boolean().optional().describe('Whether to mark matching emails as read'),
-        isEnabled: z.boolean().optional().describe('Whether the rule should be enabled after creation (default: true)'),
-        sequence: z.number().optional().describe('Order in which the rule is executed (lower numbers run first, default: 100)')
-      },
+      inputSchema: z
+        .object({
+          name: z.string().describe('Name of the rule to create'),
+          fromAddresses: z.string().optional().describe('Comma-separated list of sender email addresses for the rule'),
+          containsSubject: z.string().optional().describe('Subject text the email must contain'),
+          hasAttachments: z.boolean().optional().describe('Whether the rule applies to emails with attachments'),
+          moveToFolder: z.string().optional().describe('Name of the folder to move matching emails to'),
+          markAsRead: z.boolean().optional().describe('Whether to mark matching emails as read'),
+          isEnabled: z.boolean().optional().describe('Whether the rule should be enabled after creation (default: true)'),
+          sequence: z.number().int().min(0).max(10000).optional().describe('Order in which the rule is executed (lower numbers run first, default: 100). Graph rejects negative values.')
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleCreateRule
@@ -44,10 +48,12 @@ export const registerRulesTools = (server: McpServer): void => {
     'edit-rule-sequence',
     {
       description: 'Changes the execution order of an existing inbox rule',
-      inputSchema: {
-        ruleName: z.string().describe('Name of the rule to modify'),
-        sequence: z.number().describe('New sequence value for the rule (lower numbers run first)')
-      },
+      inputSchema: z
+        .object({
+          ruleName: z.string().describe('Name of the rule to modify'),
+          sequence: z.number().int().min(0).max(10000).describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
+        })
+        .strict(),
       annotations: STATE_TOGGLE_REMOTE
     },
     handleEditRuleSequence

@@ -3,6 +3,7 @@
  */
 import config from '../../config.js'
 import { callGraphAPI } from '../../utils/graph-api.js'
+import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleUpload = async (args: any): Promise<any> => {
@@ -32,8 +33,7 @@ export const handleUpload = async (args: any): Promise<any> => {
   try {
     const accessToken = await ensureAuthenticated()
 
-    const normalizedPath = path.replace(/^\/+|\/+$/g, '')
-    const endpoint = `me/drive/root:/${normalizedPath}:/content`
+    const endpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}:/content`
 
     const queryParams = {
       '@microsoft.graph.conflictBehavior': conflictBehavior

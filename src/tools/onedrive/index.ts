@@ -17,10 +17,12 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-list',
     {
       description: 'List files and folders in OneDrive at a specific path',
-      inputSchema: {
-        path: z.string().optional().describe("Path to list (e.g., '/Documents', '/Photos'). Defaults to root."),
-        count: z.number().optional().describe('Number of items to retrieve (default: 25, max: 50)')
-      },
+      inputSchema: z
+        .object({
+          path: z.string().optional().describe("Path to list (e.g., '/Documents', '/Photos'). Defaults to root."),
+          count: z.number().int().positive().max(50).optional().describe('Number of items to retrieve (default: 25, max: 50)')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleListFiles
@@ -30,10 +32,12 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-search',
     {
       description: 'Search for files in OneDrive by name or content',
-      inputSchema: {
-        query: z.string().describe('Search query to find files'),
-        count: z.number().optional().describe('Number of results to return (default: 25, max: 50)')
-      },
+      inputSchema: z
+        .object({
+          query: z.string().describe('Search query to find files'),
+          count: z.number().int().positive().max(50).optional().describe('Number of results to return (default: 25, max: 50)')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleSearchFiles
@@ -43,10 +47,12 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-download',
     {
       description: "Get a download URL for a file in OneDrive. Either 'itemId' or 'path' must be provided.",
-      inputSchema: {
-        itemId: z.string().optional().describe('ID of the item to download'),
-        path: z.string().optional().describe('Path to the file (alternative to itemId)')
-      },
+      inputSchema: z
+        .object({
+          itemId: z.string().optional().describe('ID of the item to download'),
+          path: z.string().optional().describe('Path to the file (alternative to itemId)')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleDownload
@@ -56,11 +62,13 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-upload',
     {
       description: 'Upload a small file (< 4MB) to OneDrive',
-      inputSchema: {
-        path: z.string().describe("Destination path including filename (e.g., '/Documents/myfile.txt')"),
-        content: z.string().describe('File content to upload'),
-        conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
-      },
+      inputSchema: z
+        .object({
+          path: z.string().describe("Destination path including filename (e.g., '/Documents/myfile.txt')"),
+          content: z.string().describe('File content to upload'),
+          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleUpload
@@ -70,11 +78,13 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-upload-large',
     {
       description: 'Upload a large file (> 4MB) to OneDrive using chunked upload',
-      inputSchema: {
-        path: z.string().describe("Destination path including filename (e.g., '/Documents/largefile.zip')"),
-        content: z.string().describe('File content to upload'),
-        conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
-      },
+      inputSchema: z
+        .object({
+          path: z.string().describe("Destination path including filename (e.g., '/Documents/largefile.zip')"),
+          content: z.string().describe('File content to upload'),
+          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleUploadLarge
@@ -84,12 +94,14 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-share',
     {
       description: 'Create a sharing link for a file or folder in OneDrive',
-      inputSchema: {
-        itemId: z.string().optional().describe('ID of the item to share'),
-        path: z.string().optional().describe('Path to the item (alternative to itemId)'),
-        type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
-        scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
-      },
+      inputSchema: z
+        .object({
+          itemId: z.string().optional().describe('ID of the item to share'),
+          path: z.string().optional().describe('Path to the item (alternative to itemId)'),
+          type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
+          scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleShare
@@ -99,10 +111,12 @@ export const registerOnedriveTools = (server: McpServer): void => {
     'onedrive-create-folder',
     {
       description: 'Create a new folder in OneDrive',
-      inputSchema: {
-        path: z.string().optional().describe("Parent folder path (e.g., '/Documents'). Defaults to root."),
-        name: z.string().describe('Name of the new folder')
-      },
+      inputSchema: z
+        .object({
+          path: z.string().optional().describe("Parent folder path (e.g., '/Documents'). Defaults to root."),
+          name: z.string().describe('Name of the new folder')
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleCreateFolder

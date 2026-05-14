@@ -3,6 +3,7 @@
  */
 import https from 'node:https'
 import { callGraphAPI } from '../../utils/graph-api.js'
+import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 const CHUNK_SIZE = 320 * 1024 * 10
@@ -29,9 +30,7 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
     const contentBuffer = Buffer.from(content)
     const fileSize = contentBuffer.length
 
-    const normalizedPath = path.replace(/^\/+|\/+$/g, '')
-
-    const sessionEndpoint = `me/drive/root:/${normalizedPath}:/createUploadSession`
+    const sessionEndpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}:/createUploadSession`
     const sessionBody = {
       item: {
         '@microsoft.graph.conflictBehavior': conflictBehavior

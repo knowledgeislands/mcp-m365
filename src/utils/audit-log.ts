@@ -1,10 +1,10 @@
 /**
  * Append-only JSONL audit log for tool invocations.
  *
- * Every state-mutating tool (any tool whose annotations report `readOnlyHint: false`,
- * which covers ADDITIVE_REMOTE, STATE_TOGGLE_REMOTE, and DESTRUCTIVE_REMOTE) is logged
- * by default. Reads can be included by setting MCP_M365_AUDIT_LOG_ALL=1. Path is
- * configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
+ * Scope is controlled by MCP_M365_AUDIT_LOG: `off` (no logging), `writes`
+ * (default — any tool whose annotations report `readOnlyHint: false`, covering
+ * ADDITIVE_REMOTE / STATE_TOGGLE_REMOTE / DESTRUCTIVE_REMOTE) or `all` (every
+ * tool). Path is configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
  * `~/.local/state/mcp-m365/audit.jsonl`.
  *
  * Failures to write the audit line are swallowed (stderr only) — a broken log
@@ -13,7 +13,7 @@
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { AUDIT_LOG_ALL, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
+import { AUDIT_LOG_MODE, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
 
 export type Role = 'auditor' | 'cleaner'
 
@@ -61,10 +61,23 @@ const sanitizeArgs = (args: unknown): unknown => {
   return safe
 }
 
+// Once per process, chmod the log to 0o600 after the first successful append
+// — covers logs created before this safeguard existed (which would otherwise
+// keep 0o644). `appendFile`'s `mode` option only applies on creation.
+let chmodEnsured = false
+
 export const appendAuditEvent = async (event: AuditEvent): Promise<void> => {
   try {
     await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true })
-    await fs.appendFile(AUDIT_LOG_PATH, `${JSON.stringify(event)}\n`, 'utf-8')
+    await fs.appendFile(AUDIT_LOG_PATH, `${JSON.stringify(event)}\n`, { encoding: 'utf-8', mode: 0o600 })
+    if (!chmodEnsured) {
+      try {
+        await fs.chmod(AUDIT_LOG_PATH, 0o600)
+      } catch {
+        // best-effort — log may have been rotated/removed between write and chmod
+      }
+      chmodEnsured = true
+    }
   } catch (err) {
     console.error(`[audit-log] failed to write: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -80,7 +93,8 @@ const extractErrorText = (result: unknown): string | undefined => {
 }
 
 export const withAuditLog = (toolName: string, role: Role, callback: ToolCallback): ToolCallback => {
-  if (role === 'auditor' && !AUDIT_LOG_ALL) return callback
+  if (AUDIT_LOG_MODE === 'off') return callback
+  if (role === 'auditor' && AUDIT_LOG_MODE !== 'all') return callback
   return async (...callbackArgs: unknown[]) => {
     const start = Date.now()
     const args = callbackArgs[0]

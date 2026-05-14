@@ -2,6 +2,7 @@
  * OneDrive get download URL functionality
  */
 import { callGraphAPI } from '../../utils/graph-api.js'
+import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleDownload = async (args: any): Promise<any> => {
@@ -19,10 +20,9 @@ export const handleDownload = async (args: any): Promise<any> => {
 
     let endpoint: string
     if (itemId) {
-      endpoint = `me/drive/items/${itemId}`
+      endpoint = `me/drive/items/${encodeURIComponent(itemId)}`
     } else {
-      const normalizedPath = path.replace(/^\/+|\/+$/g, '')
-      endpoint = `me/drive/root:/${normalizedPath}`
+      endpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}`
     }
 
     const queryParams = {

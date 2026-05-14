@@ -16,11 +16,13 @@ export const registerCalendarTools = (server: McpServer): void => {
     'list-events',
     {
       description: 'Lists upcoming events from your calendar',
-      inputSchema: {
-        count: z.number().optional().describe('Number of events to retrieve (default: 10, max: 50)'),
-        startDateTime: z.string().optional().describe('ISO 8601 start date/time for the query range (default: now)'),
-        endDateTime: z.string().optional().describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
-      },
+      inputSchema: z
+        .object({
+          count: z.number().int().positive().max(50).optional().describe('Number of events to retrieve (default: 10, max: 50)'),
+          startDateTime: z.string().optional().describe('ISO 8601 start date/time for the query range (default: now)'),
+          endDateTime: z.string().optional().describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleListEvents
@@ -30,10 +32,12 @@ export const registerCalendarTools = (server: McpServer): void => {
     'accept-event',
     {
       description: 'Accepts a calendar event',
-      inputSchema: {
-        eventId: z.string().describe('The ID of the event to accept'),
-        comment: z.string().optional().describe('Optional comment for accepting the event')
-      },
+      inputSchema: z
+        .object({
+          eventId: z.string().describe('The ID of the event to accept'),
+          comment: z.string().optional().describe('Optional comment for accepting the event')
+        })
+        .strict(),
       annotations: STATE_TOGGLE_REMOTE
     },
     handleAcceptEvent
@@ -59,13 +63,15 @@ export const registerCalendarTools = (server: McpServer): void => {
     'create-event',
     {
       description: 'Creates a new calendar event',
-      inputSchema: {
-        subject: z.string().describe('The subject of the event'),
-        start: z.string().describe('The start time of the event in ISO 8601 format'),
-        end: z.string().describe('The end time of the event in ISO 8601 format'),
-        attendees: z.array(z.string()).optional().describe('List of attendee email addresses'),
-        body: z.string().optional().describe('Optional body content for the event')
-      },
+      inputSchema: z
+        .object({
+          subject: z.string().describe('The subject of the event'),
+          start: z.string().describe('The start time of the event in ISO 8601 format'),
+          end: z.string().describe('The end time of the event in ISO 8601 format'),
+          attendees: z.array(z.string()).optional().describe('List of attendee email addresses'),
+          body: z.string().optional().describe('Optional body content for the event')
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleCreateEvent

@@ -15,10 +15,12 @@ export const registerFolderTools = (server: McpServer): void => {
     'list-folders',
     {
       description: 'Lists mail folders in your Outlook account',
-      inputSchema: {
-        includeItemCounts: z.boolean().optional().describe('Include counts of total and unread items'),
-        includeChildren: z.boolean().optional().describe('Include child folders in hierarchy')
-      },
+      inputSchema: z
+        .object({
+          includeItemCounts: z.boolean().optional().describe('Include counts of total and unread items'),
+          includeChildren: z.boolean().optional().describe('Include child folders in hierarchy')
+        })
+        .strict(),
       annotations: READ_ONLY_REMOTE
     },
     handleListFolders
@@ -28,10 +30,12 @@ export const registerFolderTools = (server: McpServer): void => {
     'create-folder',
     {
       description: 'Creates a new mail folder',
-      inputSchema: {
-        name: z.string().describe('Name of the folder to create'),
-        parentFolder: z.string().optional().describe('Optional parent folder path (default is root)')
-      },
+      inputSchema: z
+        .object({
+          name: z.string().describe('Name of the folder to create'),
+          parentFolder: z.string().optional().describe('Optional parent folder path (default is root)')
+        })
+        .strict(),
       annotations: ADDITIVE_REMOTE
     },
     handleCreateFolder
@@ -41,10 +45,12 @@ export const registerFolderTools = (server: McpServer): void => {
     'rename-folder',
     {
       description: 'Renames an existing mail folder',
-      inputSchema: {
-        folder: z.string().describe("Folder to rename. Use a full custom path like 'Top/Sub'"),
-        newName: z.string().describe('New leaf name for the folder')
-      },
+      inputSchema: z
+        .object({
+          folder: z.string().describe("Folder to rename. Use a full custom path like 'Top/Sub'"),
+          newName: z.string().describe('New leaf name for the folder')
+        })
+        .strict(),
       annotations: STATE_TOGGLE_REMOTE
     },
     handleRenameFolder
@@ -69,11 +75,13 @@ export const registerFolderTools = (server: McpServer): void => {
     'move-emails',
     {
       description: 'Moves emails from one folder to another',
-      inputSchema: {
-        emailIds: z.string().describe('Comma-separated list of email IDs to move'),
-        targetFolder: z.string().describe('Folder path to move emails to'),
-        sourceFolder: z.string().optional().describe('Optional source folder path (default is inbox)')
-      },
+      inputSchema: z
+        .object({
+          emailIds: z.string().describe('Comma-separated list of email IDs to move'),
+          targetFolder: z.string().describe('Folder path to move emails to'),
+          sourceFolder: z.string().optional().describe('Optional source folder path (default is inbox)')
+        })
+        .strict(),
       annotations: STATE_TOGGLE_REMOTE
     },
     handleMoveEmails

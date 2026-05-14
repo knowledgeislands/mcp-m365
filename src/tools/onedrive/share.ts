@@ -2,6 +2,7 @@
  * OneDrive create sharing link functionality
  */
 import { callGraphAPI } from '../../utils/graph-api.js'
+import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleShare = async (args: any): Promise<any> => {
@@ -23,8 +24,7 @@ export const handleShare = async (args: any): Promise<any> => {
     let itemName = ''
 
     if (!resolvedItemId && path) {
-      const normalizedPath = path.replace(/^\/+|\/+$/g, '')
-      const itemEndpoint = `me/drive/root:/${normalizedPath}`
+      const itemEndpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}`
       const itemResponse = await callGraphAPI(accessToken, 'GET', itemEndpoint)
 
       if (!itemResponse?.id) {
