@@ -112,6 +112,6 @@
     // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
     "skipLibCheck": true /* Skip type checking all .d.ts files. */
   },
-  "include": ["**/*.ts", "**/*.mjs", ".ncurc.cjs", "commitlint.config.ts", "lint-staged.config.ts", "prettier.config.ts", "syncpack.config.ts", "vitest.config.ts"],
+  "include": ["**/*.ts", "**/*.mjs", "commitlint.config.ts", "lint-staged.config.ts", "prettier.config.ts", "syncpack.config.ts", "vitest.config.ts"],
   "exclude": ["cdk.out", "node_modules", "dist"]
 }

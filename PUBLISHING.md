@@ -69,7 +69,7 @@ git push --follow-tags
 npm publish --provenance --access public
 ```
 
-`prepublishOnly` automatically runs `npm run build` first.
+`prepublishOnly` automatically runs `bun run build` first.
 
 After a manual publish, sync `release-please-config.json` and `.release-please-manifest.json` so release-please picks up where you left off.
 

@@ -24,7 +24,6 @@
     "markdownlint-cli2": "^0.22.1",
     "prettier": "^3.8.3",
     "syncpack": "^15.1.2",
-    "tsx": "^4.21.0",
     "typescript": "^6.0.3",
     "vitest": "^4.1.6"
   },
@@ -47,9 +46,10 @@
   ],
   "license": "MIT",
   "lint-staged": {
-    "*.{ts,js,json,jsonc}": "npx @biomejs/biome check --write --no-errors-on-unmatched"
+    "*.{ts,js,json,jsonc}": "bunx @biomejs/biome check --write --no-errors-on-unmatched"
   },
   "main": "dist/mcp-server/index.js",
+  "packageManager": "bun@1.3.14",
   "publishConfig": {
     "access": "public"
   },
@@ -60,27 +60,25 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf {dist,node_modules}",
-    "dev:auth": "NODE_ENV=development tsx watch src/auth-server/index.ts",
-    "dev:mcp": "NODE_ENV=development tsx watch src/mcp-server/index.ts",
-    "format": "npx @biomejs/biome format --write",
-    "inspect": "NODE_ENV=development npx @modelcontextprotocol/inspector tsx src/mcp-server/index.ts",
-    "lint:check": "npx @biomejs/biome check",
-    "lint:deps:missing": "npx depcheck --json | npx node-jq --sort-keys '.' | npx node-jq '.missing | keys | .[]' | xargs npm add -D",
-    "lint:deps:unused": "npx depcheck --json | npx node-jq --sort-keys '.' | npx node-jq '.devDependencies[]' | xargs npm uninstall",
-    "lint:fix": "npx @biomejs/biome check --write --unsafe",
-    "lint:md": "npx prettier --write \"**/*.md\" --ignore-path .gitignore && npx markdownlint-cli2",
-    "lint:package": "npx syncpack format",
+    "deps:missing": "bunx depcheck --json | bunx node-jq --sort-keys '.' | bunx node-jq '.missing | keys | .[]' | xargs bun add -D",
+    "deps:unused": "bunx depcheck --json | bunx node-jq --sort-keys '.' | bunx node-jq '.devDependencies[]' | xargs bun remove",
+    "deps:update": "bun update",
+    "lint:check": "bunx @biomejs/biome check",
+    "lint:fix": "bunx @biomejs/biome check --write --unsafe",
+    "lint:format": "bunx @biomejs/biome format --write",
+    "lint:md": "bunx prettier --write \"**/*.md\" --ignore-path .gitignore && bunx markdownlint-cli2",
+    "lint:package": "bunx syncpack format",
+    "lint:types": "tsc --noEmit",
     "prepare": "husky",
-    "prepublishOnly": "npm run build",
-    "prestart:auth": "npm run build",
-    "prestart:mcp": "npm run build",
-    "start:auth": "node dist/auth-server/index.js",
-    "start:mcp": "node dist/mcp-server/index.js",
+    "prepublishOnly": "bun run build",
+    "server:auth:dev": "NODE_ENV=development bun --watch src/auth-server/index.ts",
+    "server:auth:start": "bun run build && node dist/auth-server/index.js",
+    "server:mcp:dev": "NODE_ENV=development bun --watch src/mcp-server/index.ts",
+    "server:mcp:inspect": "NODE_ENV=development bunx @modelcontextprotocol/inspector bun src/mcp-server/index.ts",
+    "server:mcp:start": "bun run build && node dist/mcp-server/index.js",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest",
-    "typecheck": "tsc --noEmit",
-    "update:libs": "npx npm-check-updates"
+    "test:watch": "vitest"
   },
   "type": "module",
   "types": "dist/mcp-server/index.d.ts"

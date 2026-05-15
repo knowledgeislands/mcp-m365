@@ -92,12 +92,12 @@ When both are provided, `folderId` takes precedence and is used directly.
 
 ## Quick Start
 
-1. **Install dependencies**: `npm install`.
+1. **Install dependencies**: `bun install`.
 2. **Register an Azure app** — see [Azure App Registration](#azure-app-registration).
 3. **Configure environment** — copy `.env.example` to `.env.development` and add your Azure credentials.
-4. **Build**: `npm run build`.
+4. **Build**: `bun run build`.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
-6. **Start the auth server**: `npm run dev:auth` (separate process; handles OAuth on `localhost:3333`).
+6. **Start the auth server**: `bun run server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
 ## Example Conversations
@@ -132,14 +132,14 @@ Claude calls [`list-events`](#outlook-email--calendar) with the appropriate date
 
 ### Prerequisites
 
-- Node.js 22.0.0 or higher
-- npm
+- [Bun](https://bun.sh) 1.3+ for the dev loop
+- Node.js 22+ to run the compiled `dist/` bundle (what Claude Desktop launches)
 - An Azure account for app registration
 
 ### Install Dependencies
 
 ```bash
-npm install
+bun install
 ```
 
 ## Azure App Registration
@@ -187,7 +187,7 @@ npm install
 | `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
 | `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
-| `NODE_ENV` | no | — | Dev convention. `dev:mcp`/`dev:auth`/`inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
+| `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
 
 **Notes:**
 
@@ -197,7 +197,7 @@ npm install
 
 ### Claude Desktop Configuration
 
-Run `npm run build` first so `dist/mcp-server/index.js` exists, then add to your Claude Desktop config:
+Run `bun run build` first so `dist/mcp-server/index.js` exists, then add to your Claude Desktop config:
 
 ```json
 {
@@ -221,17 +221,17 @@ A starter is in [`claude-config-sample.json`](./claude-config-sample.json).
 ```bash
 cp .env.example .env.development
 # edit .env.development with your Azure credentials, then:
-npm run dev:mcp        # MCP server
-npm run dev:auth       # OAuth server on :3333
+bun run server:mcp:dev    # MCP server
+bun run server:auth:dev   # OAuth server on :3333
 ```
 
-The `dev:mcp`, `dev:auth` and `inspect` npm scripts run with `NODE_ENV=development`, and [`src/config.ts`](./src/config.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up `.env.development` from the CWD automatically. Claude Desktop does not set `NODE_ENV`, so the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
+The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`, and [`src/config.ts`](./src/config.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up `.env.development` from the CWD automatically (Bun also auto-loads `.env.development` natively). Claude Desktop does not set `NODE_ENV`, so the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
 
 ## Authentication
 
 The OAuth flow runs out-of-band via the standalone auth server:
 
-1. Start the auth server: `npm run dev:auth` (listens on `http://localhost:3333`).
+1. Start the auth server: `bun run server:auth:dev` (listens on `http://localhost:3333`).
 2. In Claude, call the `authenticate` tool — it returns a sign-in URL.
 3. Open the URL, sign in, and grant the requested scopes.
 4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.mcp-m365-tokens.json`.
@@ -242,16 +242,16 @@ To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `aut
 ## Development
 
 ```bash
-npm run dev:mcp        # tsx watch mode, MCP server (NODE_ENV=development)
-npm run dev:auth       # tsx watch mode, OAuth server (NODE_ENV=development)
-npm run start:mcp      # build then run MCP server from dist/
-npm run start:auth     # build then run auth server from dist/
-npm run inspect        # MCP Inspector against TS source (NODE_ENV=development)
-npm test               # vitest
-npm run typecheck      # tsc --noEmit
-npm run lint:check     # Biome lint + format check
-npm run lint:fix       # Biome auto-fix (uses --unsafe)
-npm run lint:md        # prettier + markdownlint for *.md
+bun run server:mcp:dev     # bun --watch, MCP server (NODE_ENV=development)
+bun run server:auth:dev    # bun --watch, OAuth server (NODE_ENV=development)
+bun run server:mcp:start   # build then run MCP server from dist/ under node
+bun run server:auth:start  # build then run auth server from dist/ under node
+bun run server:mcp:inspect # MCP Inspector against TS source (NODE_ENV=development)
+bun run test               # vitest (use `bun run test`, not `bun test`)
+bun run lint:types         # tsc --noEmit
+bun run lint:check         # Biome lint + format check
+bun run lint:fix           # Biome auto-fix (uses --unsafe)
+bun run lint:md            # prettier + markdownlint for *.md
 ```
 
 ## Security Model
@@ -286,7 +286,7 @@ npm run lint:md        # prettier + markdownlint for *.md
 │       ├── graph-api.ts             # Microsoft Graph API helper (retries + refresh)
 │       ├── html-sanitizer.ts        # HTML body sanitisation
 │       └── odata-helpers.ts         # OData query building
-└── dist/                            # Build output (gitignored, created by `npm run build`)
+└── dist/                            # Build output (gitignored, created by `bun run build`)
 ```
 
 `src/auth-server/` is the standalone OAuth server and its tests. `src/tools/auth/` is the tool-layer counterpart — token storage/refresh utilities consumed by the MCP server. They're deliberately decoupled so the auth server can run independently of the MCP server.
@@ -296,14 +296,14 @@ npm run lint:md        # prettier + markdownlint for *.md
 **`Cannot find module`**
 
 ```bash
-npm install
+bun install
 ```
 
 **`Port 3333 in use`**
 
 ```bash
-npx kill-port 3333
-npm run dev:auth
+bunx kill-port 3333
+bun run server:auth:dev
 ```
 
 **`AADSTS7000215: Invalid client secret`**

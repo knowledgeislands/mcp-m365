@@ -4,24 +4,34 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Development Commands
 
+This project uses [Bun](https://bun.sh) (≥ 1.3) for dependency install and dev scripts. The published `dist/` bundle still runs under Node.js (≥ 22) — that's what Claude Desktop launches.
+
 Two processes:
 
 - `mcp-m365` — the stdio MCP server (entry: `dist/mcp-server/index.js`).
 - `mcp-m365-auth` — the standalone OAuth callback server on `:3333` (entry: `dist/auth-server/index.js`). Long-running; must be up while you run the `authenticate` tool.
 
-Scripts:
+Scripts use a `<group>:<sub>:<action>` convention: `server:<type>:<action>` for runnable servers (the MCP server and the OAuth callback server), `lint:*` for code checks/formatting, `deps:*` for dependency management, `test:*` for vitest.
 
-- `npm install` — **ALWAYS run first**.
-- `npm run dev:mcp` — Run the MCP server from TS source in tsx watch mode (`NODE_ENV=development`).
-- `npm run dev:auth` — Run the auth server from TS source in tsx watch mode.
-- `npm run start:mcp` / `npm run start:auth` — Build and run from `dist/`.
-- `npm run build` — Compile TS to JS in `dist/` (uses `tsconfig.build.json`, excludes tests).
-- `npm run typecheck` — `tsc --noEmit`.
-- `npm run inspect` — MCP Inspector against TS source.
-- `npm test` — vitest.
-- `npm run lint:check` / `lint:fix` — Biome.
-- `npm run lint:md` — prettier + markdownlint for `*.md`.
-- `npx kill-port 3333` — Free port 3333 if the auth server won't start.
+- `bun install` — **ALWAYS run first** to install dependencies.
+- `bun run server:mcp:dev` — Run the MCP server from TS source under `bun --watch` (`NODE_ENV=development`).
+- `bun run server:auth:dev` — Run the auth server from TS source under `bun --watch` (`NODE_ENV=development`).
+- `bun run server:mcp:start` — Build and run the MCP server from compiled `dist/` under node.
+- `bun run server:auth:start` — Build and run the auth server from compiled `dist/` under node.
+- `bun run server:mcp:inspect` — Use MCP Inspector to test the server interactively (runs TS via bun).
+- `bun run build` — Compile TS to JS in `dist/` via `tsc` (uses `tsconfig.build.json`, excludes tests).
+- `bun run lint:types` — Type-check without emitting (`tsc --noEmit`).
+- `bun run test` — Run vitest tests (note: `bun run test`, not `bun test` — `bun test` invokes Bun's own runner). Use `bun run test:watch` for watch mode.
+- `bun run lint:check` — Lint and format-check TS/JS/JSON with Biome.
+- `bun run lint:fix` — Auto-fix Biome lint findings (with `--unsafe`) and apply formatting.
+- `bun run lint:format` — Apply Biome formatting only (no lint).
+- `bun run lint:md` — Format and lint markdown files (prettier + markdownlint; Biome doesn't format markdown yet).
+- `bun run lint:package` — Format `package.json` with syncpack.
+- `bun run deps:missing` — Add missing dependencies detected by depcheck.
+- `bun run deps:unused` — Remove unused devDependencies detected by depcheck.
+- `bun run deps:update` — Update all dependencies via `bun update`.
+- `bun run clean` — Remove `dist/` and `node_modules/`.
+- `bunx kill-port 3333` — Free port 3333 if the auth server won't start.
 
 ## Architecture Overview
 
@@ -30,7 +40,7 @@ Scripts:
 Flow:
 
 1. Register an app in Azure Portal > App Registrations, add a Web redirect URI matching `MCP_M365_REDIRECT_URI` (default `http://localhost:3333/auth/callback`), and create a client secret. Put the values in `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET`.
-2. Start `mcp-m365-auth` (e.g. `npm run dev:auth`). It listens on `http://localhost:3333` by default; override with `MCP_M365_AUTH_PORT`.
+2. Start `mcp-m365-auth` (e.g. `bun run server:auth:dev`). It listens on `http://localhost:3333` by default; override with `MCP_M365_AUTH_PORT`.
 3. From an MCP client, call the `authenticate` tool — it returns the consent URL.
 4. Open that URL in a browser. Microsoft redirects to `http://localhost:3333/auth/callback?code=…` which the auth server captures.
 5. The auth server POSTs the code to the token endpoint and persists the result atomically to `AUTH_CONFIG.tokenStorePath` (default `~/.mcp-m365-tokens.json`).
@@ -95,7 +105,7 @@ Auth tools are server-level; resource tools are grouped by Graph API area.
 ### Graph API (Outlook + OneDrive)
 
 1. Azure app registration required with the following delegated permissions: `Mail.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.Read`, `Calendars.ReadWrite`, `Files.Read`, `Files.ReadWrite`, `User.Read`, `offline_access`.
-2. Start auth server: `npm run dev:auth` (or `npm run start:auth` for the compiled build).
+2. Start auth server: `bun run server:auth:dev` (or `bun run server:auth:start` for the compiled build).
 3. Call the `authenticate` tool to get the consent URL.
 4. Complete the browser flow. The auth server captures the callback and persists the token to `~/.mcp-m365-tokens.json` atomically.
 5. Subsequent tool calls refresh the access token automatically when within 5 min of expiry. `check-auth-status` reports the current state without leaking token values.
@@ -118,9 +128,9 @@ Auth tools are server-level; resource tools are grouped by Graph API area.
 | `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Audit log file path. Created with mode `0o600`. See [src/utils/audit-log.ts](./src/utils/audit-log.ts). |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size threshold for rotation. When live `audit.jsonl` exceeds this after an append, it's renamed to `audit.jsonl.1` and older rotations shift up. `0` disables rotation. |
 | `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated files to retain. Oldest beyond this is dropped. `0` truncates without preserving history. |
-| `NODE_ENV` | no | — | `dev:*`/`inspect` scripts set `development` so `.env.development` loads. |
+| `NODE_ENV` | no | — | `server:*:dev`/`server:mcp:inspect` scripts set `development` so `.env.development` loads. |
 
-`src/config.ts` calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup, try/caught so a missing file is fine. Claude Desktop doesn't set `NODE_ENV`, so production env comes from the Claude Desktop config `env` block.
+`src/config.ts` calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup (try/caught so a missing file is harmless — and harmless under Bun too, where `process.loadEnvFile` is undefined: the catch swallows the `TypeError` and Bun has already auto-loaded `.env.${NODE_ENV}` itself). The `server:*:dev` and `server:mcp:inspect` scripts set `NODE_ENV=development`, so `.env.development` is picked up from the CWD. Claude Desktop does not set `NODE_ENV`, so no `.env.*` file is loaded — env vars come from the Claude Desktop config `env` block in production.
 
 ### Boot-time Checks
 
@@ -146,10 +156,10 @@ Tests covering atomic token writes, mode-0600, redacted summary, and refresh ded
 
 ## Common Setup Issues
 
-1. **Missing dependencies**: Run `npm install` first.
+1. **Missing dependencies**: Run `bun install` first.
 2. **Wrong secret**: Use the Azure client secret **VALUE**, not the Secret ID (`AADSTS7000215` error).
-3. **Auth server not running**: Start `npm run dev:auth` before calling the `authenticate` tool.
-4. **Port conflicts**: `npx kill-port 3333` if the OAuth port is in use.
+3. **Auth server not running**: Start `bun run server:auth:dev` before calling the `authenticate` tool.
+4. **Port conflicts**: `bunx kill-port 3333` if the OAuth port is in use.
 5. **Redirect URI mismatch**: The URI registered in Azure must exactly match `MCP_M365_REDIRECT_URI` (default `http://localhost:3333/auth/callback`).
 
 ## Error Handling
