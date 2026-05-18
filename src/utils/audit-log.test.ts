@@ -114,7 +114,6 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     const { makeAuditedRegister } = await import('./audit-log.js')
     const calls: { name: string; handler: (args: unknown) => Promise<unknown> }[] = []
     const stub = { registerTool: (name: string, _config: unknown, handler: (args: unknown) => Promise<unknown>) => calls.push({ name, handler }) }
-    // biome-ignore lint/suspicious/noExplicitAny: minimal stub for the SDK's McpServer
     const wrapped = makeAuditedRegister(stub as any)
     wrapped('list-emails', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     wrapped('delete-email', { annotations: { readOnlyHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
