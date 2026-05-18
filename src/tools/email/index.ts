@@ -14,7 +14,7 @@ import { handleSendEmail } from './send.js'
 
 export const registerEmailTools = (server: McpServer): void => {
   server.registerTool(
-    'list-emails',
+    'viewer_list-emails',
     {
       description: 'Lists recent emails from your inbox',
       inputSchema: z
@@ -31,7 +31,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'search-emails',
+    'viewer_search-emails',
     {
       description: 'Search for emails using various criteria',
       inputSchema: z
@@ -55,7 +55,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'read-email',
+    'viewer_read-email',
     {
       description: 'Reads the content of a specific email. HTML emails are securely sanitized to extract only visible text, preventing prompt injection attacks via hidden content.',
       inputSchema: z
@@ -70,7 +70,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'send-email',
+    'editor_send-email',
     {
       description: 'Composes and sends a new email. Supports both plain text and HTML content.',
       inputSchema: z
@@ -91,7 +91,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'draft-email',
+    'editor_draft-email',
     {
       description: 'Creates and saves an email draft in Outlook',
       inputSchema: z
@@ -110,7 +110,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'mark-as-read',
+    'editor_mark-as-read',
     {
       description: 'Marks an email as read or unread',
       inputSchema: z
@@ -125,7 +125,7 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'delete-email',
+    'editor_delete-email',
     {
       description:
         'Deletes an email by moving it to Deleted Items (trash). Use permanent=true to hard delete. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the message metadata and returns subject/sender/date.',

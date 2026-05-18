@@ -36,6 +36,25 @@ const parseScopes = (raw: string | undefined): string[] => {
     .filter(Boolean)
 }
 
+export type Role = 'viewer' | 'editor'
+export const ALL_ROLES: readonly Role[] = ['viewer', 'editor'] as const
+
+const parseRoles = (raw: string | undefined): Set<Role> => {
+  if (raw === undefined || raw.trim() === '') return new Set(['viewer'])
+  const requested = raw
+    .split(',')
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+  if (requested.length === 0) return new Set(['viewer'])
+  const invalid = requested.filter((r): r is string => !(ALL_ROLES as readonly string[]).includes(r))
+  if (invalid.length > 0) {
+    throw new Error(`Invalid MCP_M365_ROLES entries: ${invalid.join(', ')}. Allowed: ${ALL_ROLES.join(', ')}`)
+  }
+  return new Set(requested as Role[])
+}
+
+export const ENABLED_ROLES: ReadonlySet<Role> = parseRoles(process.env.MCP_M365_ROLES)
+
 const AUTH_PORT = Number.parseInt(process.env.MCP_M365_AUTH_PORT || '3333', 10)
 
 export const AUTH_CONFIG = {

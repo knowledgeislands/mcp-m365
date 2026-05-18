@@ -12,7 +12,7 @@ import { handleRenameFolder } from './rename.js'
 
 export const registerFolderTools = (server: McpServer): void => {
   server.registerTool(
-    'list-folders',
+    'viewer_list-folders',
     {
       description: 'Lists mail folders in your Outlook account',
       inputSchema: z
@@ -27,7 +27,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'create-folder',
+    'editor_create-folder',
     {
       description: 'Creates a new mail folder',
       inputSchema: z
@@ -42,7 +42,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'rename-folder',
+    'editor_rename-folder',
     {
       description: 'Renames an existing mail folder',
       inputSchema: z
@@ -57,7 +57,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'delete-folder',
+    'editor_delete-folder',
     {
       description: 'Deletes an existing mail folder. `dry_run` defaults to true — pass false to actually delete.',
       inputSchema: z
@@ -72,7 +72,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'move-emails',
+    'editor_move-emails',
     {
       description: 'Moves emails from one folder to another',
       inputSchema: z

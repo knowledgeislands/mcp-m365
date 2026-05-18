@@ -98,7 +98,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 4. **Build**: `bun run build`.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `bun run server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
-7. **Authenticate** — use the `authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
+7. **Authenticate** — use the `editor_authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
 ## Example Conversations
 
@@ -187,6 +187,7 @@ bun install
 | `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
 | `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
+| `MCP_M365_ROLES` | no | `viewer` | Comma-separated list of enabled tool roles. Allowed: `viewer` (read-only — 11 tools), `editor` (state-mutating — 21 tools). Default is least-privilege (`viewer` only); set to `viewer,editor` to expose mutating tools. Tools are named `viewer_<name>` / `editor_<name>` and disabled-role tools are simply not registered. |
 | `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
 
 **Notes:**
@@ -232,12 +233,12 @@ The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run wi
 The OAuth flow runs out-of-band via the standalone auth server:
 
 1. Start the auth server: `bun run server:auth:dev` (listens on `http://localhost:3333`).
-2. In Claude, call the `authenticate` tool — it returns a sign-in URL.
+2. In Claude, call the `editor_authenticate` tool — it returns a sign-in URL.
 3. Open the URL, sign in, and grant the requested scopes.
 4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.mcp-m365-tokens.json`.
 5. The MCP server reads that file and refreshes tokens transparently when they expire.
 
-To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `authenticate` tool.
+To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `editor_authenticate` tool.
 
 ## Development
 
@@ -312,7 +313,7 @@ Use the secret **VALUE** from "Certificates & secrets", not the Secret ID.
 
 **`Authentication required`**
 
-Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `authenticate` tool.
+Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `editor_authenticate` tool.
 
 ## Extending the Server
 

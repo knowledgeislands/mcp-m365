@@ -14,7 +14,7 @@ import { handleUploadLarge } from './upload-large.js'
 
 export const registerOnedriveTools = (server: McpServer): void => {
   server.registerTool(
-    'onedrive-list',
+    'viewer_onedrive-list',
     {
       description: 'List files and folders in OneDrive at a specific path',
       inputSchema: z
@@ -29,7 +29,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-search',
+    'viewer_onedrive-search',
     {
       description: 'Search for files in OneDrive by name or content',
       inputSchema: z
@@ -44,7 +44,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-download',
+    'viewer_onedrive-download',
     {
       description: "Get a download URL for a file in OneDrive. Either 'itemId' or 'path' must be provided.",
       inputSchema: z
@@ -59,7 +59,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-upload',
+    'editor_onedrive-upload',
     {
       description: 'Upload a small file (< 4MB) to OneDrive',
       inputSchema: z
@@ -75,7 +75,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-upload-large',
+    'editor_onedrive-upload-large',
     {
       description: 'Upload a large file (> 4MB) to OneDrive using chunked upload',
       inputSchema: z
@@ -91,7 +91,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-share',
+    'editor_onedrive-share',
     {
       description: 'Create a sharing link for a file or folder in OneDrive',
       inputSchema: z
@@ -108,7 +108,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-create-folder',
+    'editor_onedrive-create-folder',
     {
       description: 'Create a new folder in OneDrive',
       inputSchema: z
@@ -123,7 +123,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'onedrive-delete',
+    'editor_onedrive-delete',
     {
       description: 'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
       inputSchema: z

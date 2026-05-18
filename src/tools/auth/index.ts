@@ -26,7 +26,7 @@ export const ensureAuthenticated = async (forceNew = false): Promise<string> => 
 
 export const registerAuthTools = (server: McpServer): void => {
   server.registerTool(
-    'about',
+    'viewer_about',
     {
       description: 'Returns information about this MCP M365 server',
       inputSchema: z.object({}).strict(),
@@ -36,7 +36,7 @@ export const registerAuthTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'authenticate',
+    'editor_authenticate',
     {
       description: 'Authenticate with Microsoft Graph API to access Outlook data',
       inputSchema: z
@@ -50,7 +50,7 @@ export const registerAuthTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'check-auth-status',
+    'viewer_check-auth-status',
     {
       description: 'Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry metadata only — never the token values.',
       inputSchema: z.object({}).strict(),

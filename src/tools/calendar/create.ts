@@ -36,7 +36,7 @@ export const handleCreateEvent = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'authenticate' tool first." }]
+        content: [{ type: 'text', text: "Authentication required. Please use the 'editor_authenticate' tool first." }]
       }
     }
 

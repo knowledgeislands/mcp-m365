@@ -76,7 +76,7 @@ export const handleListEmails = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'authenticate' tool first." }]
+        content: [{ type: 'text', text: "Authentication required. Please use the 'editor_authenticate' tool first." }]
       }
     }
     return createResponse(`Error listing emails: ${formatListError(error, listContext)}`, {

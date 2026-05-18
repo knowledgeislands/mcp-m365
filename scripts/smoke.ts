@@ -13,38 +13,38 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 // Single source of truth for the tool surface. If you add a tool in
 // `src/tools/<group>/index.ts`, update this list.
 const EXPECTED_TOOLS = [
-  'about',
-  'accept-event',
-  'authenticate',
-  'cancel-event',
-  'check-auth-status',
-  'create-event',
-  'create-folder',
-  'create-rule',
-  'decline-event',
-  'delete-email',
-  'delete-event',
-  'delete-folder',
-  'draft-email',
-  'edit-rule-sequence',
-  'list-emails',
-  'list-events',
-  'list-folders',
-  'list-rules',
-  'mark-as-read',
-  'move-emails',
-  'onedrive-create-folder',
-  'onedrive-delete',
-  'onedrive-download',
-  'onedrive-list',
-  'onedrive-search',
-  'onedrive-share',
-  'onedrive-upload',
-  'onedrive-upload-large',
-  'read-email',
-  'rename-folder',
-  'search-emails',
-  'send-email'
+  'editor_accept-event',
+  'editor_authenticate',
+  'editor_cancel-event',
+  'editor_create-event',
+  'editor_create-folder',
+  'editor_create-rule',
+  'editor_decline-event',
+  'editor_delete-email',
+  'editor_delete-event',
+  'editor_delete-folder',
+  'editor_draft-email',
+  'editor_edit-rule-sequence',
+  'editor_mark-as-read',
+  'editor_move-emails',
+  'editor_onedrive-create-folder',
+  'editor_onedrive-delete',
+  'editor_onedrive-share',
+  'editor_onedrive-upload',
+  'editor_onedrive-upload-large',
+  'editor_rename-folder',
+  'editor_send-email',
+  'viewer_about',
+  'viewer_check-auth-status',
+  'viewer_list-emails',
+  'viewer_list-events',
+  'viewer_list-folders',
+  'viewer_list-rules',
+  'viewer_onedrive-download',
+  'viewer_onedrive-list',
+  'viewer_onedrive-search',
+  'viewer_read-email',
+  'viewer_search-emails'
 ] as const
 
 const die = (msg: string, detail?: unknown): never => {
@@ -57,7 +57,7 @@ const main = async (): Promise<void> => {
   const transport = new StdioClientTransport({
     command: 'node',
     args: ['dist/mcp-server/index.js'],
-    env: { ...(process.env as Record<string, string>) }
+    env: { ...(process.env as Record<string, string>), MCP_M365_ROLES: 'viewer,editor' }
   })
   const client = new Client({ name: 'mcp-m365-smoke', version: '0.0.0' }, { capabilities: {} })
 

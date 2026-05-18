@@ -11,19 +11,20 @@
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import config from '../config.js'
+import config, { ENABLED_ROLES } from '../config.js'
 import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
-import { makeAuditedRegister } from '../utils/audit-log.js'
+import { makeRoleGatedRegister } from '../utils/roles.js'
 
 console.error(`${config.SERVER_NAME} starting...`)
 console.error(`  SERVER_NAME=${config.SERVER_NAME}`)
+console.error(`  MCP_M365_ROLES=${[...ENABLED_ROLES].sort().join(',')}`)
 console.error(`  MCP_M365_AUDIT_LOG=${config.AUDIT_LOG_MODE}${config.AUDIT_LOG_MODE === 'off' ? '' : ` (path: ${config.AUDIT_LOG_PATH})`}`)
 
 const server = new McpServer({
   name: config.SERVER_NAME,
   version: config.SERVER_VERSION
 })
-server.registerTool = makeAuditedRegister(server)
+server.registerTool = makeRoleGatedRegister(server)
 
 registerAuthTools(server)
 registerCalendarTools(server)

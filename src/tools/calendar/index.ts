@@ -13,7 +13,7 @@ import { handleListEvents } from './list.js'
 
 export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
-    'list-events',
+    'viewer_list-events',
     {
       description: 'Lists upcoming events from your calendar',
       inputSchema: z
@@ -29,7 +29,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'accept-event',
+    'editor_accept-event',
     {
       description: 'Accepts a calendar event',
       inputSchema: z
@@ -44,7 +44,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'decline-event',
+    'editor_decline-event',
     {
       description: 'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
@@ -60,7 +60,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'create-event',
+    'editor_create-event',
     {
       description: 'Creates a new calendar event',
       inputSchema: z
@@ -78,7 +78,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'cancel-event',
+    'editor_cancel-event',
     {
       description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
       inputSchema: z
@@ -94,7 +94,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'delete-event',
+    'editor_delete-event',
     {
       description: 'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
