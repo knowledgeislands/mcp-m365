@@ -1,207 +1,56 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Guidance for Claude Code when working in this repo. The user-facing tool surface, Azure app setup, install/config, and Claude Desktop setup live in [README.md](./README.md); this file covers what Claude needs that isn't in README and isn't derivable from one grep.
 
-## Development Commands
+## Bun vs Node
 
-This project uses [Bun](https://bun.sh) (≥ 1.3) for dependency install and dev scripts. The published `dist/` bundle still runs under Node.js (≥ 22) — that's what Claude Desktop launches.
+This project uses Bun (≥ 1.3) for install and dev scripts, but the compiled `dist/` runs under Node (≥ 22) — that's what Claude Desktop launches.
 
-Two processes:
+- `bun run test` (NOT `bun test` — the latter invokes Bun's own runner instead of vitest).
+- Bun auto-loads `.env.${NODE_ENV}` from the CWD; Node needs the explicit `process.loadEnvFile()` call in [src/config.ts](./src/config.ts). The try/catch swallows the `TypeError` Bun raises (no `process.loadEnvFile`), so the same code works under both.
+- `NODE_ENV` is set to `development` only by `server:*:dev` and `server:mcp:inspect`. Claude Desktop doesn't set it, so `.env.*` is ignored in production — `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET` must come from the Claude Desktop config `env` block.
+
+Run `bun run` with no args for the full script list. `bun run test:smoke` boots the server over stdio and asserts the wire-level tool surface matches `EXPECTED_TOOLS` in [scripts/smoke.ts](./scripts/smoke.ts) — keep that list in sync when adding or removing tools.
+
+## Architecture Invariants
+
+### Two processes
 
 - `mcp-m365` — the stdio MCP server (entry: `dist/mcp-server/index.js`).
-- `mcp-m365-auth` — the standalone OAuth callback server on `:3333` (entry: `dist/auth-server/index.js`). Long-running; must be up while you run the `editor_authenticate` tool.
+- `mcp-m365-auth` — long-running OAuth callback server on `:3333` (entry: `dist/auth-server/index.js`). Must be up to complete the `m365_auth_start` flow.
 
-Scripts use a `<group>:<sub>:<action>` convention: `server:<type>:<action>` for runnable servers (the MCP server and the OAuth callback server), `lint:*` for code checks/formatting, `deps:*` for dependency management, `test:*` for vitest.
+Token persistence + refresh is hand-rolled in [src/auth.ts](./src/auth.ts) — no MSAL dependency.
 
-- `bun install` — **ALWAYS run first** to install dependencies.
-- `bun run server:mcp:dev` — Run the MCP server from TS source under `bun --watch` (`NODE_ENV=development`).
-- `bun run server:auth:dev` — Run the auth server from TS source under `bun --watch` (`NODE_ENV=development`).
-- `bun run server:mcp:start` — Build and run the MCP server from compiled `dist/` under node.
-- `bun run server:auth:start` — Build and run the auth server from compiled `dist/` under node.
-- `bun run server:mcp:inspect` — Use MCP Inspector to test the server interactively (runs TS via bun).
-- `bun run build` — Compile TS to JS in `dist/` via `tsc` (uses `tsconfig.build.json`, excludes tests).
-- `bun run lint:types` — Type-check without emitting (`tsc --noEmit`).
-- `bun run test` — Run vitest tests (note: `bun run test`, not `bun test` — `bun test` invokes Bun's own runner). Use `bun run test:watch` for watch mode.
-- `bun run lint:check` — Lint and format-check TS/JS/JSON with Biome.
-- `bun run lint:fix` — Auto-fix Biome lint findings (with `--unsafe`) and apply formatting.
-- `bun run lint:format` — Apply Biome formatting only (no lint).
-- `bun run lint:md` — Format and lint markdown files (prettier + markdownlint; Biome doesn't format markdown yet).
-- `bun run lint:package` — Format `package.json` with syncpack.
-- `bun run deps:missing` — Add missing dependencies detected by depcheck.
-- `bun run deps:unused` — Remove unused devDependencies detected by depcheck.
-- `bun run deps:update` — Update all dependencies via `bun update`.
-- `bun run clean` — Remove `dist/` and `node_modules/`.
-- `bunx kill-port 3333` — Free port 3333 if the auth server won't start.
+### Naming convention
 
-## Architecture Overview
+Tool names follow `<app>_<service>_<resource>_<action>` (snake_case) with `<app>` = `m365` and `<service>` ∈ {`email`, `calendar`, `onedrive`}. Plural resource for collection ops, singular for single-item ops. The auth tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) are server-level metadata and drop service/resource segments.
 
-`mcp-m365` wraps Microsoft Graph behind an MCP stdio server. Auth uses Microsoft OAuth 2.0 with a separate long-running HTTP callback server. Token persistence + refresh is hand-rolled in `src/auth.ts` (no MSAL dependency).
+### Role gate — driven by annotations, not names
 
-Flow:
+[src/utils/roles.ts](./src/utils/roles.ts) `makeRoleGatedRegister()` decides at startup whether to register each tool, based on `config.annotations.readOnlyHint`:
 
-1. Register an app in Azure Portal > App Registrations, add a Web redirect URI matching `MCP_M365_REDIRECT_URI` (default `http://localhost:3333/auth/callback`), and create a client secret. Put the values in `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET`.
-2. Start `mcp-m365-auth` (e.g. `bun run server:auth:dev`). It listens on `http://localhost:3333` by default; override with `MCP_M365_AUTH_PORT`.
-3. From an MCP client, call the `editor_authenticate` tool — it returns the consent URL.
-4. Open that URL in a browser. Microsoft redirects to `http://localhost:3333/auth/callback?code=…` which the auth server captures.
-5. The auth server POSTs the code to the token endpoint and persists the result atomically to `AUTH_CONFIG.tokenStorePath` (default `~/.mcp-m365-tokens.json`).
-6. The MCP server reads the token file on its next API call. `TokenStorage` in `src/auth.ts` proactively refreshes when the access token is within 5 min of expiry and persists the refreshed token back atomically.
+- `readOnlyHint: true` → `read` role
+- anything else → `write` role (fail-safe; an unannotated tool is treated as destructive)
 
-### Source Layout
-
-TypeScript with ES modules (`"type": "module"`). Source under `src/`, compiled JS in `dist/`.
-
-- `src/config.ts` — `AUTH_CONFIG` (client ID/secret from env, redirect URI, scopes, port, token store path with `~/.mcp-m365-tokens.json` default) plus Graph API constants (`GRAPH_API_ENDPOINT`, field selectors, default page size).
-- `src/auth.ts` — `TokenStorage` class: loads + persists tokens (atomic write, mode `0600`), exchanges authorization codes, refreshes the access token via hand-rolled `https` POST, dedupes concurrent refreshes. Exports the shared `tokenStorage` singleton.
-- `src/auth-server/index.ts` — HTTP callback server: `/auth` (CSRF state + consent redirect), `/auth/callback` (state validation + token exchange), `/` (info page).
-- `src/auth-server/templates.ts` — HTML templates for the auth-server responses.
-- `src/mcp-server/index.ts` — Boots `McpServer`, registers all tool modules, connects stdio transport.
-- `src/tools/index.ts` — aggregator re-exporting `registerXxxTools(server)` helpers.
-- `src/tools/auth/` — `viewer_about`, `editor_authenticate`, `viewer_check-auth-status`; `ensureAuthenticated()` returned to other tool handlers.
-- `src/utils/roles.ts` — `makeRoleGatedRegister()` wraps `server.registerTool` so registrations are skipped for any role not in `MCP_M365_ROLES`; the role is inferred from the `viewer_` / `editor_` prefix of the tool name. Also wraps the callback with `withAuditLog`.
-- `src/tools/calendar/` — list/create/cancel/accept/decline/delete events.
-- `src/tools/email/` — list/search/read/send/draft/mark-as-read/delete email.
-- `src/tools/folder/` — list/create/rename/delete folders; move emails.
-- `src/tools/onedrive/` — list/search/download/upload (small + chunked)/share/create-folder/delete.
-- `src/tools/rules/` — Outlook inbox rules: list, create, edit-sequence.
-- `src/utils/annotations.ts` — MCP tool annotation presets.
-- `src/utils/errors.ts` — `errMessage()` extracts HTTP status + Graph API error message, and appends a `Run the editor_authenticate tool to refresh the OAuth token.` hint when the status is 401.
-- `src/utils/graph-api.ts` — Graph API client helpers; authenticated requests against `GRAPH_API_ENDPOINT`.
-- `src/utils/odata-helpers.ts` — OData filter/expand builders.
-- `src/utils/html-sanitizer.ts` — strips HTML in message bodies when only plain-text is wanted.
-
-### Token Handling
-
-The four requirements drove these choices:
-
-1. **Refresh reliability** — `TokenStorage.getValidAccessToken()` checks expiry with a 5-min buffer before every API call; on stale tokens it kicks off a refresh, deduped via `_refreshPromise` so concurrent callers share a single refresh. A failed refresh clears the in-memory token and the file.
-2. **Atomic write** — `_saveTokensToFile()` writes to `<path>.tmp.<pid>.<rand>` then `fs.rename` into place. POSIX guarantees `rename` is atomic on the same filesystem, so a crash mid-write cannot corrupt the token file.
-3. **Mode `0600`** — Both the temp file and final file are created with `mode: 0o600`.
-4. **Never leak token values** — `viewer_check-auth-status` returns a redacted summary (`authenticated`, `hasRefreshToken`, `scope[]`, `expiresAt`, `tokenStorePath`) — never the access or refresh token. No other tool returns token material.
-
-### Tool Registration Pattern
-
-Each module exports `registerXxxTools(server)` and uses Zod input schemas + MCP tool annotations imported from `src/utils/annotations.ts`. `src/mcp-server/index.ts` composes these helpers.
-
-### Available Tools
-
-Tools are grouped first by **role** (registered only when the role is enabled in `MCP_M365_ROLES`), then by Graph API area. Tool names are prefixed `viewer_` (read-only) or `editor_` (state-mutating). Default when `MCP_M365_ROLES` is unset is `viewer` only — least privilege.
-
-**`viewer_*` — read-only (11 tools)**
-
-| Tool | Group | Annotation |
-| --- | --- | --- |
-| `viewer_about` | auth | READ_ONLY |
-| `viewer_check-auth-status` | auth | READ_ONLY |
-| `viewer_list-emails` | email | READ_ONLY_REMOTE |
-| `viewer_search-emails` | email | READ_ONLY_REMOTE |
-| `viewer_read-email` | email | READ_ONLY_REMOTE |
-| `viewer_list-events` | calendar | READ_ONLY_REMOTE |
-| `viewer_list-folders` | folder | READ_ONLY_REMOTE |
-| `viewer_list-rules` | rules | READ_ONLY_REMOTE |
-| `viewer_onedrive-list` | onedrive | READ_ONLY_REMOTE |
-| `viewer_onedrive-search` | onedrive | READ_ONLY_REMOTE |
-| `viewer_onedrive-download` | onedrive | READ_ONLY_REMOTE (returns a pre-authenticated URL; no local write) |
-
-**`editor_*` — state-mutating (21 tools)**
-
-| Tool | Group | Annotation |
-| --- | --- | --- |
-| `editor_authenticate` | auth | READ_ONLY_REMOTE (initiates OAuth flow; classified as `editor` because it changes persisted token state) |
-| `editor_send-email` | email | ADDITIVE_REMOTE |
-| `editor_draft-email` | email | ADDITIVE_REMOTE |
-| `editor_mark-as-read` | email | STATE_TOGGLE_REMOTE |
-| `editor_delete-email` | email | DESTRUCTIVE_REMOTE |
-| `editor_accept-event` | calendar | STATE_TOGGLE_REMOTE |
-| `editor_decline-event` | calendar | DESTRUCTIVE_REMOTE |
-| `editor_cancel-event` | calendar | DESTRUCTIVE_REMOTE |
-| `editor_create-event` | calendar | ADDITIVE_REMOTE |
-| `editor_delete-event` | calendar | DESTRUCTIVE_REMOTE |
-| `editor_create-folder` | folder | ADDITIVE_REMOTE |
-| `editor_rename-folder` | folder | STATE_TOGGLE_REMOTE |
-| `editor_delete-folder` | folder | DESTRUCTIVE_REMOTE |
-| `editor_move-emails` | folder | STATE_TOGGLE_REMOTE |
-| `editor_create-rule` | rules | ADDITIVE_REMOTE |
-| `editor_edit-rule-sequence` | rules | STATE_TOGGLE_REMOTE |
-| `editor_onedrive-upload` | onedrive | ADDITIVE_REMOTE |
-| `editor_onedrive-upload-large` | onedrive | ADDITIVE_REMOTE |
-| `editor_onedrive-share` | onedrive | ADDITIVE_REMOTE |
-| `editor_onedrive-create-folder` | onedrive | ADDITIVE_REMOTE |
-| `editor_onedrive-delete` | onedrive | DESTRUCTIVE_REMOTE |
-
-### Key Components
-
-- **MCP wiring**: `src/mcp-server/index.ts` constructs `McpServer` and calls each module's `registerXxxTools`. Initialize / `tools/list` / `tools/call` are handled by the SDK — there is no custom `fallbackRequestHandler`.
-- **Token mgmt**: `TokenStorage` in `src/auth.ts`; shared singleton exported as `tokenStorage` so `ensureAuthenticated()` (in `src/tools/auth/index.ts`) and `handleCheckAuthStatus` reuse the same in-memory cache and refresh deduplication.
-- **Graph API client**: `src/utils/graph-api.ts` builds authenticated requests against `GRAPH_API_ENDPOINT`. Each tool handler calls `await ensureAuthenticated()` to get an access token, then passes it to the Graph helper.
-- **Error shape**: Tool errors return `{ isError: true, content: [{ type: 'text', text }] }` via `errorResult()`. Successful tools return JSON via `jsonResult()`. 401 errors get a `Run the editor_authenticate tool to refresh the OAuth token.` hint appended in `src/utils/errors.ts`.
-- **Transport**: `StdioServerTransport` from `@modelcontextprotocol/sdk`. Logs go to stderr (`console.error`) so they don't pollute the stdio MCP channel.
-
-## Authentication
-
-### Graph API (Outlook + OneDrive)
-
-1. Azure app registration required with the following delegated permissions: `Mail.Read`, `Mail.ReadWrite`, `Mail.Send`, `Calendars.Read`, `Calendars.ReadWrite`, `Files.Read`, `Files.ReadWrite`, `User.Read`, `offline_access`.
-2. Start auth server: `bun run server:auth:dev` (or `bun run server:auth:start` for the compiled build).
-3. Call the `editor_authenticate` tool to get the consent URL.
-4. Complete the browser flow. The auth server captures the callback and persists the token to `~/.mcp-m365-tokens.json` atomically.
-5. Subsequent tool calls refresh the access token automatically when within 5 min of expiry. `viewer_check-auth-status` reports the current state without leaking token values.
-
-## Configuration
-
-### Environment Variables
-
-| Name | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `MCP_M365_CLIENT_ID` | yes | — | Azure app (client) ID. |
-| `MCP_M365_CLIENT_SECRET` | yes | — | Azure client secret **value** (not the Secret ID). |
-| `MCP_M365_TENANT_ID` | no | `common` | Azure tenant GUID. Use a specific GUID for single-tenant apps. |
-| `MCP_M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | Override for sovereign clouds (US Gov, China, etc). |
-| `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | Must match the URI registered in Azure. |
-| `MCP_M365_SCOPES` | no | (canonical list in `src/config.ts`) | Space-separated OAuth scopes. Defaults include `offline_access`. |
-| `MCP_M365_AUTH_PORT` | no | `3333` | Auth server port. Must match the port in `MCP_M365_REDIRECT_URI`. |
-| `MCP_M365_TOKEN_ENDPOINT` | no | derived from authority + tenant | Override only if your authority uses a non-standard token endpoint path. |
-| `MCP_M365_ROLES` | no | `viewer` | Comma-separated list of enabled tool roles. Allowed: `viewer`, `editor`. Defaults to `viewer` only (least privilege). Set to `viewer,editor` to expose state-mutating tools. Tools whose role is not enabled are silently not registered. Unknown values abort startup with `Invalid MCP_M365_ROLES entries: …`. |
-| `MCP_M365_AUDIT_LOG` | no | `writes` | Scope of the JSONL audit log: `off` (disabled), `writes` (`editor_*` tools only), `all` (every tool). Unknown values abort startup. |
-| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Audit log file path. Created with mode `0o600`. See [src/utils/audit-log.ts](./src/utils/audit-log.ts). |
-| `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size threshold for rotation. When live `audit.jsonl` exceeds this after an append, it's renamed to `audit.jsonl.1` and older rotations shift up. `0` disables rotation. |
-| `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated files to retain. Oldest beyond this is dropped. `0` truncates without preserving history. |
-| `NODE_ENV` | no | — | `server:*:dev`/`server:mcp:inspect` scripts set `development` so `.env.development` loads. |
-
-`src/config.ts` calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup (try/caught so a missing file is harmless — and harmless under Bun too, where `process.loadEnvFile` is undefined: the catch swallows the `TypeError` and Bun has already auto-loaded `.env.${NODE_ENV}` itself). The `server:*:dev` and `server:mcp:inspect` scripts set `NODE_ENV=development`, so `.env.development` is picked up from the CWD. Claude Desktop does not set `NODE_ENV`, so no `.env.*` file is loaded — env vars come from the Claude Desktop config `env` block in production.
-
-### Boot-time Checks
-
-- The MCP server logs `SERVER_NAME` before connecting the transport.
-- The auth server logs `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET` presence at startup and warns if missing — token refresh will fail without them.
+Only tools whose role is in `MCP_M365_ROLES` (default: `read`) are registered. New tools MUST set `annotations` to one of the presets in [src/utils/annotations.ts](./src/utils/annotations.ts) — `READ_ONLY`/`READ_ONLY_REMOTE` for pure reads; `ADDITIVE_REMOTE`/`STATE_TOGGLE_REMOTE`/`DESTRUCTIVE_REMOTE` for the corresponding Graph mutations. Annotations must be honest about what the tool does — `m365_auth_start` is `ADDITIVE_REMOTE` (not `READ_ONLY_REMOTE`) because it persists tokens to disk; misrepresenting it would silently classify it as `read` under the new gate. Do not bypass the proxy.
 
 ## Security Requirements
 
-This server holds OAuth refresh tokens that grant Outlook read/write/send, Calendar read/write, and OneDrive read/write across the user's tenant. Token leakage = mailbox + drive compromise. Destructive Graph operations (delete event, delete email, delete onedrive item) cannot be undone via Graph itself. New tools and changes to existing tools must preserve every invariant below.
+This server holds OAuth refresh tokens that grant Outlook read/write/send, Calendar read/write, and OneDrive read/write across the user's tenant. Token leakage = mailbox + drive compromise. Destructive Graph operations cannot be undone via Graph itself. New tools and changes to existing tools MUST preserve every invariant below.
 
-1. **Tokens are never logged.** No `console.log` / `console.error` of token values, refresh tokens, or any object that contains them. [src/auth.ts](./src/auth.ts) logs status strings only (`Tokens loaded from file.`, `Access token refreshed and saved successfully.`) — never the token contents. `handleCheckAuthStatus` returns presence + scope + expiry only. New code that handles tokens must follow the same discipline; if an error must be logged, redact or extract only the safe fields (`error.code`, `error.message`) rather than logging the raw error object.
-2. **Token persistence is atomic and `0600`.** `_saveTokensToFile()` writes to `<path>.tmp.<pid>.<rand>` then `fs.rename` into place; both temp and final files use `mode: 0o600`. A crash mid-write cannot corrupt the token file. Refresh and exchange flows both go through `_saveTokensToFile` — keep it that way.
-3. **Refresh deduplication.** `_refreshPromise` ensures concurrent `getValidAccessToken()` callers share a single refresh request. Without it, a burst of tool calls would each trigger a separate refresh and race for token persistence. New auth code must preserve the dedupe.
-4. **All Zod schemas are `.strict()` with bounded numerics.** Every registered tool's `inputSchema` is a `z.object({...}).strict()` so unknown fields are rejected at the MCP layer. Numeric inputs are bounded — `count` is `z.number().int().positive().max(50)` for calendar/onedrive listings, `.max(1000)` for email; `sequence` (rule ordering) is `z.number().int().min(0).max(10000)`. New tool registrations must follow this pattern; numeric inputs without bounds let callers exhaust Graph quota.
-5. **Destructive tools expose `dry_run` (default `true`).** `email/delete`, `calendar/delete`, `calendar/cancel`, `calendar/decline`, `onedrive/delete`, `folder/delete` all accept a `dry_run` argument that defaults to `true`. The dry-run path fetches target metadata (subject/path/size) and returns a `[dry_run] would …` preview without calling the destructive Graph endpoint. Callers must pass `dry_run: false` to actually mutate. New `DESTRUCTIVE_REMOTE` tools must follow this pattern.
-6. **No filesystem write tool currently exposes a caller-provided `outputPath`.** `viewer_onedrive-download` returns a pre-authenticated download URL rather than writing bytes; uploads take content from args. If a future tool writes Graph response bytes to disk, add a configurable download root (e.g. `MCP_M365_DOWNLOAD_PATH`, default `~/Downloads`) and validate `outputPath` against it via a two-layer (lexical + realpath) helper, mirroring `assertOutputPathWithinDownloadRoot()` in mcp-gmail's [src/utils/paths.ts](../mcp-gmail/src/utils/paths.ts).
-7. **OneDrive caller-supplied paths must go through `sanitizeOneDrivePath()` before interpolation into `me/drive/root:/...` endpoints.** The helper in [src/utils/odata-helpers.ts](./src/utils/odata-helpers.ts) strips outer slashes, splits on `/`, rejects `:` (Graph's path/id separator) and `\` in any segment, rejects empty / `.` / `..` segments, and `encodeURIComponent`s each remaining segment so `?`, `#`, `&`, etc. can't break out of the path component. All six call sites in `src/tools/onedrive/` (list, folder.list, folder.delete, download, share, upload, upload-large) use it. New OneDrive tools that build `root:/...` endpoints must too — never interpolate raw paths.
-8. **`ensureAuthenticated()` is the auth gate.** Every tool handler that calls Graph must `await ensureAuthenticated()` first; it returns the access token (after refresh if needed). Bypassing this — e.g. by reading `tokenStorage.tokens` directly — risks hitting Graph with an expired token and ignores the refresh-dedup machinery. New handlers must use `ensureAuthenticated`.
-9. **401 hint surfaces remediation.** `errMessage()` in [src/utils/errors.ts](./src/utils/errors.ts) appends `Run the editor_authenticate tool to refresh the OAuth token.` on 401 (or matching message keywords). New tools must use `errorResult(action, err)` (which routes through `errMessage`) so this contract holds.
-10. **No shell-string interpolation.** This server doesn't shell out. If a future tool needs to (e.g. opening a downloaded file), use `execFile` with argv array.
+1. **Tokens are never logged.** [src/auth.ts](./src/auth.ts) logs status strings only — never token contents. `m365_auth_status` returns presence + scope + expiry only. If an error must be logged, extract only safe fields (`error.code`, `error.message`).
+2. **Token persistence is atomic and `0600`.** `_saveTokensToFile()` writes to `<path>.tmp.<pid>.<rand>` then `fs.rename` into place; both temp and final files use `mode: 0o600`. Refresh and exchange flows both go through `_saveTokensToFile` — keep it that way.
+3. **Refresh deduplication.** `_refreshPromise` ensures concurrent `getValidAccessToken()` callers share a single refresh request. New auth code must preserve the dedupe — without it a burst of tool calls would race for token persistence.
+4. **All Zod schemas are `.strict()` with bounded numerics.** Already true; new schemas must continue this — e.g. `count` is `z.number().int().positive().max(50)` for calendar/onedrive listings, `.max(1000)` for email; `sequence` (rule ordering) is `.min(0).max(10000)`.
+5. **Destructive tools expose `dry_run` (default `true`).** Every `DESTRUCTIVE_REMOTE` tool (`m365_email_message_delete`, `m365_calendar_event_{delete,cancel,decline}`, `m365_email_folder_delete`, `m365_onedrive_item_delete`) returns a `[dry_run] would …` preview by default and only mutates when the caller passes `dry_run: false`.
+6. **OneDrive caller-supplied paths must go through `sanitizeOneDrivePath()`** in [src/utils/odata-helpers.ts](./src/utils/odata-helpers.ts) before interpolation into `me/drive/root:/...` endpoints. It strips outer slashes, splits on `/`, rejects `:`/`\`/empty/`.`/`..` segments, and `encodeURIComponent`s each remaining segment. Never interpolate raw paths.
+7. **`ensureAuthenticated()` is the auth gate.** Every Graph-calling handler must `await ensureAuthenticated()` first — it returns the access token (refreshing if needed). Bypassing it (e.g. reading `tokenStorage.tokens` directly) risks expired tokens AND ignores the refresh-dedup machinery.
+8. **401 hint surfaces remediation.** `errMessage()` in [src/utils/errors.ts](./src/utils/errors.ts) appends `Run the m365_auth_start tool to refresh the OAuth token.` on 401 (or matching message keywords). New tools must use `errorResult(action, err)` so this contract holds.
+9. **No shell-string interpolation.** This server doesn't shell out. If a future tool needs to, use `execFile` with an argv array.
+10. **If a future tool writes Graph response bytes to disk, add a configurable download root** (e.g. `MCP_M365_DOWNLOAD_PATH`, default `~/Downloads`) and validate `outputPath` via a two-layer (lexical + realpath) helper, mirroring [`assertOutputPathWithinDownloadRoot()`](../mcp-gmail/src/utils/paths.ts) in mcp-gmail. Today, `m365_onedrive_item_download` returns a pre-authenticated URL rather than writing bytes.
 
-Tests covering atomic token writes, mode-0600, redacted summary, and refresh dedup live in [src/auth.test.ts](./src/auth.test.ts).
+Atomic-write, mode-0600, redacted summary, and refresh-dedup tests live in [src/auth.test.ts](./src/auth.test.ts).
 
-## Common Setup Issues
+## Tool registration call sites
 
-1. **Missing dependencies**: Run `bun install` first.
-2. **Wrong secret**: Use the Azure client secret **VALUE**, not the Secret ID (`AADSTS7000215` error).
-3. **Auth server not running**: Start `bun run server:auth:dev` before calling the `editor_authenticate` tool.
-4. **Port conflicts**: `bunx kill-port 3333` if the OAuth port is in use.
-5. **Redirect URI mismatch**: The URI registered in Azure must exactly match `MCP_M365_REDIRECT_URI` (default `http://localhost:3333/auth/callback`).
-
-## Error Handling
-
-- Graph API errors surface via `errorResult(action, err)` as `Error <action>: HTTP <status>: <api-message>`, preserving HTTP status and Microsoft's detailed error message.
-- 401 (`Unauthorized` / `InvalidAuthenticationToken` / `TokenExpired`): the message is suffixed with `Run the editor_authenticate tool to refresh the OAuth token.` so callers see the remedy in-line.
-- Token refresh failure: clears the in-memory and on-disk token and returns null from `getValidAccessToken()`; the caller will then surface the missing-token error.
-- Missing `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET`: token refresh throws `Client ID or Client Secret is not configured.` and the auth server warns at startup.
+Each `<service>` registers its tools in `src/tools/<service>/index.ts` (`auth`, `calendar`, `email`, `folder`, `onedrive`, `rules`). To survey the surface, `grep "registerTool" src/tools/*/index.ts`. README's [Available Tools](./README.md#available-tools) tabulates them with purposes.

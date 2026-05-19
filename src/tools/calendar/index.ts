@@ -13,7 +13,7 @@ import { handleListEvents } from './list.js'
 
 export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
-    'viewer_list-events',
+    'm365_calendar_events_list',
     {
       description: 'Lists upcoming events from your calendar',
       inputSchema: z
@@ -29,7 +29,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_accept-event',
+    'm365_calendar_event_accept',
     {
       description: 'Accepts a calendar event',
       inputSchema: z
@@ -44,7 +44,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_decline-event',
+    'm365_calendar_event_decline',
     {
       description: 'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
@@ -60,7 +60,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_create-event',
+    'm365_calendar_event_create',
     {
       description: 'Creates a new calendar event',
       inputSchema: z
@@ -78,7 +78,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_cancel-event',
+    'm365_calendar_event_cancel',
     {
       description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
       inputSchema: z
@@ -94,7 +94,7 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_delete-event',
+    'm365_calendar_event_delete',
     {
       description: 'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z

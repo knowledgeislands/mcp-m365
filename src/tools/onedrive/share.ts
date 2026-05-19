@@ -65,7 +65,7 @@ export const handleShare = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'editor_authenticate' tool first." }]
+        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
       }
     }
 

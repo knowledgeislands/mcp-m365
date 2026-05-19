@@ -220,7 +220,7 @@ describe('handleListEmails', () => {
 
       const result = await handleListEmails({})
 
-      expect(result.content[0].text).toBe("Authentication required. Please use the 'editor_authenticate' tool first.")
+      expect(result.content[0].text).toBe("Authentication required. Please use the 'm365_auth_start' tool first.")
       expect(mockCallGraphAPIPaginated).not.toHaveBeenCalled()
     })
 

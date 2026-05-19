@@ -12,7 +12,7 @@ import { handleRenameFolder } from './rename.js'
 
 export const registerFolderTools = (server: McpServer): void => {
   server.registerTool(
-    'viewer_list-folders',
+    'm365_email_folders_list',
     {
       description: 'Lists mail folders in your Outlook account',
       inputSchema: z
@@ -27,7 +27,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_create-folder',
+    'm365_email_folder_create',
     {
       description: 'Creates a new mail folder',
       inputSchema: z
@@ -42,7 +42,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_rename-folder',
+    'm365_email_folder_rename',
     {
       description: 'Renames an existing mail folder',
       inputSchema: z
@@ -57,7 +57,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_delete-folder',
+    'm365_email_folder_delete',
     {
       description: 'Deletes an existing mail folder. `dry_run` defaults to true — pass false to actually delete.',
       inputSchema: z
@@ -72,7 +72,7 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_move-emails',
+    'm365_email_messages_move',
     {
       description: 'Moves emails from one folder to another',
       inputSchema: z

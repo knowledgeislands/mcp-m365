@@ -22,40 +22,40 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 
 | Tool | Description |
 | --- | --- |
-| `list-emails` | List recent emails from inbox, folder path, or explicit folder ID. |
-| `search-emails` | Search emails by query and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. |
-| `read-email` | Read email content. |
-| `send-email` | Send a new email. |
-| `draft-email` | Save an email draft. |
-| `mark-as-read` | Mark email as read/unread. |
-| `delete-email` | Move an email to Deleted Items (or hard delete with `permanent: true`). |
-| `list-events` | List calendar events. |
-| `create-event` | Create calendar event. |
-| `accept-event` | Accept event invitation. |
-| `decline-event` | Decline event invitation. |
-| `cancel-event` | Cancel a calendar event. |
-| `delete-event` | Delete calendar event. |
-| `list-folders` | List mail folders. |
-| `create-folder` | Create mail folder. |
-| `rename-folder` | Rename an existing mail folder. |
-| `delete-folder` | Delete a mail folder. |
-| `move-emails` | Move emails between folders. |
-| `list-rules` | List inbox rules. |
-| `create-rule` | Create inbox rule. |
-| `edit-rule-sequence` | Change the execution order of an existing inbox rule. |
+| `m365_email_messages_list` | List recent emails from inbox, folder path, or explicit folder ID. |
+| `m365_email_messages_search` | Search emails by query and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. |
+| `m365_email_message_get` | Read email content. |
+| `m365_email_message_send` | Send a new email. |
+| `m365_email_draft_create` | Save an email draft. |
+| `m365_email_message_mark_read` | Mark email as read/unread. |
+| `m365_email_message_delete` | Move an email to Deleted Items (or hard delete with `permanent: true`). |
+| `m365_calendar_events_list` | List calendar events. |
+| `m365_calendar_event_create` | Create calendar event. |
+| `m365_calendar_event_accept` | Accept event invitation. |
+| `m365_calendar_event_decline` | Decline event invitation. |
+| `m365_calendar_event_cancel` | Cancel a calendar event. |
+| `m365_calendar_event_delete` | Delete calendar event. |
+| `m365_email_folders_list` | List mail folders. |
+| `m365_email_folder_create` | Create mail folder. |
+| `m365_email_folder_rename` | Rename an existing mail folder. |
+| `m365_email_folder_delete` | Delete a mail folder. |
+| `m365_email_messages_move` | Move emails between folders. |
+| `m365_email_rules_list` | List inbox rules. |
+| `m365_email_rule_create` | Create inbox rule. |
+| `m365_email_rules_reorder` | Change the execution order of an existing inbox rule. |
 
 #### Email folder targeting
 
-For `list-emails` and `search-emails` you can target mail folders in two ways:
+For `m365_email_messages_list` and `m365_email_messages_search` you can target mail folders in two ways:
 
 - `folder` — well-known folder name (for example `inbox`) or full custom path (for example `Projects/2026/Q2`).
-- `folderId` — explicit Microsoft Graph folder ID returned by `list-folders`.
+- `folderId` — explicit Microsoft Graph folder ID returned by `m365_email_folders_list`.
 
 When both are provided, `folderId` takes precedence and is used directly.
 
 ```json
 {
-  "name": "list-emails",
+  "name": "m365_email_messages_list",
   "arguments": {
     "folderId": "AAMkAGVmMDEz...",
     "count": 25,
@@ -66,7 +66,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 
 ```json
 {
-  "name": "search-emails",
+  "name": "m365_email_messages_search",
   "arguments": {
     "folderId": "AAMkAGVmMDEz...",
     "query": "invoice",
@@ -79,16 +79,16 @@ When both are provided, `folderId` takes precedence and is used directly.
 
 ### OneDrive
 
-| Tool                     | Description                |
-| ------------------------ | -------------------------- |
-| `onedrive-list`          | List files in a path.      |
-| `onedrive-search`        | Search files by query.     |
-| `onedrive-download`      | Get download URL.          |
-| `onedrive-upload`        | Upload small file (<4 MB). |
-| `onedrive-upload-large`  | Chunked upload (>4 MB).    |
-| `onedrive-share`         | Create sharing link.       |
-| `onedrive-create-folder` | Create folder.             |
-| `onedrive-delete`        | Delete file or folder.     |
+| Tool                              | Description                |
+| --------------------------------- | -------------------------- |
+| `m365_onedrive_items_list`        | List files in a path.      |
+| `m365_onedrive_items_search`      | Search files by query.     |
+| `m365_onedrive_item_download`     | Get download URL.          |
+| `m365_onedrive_item_upload`       | Upload small file (<4 MB). |
+| `m365_onedrive_item_upload_large` | Chunked upload (>4 MB).    |
+| `m365_onedrive_item_share`        | Create sharing link.       |
+| `m365_onedrive_folder_create`     | Create folder.             |
+| `m365_onedrive_item_delete`       | Delete file or folder.     |
 
 ## Quick Start
 
@@ -98,7 +98,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 4. **Build**: `bun run build`.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `bun run server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
-7. **Authenticate** — use the `editor_authenticate` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
+7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
 ## Example Conversations
 
@@ -108,25 +108,25 @@ Concrete asks you might make of Claude with this server connected.
 
 > "Find unread emails from `finance@acme.com` received after 2026-04-01 and read the most recent one."
 
-Claude calls [`search-emails`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`, `receivedAfter: "2026-04-01T00:00:00Z"`, then `read-email` on the top result. Both honour mail-folder scoping (`folder` name or explicit `folderId`).
+Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`, `receivedAfter: "2026-04-01T00:00:00Z"`, then `m365_email_message_get` on the top result. Both honour mail-folder scoping (`folder` name or explicit `folderId`).
 
 **Draft a reply to a meeting:**
 
 > "Find Alice's invite for tomorrow's planning sync and draft a reply confirming I'll be there."
 
-Claude uses `search-emails` + `read-email` to locate the invite, then [`draft-email`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `send-email` — the server exposes both; calendar invites can be accepted directly via [`accept-event`](#outlook-email--calendar).)
+Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then [`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via [`m365_calendar_event_accept`](#outlook-email--calendar).)
 
 **Upload a file to OneDrive:**
 
 > "Upload `~/Documents/Q2-report.pdf` to OneDrive under `Projects/2026/Q2`. The folder doesn't exist yet — create it."
 
-Claude calls [`onedrive-create-folder`](#onedrive) for the missing path, then [`onedrive-upload`](#onedrive) for the file (or [`onedrive-upload-large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
+Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, then [`m365_onedrive_item_upload`](#onedrive) for the file (or [`m365_onedrive_item_upload_large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
 
 **Review the week's calendar:**
 
 > "Show me my calendar for next week and accept the marketing review invite if it's still open."
 
-Claude calls [`list-events`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`accept-event`](#outlook-email--calendar) to send the acceptance.
+Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
 
 ## Installation
 
@@ -187,7 +187,7 @@ bun install
 | `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
 | `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
-| `MCP_M365_ROLES` | no | `viewer` | Comma-separated list of enabled tool roles. Allowed: `viewer` (read-only — 11 tools), `editor` (state-mutating — 21 tools). Default is least-privilege (`viewer` only); set to `viewer,editor` to expose mutating tools. Tools are named `viewer_<name>` / `editor_<name>` and disabled-role tools are simply not registered. |
+| `MCP_M365_ROLES` | no | `read` | Comma-separated list of enabled tool roles. Allowed: `read` (read-only — 11 tools), `write` (state-mutating — 21 tools). Default is least-privilege (`read` only); set to `read,write` to expose mutating tools. Each tool's role is derived from its MCP annotations (`readOnlyHint: true` → `read`, otherwise → `write`); disabled-role tools are simply not registered. |
 | `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
 
 **Notes:**
@@ -233,12 +233,12 @@ The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run wi
 The OAuth flow runs out-of-band via the standalone auth server:
 
 1. Start the auth server: `bun run server:auth:dev` (listens on `http://localhost:3333`).
-2. In Claude, call the `editor_authenticate` tool — it returns a sign-in URL.
+2. In Claude, call the `m365_auth_start` tool — it returns a sign-in URL.
 3. Open the URL, sign in, and grant the requested scopes.
 4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.mcp-m365-tokens.json`.
 5. The MCP server reads that file and refreshes tokens transparently when they expire.
 
-To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `editor_authenticate` tool.
+To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `m365_auth_start` tool.
 
 ## Development
 
@@ -260,7 +260,7 @@ bun run lint:md            # prettier + markdownlint for *.md
 - Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
 - OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
 - The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
-- Tool annotations honestly mark destructive operations (`delete-email`, `delete-event`, `delete-folder`, `onedrive-delete`, etc.) so MCP clients can prompt before invoking them.
+- Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
 - Every Graph API call goes through [`src/utils/graph-api.ts`](./src/utils/graph-api.ts), which centralises retries and 401 → token-refresh handling.
 
 ## Directory Structure
@@ -313,7 +313,7 @@ Use the secret **VALUE** from "Certificates & secrets", not the Secret ID.
 
 **`Authentication required`**
 
-Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `editor_authenticate` tool.
+Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `m365_auth_start` tool.
 
 ## Extending the Server
 

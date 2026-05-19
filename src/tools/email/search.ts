@@ -57,7 +57,7 @@ export const handleSearchEmails = async (args: any): Promise<any> => {
         content: [
           {
             type: 'text',
-            text: "Authentication required. Please use the 'editor_authenticate' tool first."
+            text: "Authentication required. Please use the 'm365_auth_start' tool first."
           }
         ],
         structuredContent: {

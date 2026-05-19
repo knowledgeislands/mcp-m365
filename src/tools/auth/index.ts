@@ -8,7 +8,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { tokenStorage } from '../../auth.js'
-import { READ_ONLY, READ_ONLY_REMOTE } from '../../utils/annotations.js'
+import { ADDITIVE_REMOTE, READ_ONLY } from '../../utils/annotations.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
 
 export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
@@ -26,7 +26,7 @@ export const ensureAuthenticated = async (forceNew = false): Promise<string> => 
 
 export const registerAuthTools = (server: McpServer): void => {
   server.registerTool(
-    'viewer_about',
+    'm365_about',
     {
       description: 'Returns information about this MCP M365 server',
       inputSchema: z.object({}).strict(),
@@ -36,21 +36,22 @@ export const registerAuthTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_authenticate',
+    'm365_auth_start',
     {
-      description: 'Authenticate with Microsoft Graph API to access Outlook data',
+      description:
+        'Authenticate with Microsoft Graph API to access Outlook data. Initiates the OAuth flow and persists tokens to disk on success — registered under the `write` role because of that token-store mutation.',
       inputSchema: z
         .object({
           force: z.boolean().optional().describe('Force re-authentication even if already authenticated')
         })
         .strict(),
-      annotations: READ_ONLY_REMOTE
+      annotations: ADDITIVE_REMOTE
     },
     handleAuthenticate
   )
 
   server.registerTool(
-    'viewer_check-auth-status',
+    'm365_auth_status',
     {
       description: 'Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry metadata only — never the token values.',
       inputSchema: z.object({}).strict(),

@@ -11,7 +11,7 @@ interface GraphErrorShape {
 
 // Appended to error messages when Microsoft Graph returns 401, so callers see
 // the remedy in-line rather than a bare HTTP code.
-const AUTH_HINT = 'Run the `editor_authenticate` tool to refresh the OAuth token.'
+const AUTH_HINT = 'Run the `m365_auth_start` tool to refresh the OAuth token.'
 
 const looksLikeAuthFailure = (status: number | undefined, msg: string): boolean => {
   if (status === 401) return true

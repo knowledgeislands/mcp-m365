@@ -2,8 +2,9 @@
  * Append-only JSONL audit log for tool invocations.
  *
  * Scope is controlled by MCP_M365_AUDIT_LOG: `off` (no logging), `writes`
- * (default — `editor_*` tools only) or `all` (every tool, including
- * `viewer_*`). Path is configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
+ * (default — `write`-role tools only, i.e. anything not annotated
+ * `readOnlyHint: true`) or `all` (every tool, including read-role). Path is
+ * configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
  * `~/.local/state/mcp-m365/audit.jsonl`.
  *
  * Failures to write the audit line are swallowed (stderr only) — a broken log
@@ -127,7 +128,7 @@ const extractErrorText = (result: unknown): string | undefined => {
 
 export const withAuditLog = (toolName: string, role: Role, callback: ToolCallback): ToolCallback => {
   if (AUDIT_LOG_MODE === 'off') return callback
-  if (role === 'viewer' && AUDIT_LOG_MODE !== 'all') return callback
+  if (role === 'read' && AUDIT_LOG_MODE !== 'all') return callback
   return async (...callbackArgs: unknown[]) => {
     const start = Date.now()
     const args = callbackArgs[0]

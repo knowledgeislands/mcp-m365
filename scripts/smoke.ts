@@ -13,38 +13,38 @@ import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js'
 // Single source of truth for the tool surface. If you add a tool in
 // `src/tools/<group>/index.ts`, update this list.
 const EXPECTED_TOOLS = [
-  'editor_accept-event',
-  'editor_authenticate',
-  'editor_cancel-event',
-  'editor_create-event',
-  'editor_create-folder',
-  'editor_create-rule',
-  'editor_decline-event',
-  'editor_delete-email',
-  'editor_delete-event',
-  'editor_delete-folder',
-  'editor_draft-email',
-  'editor_edit-rule-sequence',
-  'editor_mark-as-read',
-  'editor_move-emails',
-  'editor_onedrive-create-folder',
-  'editor_onedrive-delete',
-  'editor_onedrive-share',
-  'editor_onedrive-upload',
-  'editor_onedrive-upload-large',
-  'editor_rename-folder',
-  'editor_send-email',
-  'viewer_about',
-  'viewer_check-auth-status',
-  'viewer_list-emails',
-  'viewer_list-events',
-  'viewer_list-folders',
-  'viewer_list-rules',
-  'viewer_onedrive-download',
-  'viewer_onedrive-list',
-  'viewer_onedrive-search',
-  'viewer_read-email',
-  'viewer_search-emails'
+  'm365_calendar_event_accept',
+  'm365_auth_start',
+  'm365_calendar_event_cancel',
+  'm365_calendar_event_create',
+  'm365_email_folder_create',
+  'm365_email_rule_create',
+  'm365_calendar_event_decline',
+  'm365_email_message_delete',
+  'm365_calendar_event_delete',
+  'm365_email_folder_delete',
+  'm365_email_draft_create',
+  'm365_email_rules_reorder',
+  'm365_email_message_mark_read',
+  'm365_email_messages_move',
+  'm365_onedrive_folder_create',
+  'm365_onedrive_item_delete',
+  'm365_onedrive_item_share',
+  'm365_onedrive_item_upload',
+  'm365_onedrive_item_upload_large',
+  'm365_email_folder_rename',
+  'm365_email_message_send',
+  'm365_about',
+  'm365_auth_status',
+  'm365_email_messages_list',
+  'm365_calendar_events_list',
+  'm365_email_folders_list',
+  'm365_email_rules_list',
+  'm365_onedrive_item_download',
+  'm365_onedrive_items_list',
+  'm365_onedrive_items_search',
+  'm365_email_message_get',
+  'm365_email_messages_search'
 ] as const
 
 const die = (msg: string, detail?: unknown): never => {
@@ -57,7 +57,7 @@ const main = async (): Promise<void> => {
   const transport = new StdioClientTransport({
     command: 'node',
     args: ['dist/mcp-server/index.js'],
-    env: { ...(process.env as Record<string, string>), MCP_M365_ROLES: 'viewer,editor' }
+    env: { ...(process.env as Record<string, string>), MCP_M365_ROLES: 'read,write' }
   })
   const client = new Client({ name: 'mcp-m365-smoke', version: '0.0.0' }, { capabilities: {} })
 

@@ -10,7 +10,7 @@ import { handleListRules } from './list.js'
 
 export const registerRulesTools = (server: McpServer): void => {
   server.registerTool(
-    'viewer_list-rules',
+    'm365_email_rules_list',
     {
       description: 'Lists inbox rules in your Outlook account',
       inputSchema: z
@@ -24,7 +24,7 @@ export const registerRulesTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_create-rule',
+    'm365_email_rule_create',
     {
       description: 'Creates a new inbox rule',
       inputSchema: z
@@ -45,7 +45,7 @@ export const registerRulesTools = (server: McpServer): void => {
   )
 
   server.registerTool(
-    'editor_edit-rule-sequence',
+    'm365_email_rules_reorder',
     {
       description: 'Changes the execution order of an existing inbox rule',
       inputSchema: z

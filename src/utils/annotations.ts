@@ -1,17 +1,29 @@
 /**
  * MCP tool annotations shared across tool groups.
  *
- * Closed-world (local-only operations, e.g. starting the local OAuth server):
- *   - READ_ONLY
+ * Naming convention: unsuffixed presets are closed-world (the tool acts only on
+ * local state); `_REMOTE` suffix marks open-world (calls external APIs).
  *
- * Open-world (calls Microsoft Graph or other remote APIs):
- *   - READ_ONLY_REMOTE     — pure read tools
- *   - ADDITIVE_REMOTE      — creates new state remotely (non-idempotent)
- *   - STATE_TOGGLE_REMOTE  — flips an existing state (idempotent)
- *   - DESTRUCTIVE_REMOTE   — deletes/destroys remote state (idempotent end state)
+ * Underlying MCP hints:
+ *   readOnlyHint    — tool does NOT modify state
+ *   destructiveHint — tool deletes/destroys state
+ *   idempotentHint  — same input → same end state
+ *   openWorldHint   — interacts with services outside the local environment
+ *
+ * Canonical preset set across the sibling MCPs (each repo exports the subset
+ * its tools need):
+ *   READ_ONLY              — closed-world read
+ *   READ_ONLY_REMOTE       — open-world read
+ *   ADDITIVE               — closed-world create (non-idempotent)
+ *   ADDITIVE_REMOTE        — open-world create (non-idempotent)
+ *   STATE_TOGGLE           — closed-world idempotent state flip
+ *   STATE_TOGGLE_REMOTE    — open-world idempotent state flip
+ *   DESTRUCTIVE            — closed-world destructive (idempotent end state)
+ *   DESTRUCTIVE_REMOTE     — open-world destructive (idempotent end state)
+ *   DESTRUCTIVE_ONESHOT    — closed-world destructive, NON-idempotent
+ *                            (effect depends on current state — e.g. prune)
  */
 export const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const
-
 export const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
 export const ADDITIVE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
 export const STATE_TOGGLE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const

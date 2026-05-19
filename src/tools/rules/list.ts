@@ -18,7 +18,7 @@ export const handleListRules = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'editor_authenticate' tool first." }]
+        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
       }
     }
 
@@ -41,7 +41,7 @@ export const getInboxRules = async (accessToken: string): Promise<any[]> => {
 
 const formatRulesList = (rules: any[], includeDetails: boolean): string => {
   if (!rules || rules.length === 0) {
-    return "No inbox rules found.\n\nTip: You can create rules using the 'editor_create-rule' tool. Rules are processed in order of their sequence number (lower numbers are processed first)."
+    return "No inbox rules found.\n\nTip: You can create rules using the 'm365_email_rule_create' tool. Rules are processed in order of their sequence number (lower numbers are processed first)."
   }
 
   const sortedRules = [...rules].sort((a, b) => {
@@ -65,13 +65,13 @@ const formatRulesList = (rules: any[], includeDetails: boolean): string => {
       return ruleText
     })
 
-    return `Found ${rules.length} inbox rules (sorted by execution order):\n\n${detailedRules.join('\n\n')}\n\nRules are processed in order of their sequence number. You can change rule order using the 'editor_edit-rule-sequence' tool.`
+    return `Found ${rules.length} inbox rules (sorted by execution order):\n\n${detailedRules.join('\n\n')}\n\nRules are processed in order of their sequence number. You can change rule order using the 'm365_email_rules_reorder' tool.`
   } else {
     const simpleRules = sortedRules.map((rule, index) => {
       return `${index + 1}. ${rule.displayName}${rule.isEnabled ? '' : ' (Disabled)'} - Sequence: ${rule.sequence || 'N/A'}`
     })
 
-    return `Found ${rules.length} inbox rules (sorted by execution order):\n\n${simpleRules.join('\n')}\n\nTip: Use 'viewer_list-rules with includeDetails=true' to see more information about each rule.`
+    return `Found ${rules.length} inbox rules (sorted by execution order):\n\n${simpleRules.join('\n')}\n\nTip: Use 'm365_email_rules_list with includeDetails=true' to see more information about each rule.`
   }
 }
 

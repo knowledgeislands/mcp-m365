@@ -36,16 +36,16 @@ const parseScopes = (raw: string | undefined): string[] => {
     .filter(Boolean)
 }
 
-export type Role = 'viewer' | 'editor'
-export const ALL_ROLES: readonly Role[] = ['viewer', 'editor'] as const
+export type Role = 'read' | 'write'
+export const ALL_ROLES: readonly Role[] = ['read', 'write'] as const
 
 const parseRoles = (raw: string | undefined): Set<Role> => {
-  if (raw === undefined || raw.trim() === '') return new Set(['viewer'])
+  if (raw === undefined || raw.trim() === '') return new Set(['read'])
   const requested = raw
     .split(',')
     .map((s) => s.trim())
     .filter((s) => s.length > 0)
-  if (requested.length === 0) return new Set(['viewer'])
+  if (requested.length === 0) return new Set(['read'])
   const invalid = requested.filter((r): r is string => !(ALL_ROLES as readonly string[]).includes(r))
   if (invalid.length > 0) {
     throw new Error(`Invalid MCP_M365_ROLES entries: ${invalid.join(', ')}. Allowed: ${ALL_ROLES.join(', ')}`)
