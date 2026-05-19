@@ -81,6 +81,5 @@
     "test:smoke": "bun run build && bun scripts/smoke.ts",
     "test:watch": "vitest"
   },
-  "type": "module",
-  "types": "dist/mcp-server/index.d.ts"
+  "type": "module"
 }
