@@ -123,6 +123,7 @@ const moveEmailsToFolder = async (accessToken: string, emailIds: string[], targe
       const maxErrors = Math.min(results.failed.length, 3)
       for (let i = 0; i < maxErrors; i++) {
         const failure = results.failed[i]
+        if (!failure) continue
         message += `\n- Email ${i + 1}: ${failure.error}`
       }
 

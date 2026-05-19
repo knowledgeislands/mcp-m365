@@ -3,14 +3,18 @@
  */
 import { callGraphAPI } from '../../utils/graph-api.js'
 
-export const WELL_KNOWN_FOLDERS: Record<string, string> = {
+export const WELL_KNOWN_FOLDERS = {
   inbox: 'me/mailFolders/inbox/messages',
   drafts: 'me/mailFolders/drafts/messages',
   sent: 'me/mailFolders/sentItems/messages',
   deleted: 'me/mailFolders/deletedItems/messages',
   junk: 'me/mailFolders/junkemail/messages',
   archive: 'me/mailFolders/archive/messages'
-}
+} as const
+
+type WellKnownFolderKey = keyof typeof WELL_KNOWN_FOLDERS
+
+const lookupWellKnown = (name: string): string | undefined => (name in WELL_KNOWN_FOLDERS ? WELL_KNOWN_FOLDERS[name as WellKnownFolderKey] : undefined)
 
 export const FOLDER_SELECT_FIELDS = 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount'
 
@@ -21,9 +25,9 @@ export const resolveFolderPath = async (accessToken: string, folderName: string 
     return WELL_KNOWN_FOLDERS.inbox
   }
 
-  const lowerFolderName = folderName.toLowerCase()
-  if (WELL_KNOWN_FOLDERS[lowerFolderName]) {
-    return WELL_KNOWN_FOLDERS[lowerFolderName]
+  const wellKnown = lookupWellKnown(folderName.toLowerCase())
+  if (wellKnown) {
+    return wellKnown
   }
 
   try {
@@ -55,6 +59,8 @@ export const getFolderIdByName = async (accessToken: string, folderName: string)
 }
 
 const resolvePathSegments = (allFolders: any[], segments: string[], originalName: string): string | null => {
+  const [first] = segments
+  if (first === undefined) return null
   const knownIds = new Set(allFolders.map((f) => f.id))
   const byLowerName = new Map<string, any[]>()
   for (const f of allFolders) {
@@ -64,10 +70,12 @@ const resolvePathSegments = (allFolders: any[], segments: string[], originalName
     byLowerName.get(key)?.push(f)
   }
 
-  let candidates = (byLowerName.get(segments[0].toLowerCase()) || []).filter((f: any) => !knownIds.has(f.parentFolderId))
+  let candidates = (byLowerName.get(first.toLowerCase()) || []).filter((f: any) => !knownIds.has(f.parentFolderId))
 
   for (let i = 1; i < segments.length; i++) {
-    const next = byLowerName.get(segments[i].toLowerCase()) || []
+    const seg = segments[i]
+    if (seg === undefined) continue
+    const next = byLowerName.get(seg.toLowerCase()) || []
     const parentIds = new Set(candidates.map((f) => f.id))
     candidates = next.filter((f: any) => parentIds.has(f.parentFolderId))
   }
@@ -134,7 +142,9 @@ const mapWithConcurrency = async <T, R>(items: T[], limit: number, fn: (item: T,
     while (true) {
       const index = cursor++
       if (index >= items.length) return
-      results[index] = await fn(items[index], index)
+      const item = items[index]
+      if (item === undefined) continue
+      results[index] = await fn(item, index)
     }
   }
 

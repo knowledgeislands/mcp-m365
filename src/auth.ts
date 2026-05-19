@@ -80,7 +80,7 @@ class TokenStorage {
     }
   }
 
-  async _saveTokensToFile(): Promise<boolean | undefined> {
+  async _saveTokensToFile(): Promise<boolean> {
     if (!this.tokens) {
       console.warn('No tokens to save.')
       return false
@@ -94,6 +94,7 @@ class TokenStorage {
       await fs.writeFile(tmpPath, JSON.stringify(this.tokens, null, 2), { mode: 0o600 })
       await fs.rename(tmpPath, finalPath)
       console.log('Tokens saved successfully.')
+      return true
     } catch (error) {
       console.error('Error saving token cache:', error)
       throw error
