@@ -57,7 +57,7 @@ const main = async (): Promise<void> => {
   const transport = new StdioClientTransport({
     command: 'node',
     args: ['dist/mcp-server/index.js'],
-    env: { ...(process.env as Record<string, string>), MCP_M365_ROLES: 'read,write' }
+    env: { ...(process.env as Record<string, string>), MCP_M365_ACCESS_LEVEL: 'destructive' }
   })
   const client = new Client({ name: 'mcp-m365-smoke', version: '0.0.0' }, { capabilities: {} })
 
