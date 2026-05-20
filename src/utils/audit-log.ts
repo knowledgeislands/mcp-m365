@@ -2,9 +2,10 @@
  * Append-only JSONL audit log for tool invocations.
  *
  * Scope is controlled by MCP_M365_AUDIT_LOG: `off` (no logging), `writes`
- * (default — `write`-role tools only, i.e. anything not annotated
- * `readOnlyHint: true`) or `all` (every tool, including read-role). Path is
- * configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
+ * (default — `write` and `destructive` levels only, i.e. anything not
+ * annotated `readOnlyHint: true`) or `all` (every tool, including read).
+ * Level is derived from each tool's MCP annotations by `makeAccessGatedRegister`.
+ * Path is configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
  * `~/.local/state/mcp-m365/audit.jsonl`.
  *
  * Failures to write the audit line are swallowed (stderr only) — a broken log
@@ -12,15 +13,15 @@
  */
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { AUDIT_LOG_KEEP, AUDIT_LOG_MAX_BYTES, AUDIT_LOG_MODE, AUDIT_LOG_PATH, type Role, SERVER_NAME } from '../config.js'
+import { type AccessLevel, AUDIT_LOG_KEEP, AUDIT_LOG_MAX_BYTES, AUDIT_LOG_MODE, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
 
-export type { Role } from '../config.js'
+export type { AccessLevel } from '../config.js'
 
 export interface AuditEvent {
   ts: string
   server: string
   tool: string
-  role: Role
+  level: AccessLevel
   ok: boolean
   duration_ms: number
   error?: string
@@ -126,9 +127,9 @@ const extractErrorText = (result: unknown): string | undefined => {
   return first?.text
 }
 
-export const withAuditLog = (toolName: string, role: Role, callback: ToolCallback): ToolCallback => {
+export const withAuditLog = (toolName: string, level: AccessLevel, callback: ToolCallback): ToolCallback => {
   if (AUDIT_LOG_MODE === 'off') return callback
-  if (role === 'read' && AUDIT_LOG_MODE !== 'all') return callback
+  if (level === 'read' && AUDIT_LOG_MODE !== 'all') return callback
   return async (...callbackArgs: unknown[]) => {
     const start = Date.now()
     const args = callbackArgs[0]
@@ -140,7 +141,7 @@ export const withAuditLog = (toolName: string, role: Role, callback: ToolCallbac
         ts: new Date().toISOString(),
         server: SERVER_NAME,
         tool: toolName,
-        role,
+        level,
         ok: !isError,
         duration_ms: Date.now() - start,
         error: errText,
@@ -152,7 +153,7 @@ export const withAuditLog = (toolName: string, role: Role, callback: ToolCallbac
         ts: new Date().toISOString(),
         server: SERVER_NAME,
         tool: toolName,
-        role,
+        level,
         ok: false,
         duration_ms: Date.now() - start,
         error: err instanceof Error ? err.message : String(err),

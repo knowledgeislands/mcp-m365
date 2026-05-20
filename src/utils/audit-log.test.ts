@@ -12,25 +12,25 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     vi.resetModules()
     process.env.MCP_M365_AUDIT_LOG_PATH = logPath
     delete process.env.MCP_M365_AUDIT_LOG
-    delete process.env.MCP_M365_ROLES
+    delete process.env.MCP_M365_ACCESS_LEVEL
   })
 
   afterEach(async () => {
     await fs.rm(tmpDir, { recursive: true, force: true })
     delete process.env.MCP_M365_AUDIT_LOG_PATH
     delete process.env.MCP_M365_AUDIT_LOG
-    delete process.env.MCP_M365_ROLES
+    delete process.env.MCP_M365_ACCESS_LEVEL
   })
 
-  it('appends an event for a write-role tool with the server name set', async () => {
+  it('appends an event for a destructive-level tool with the server name set', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog('m365_email_message_delete', 'write', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     await wrapped({ id: 'm1' })
     await new Promise((r) => setTimeout(r, 20))
     const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
     expect(event.server).toBe('mcp-m365')
     expect(event.tool).toBe('m365_email_message_delete')
-    expect(event.role).toBe('write')
+    expect(event.level).toBe('destructive')
     expect(event.ok).toBe(true)
     expect(event.args).toEqual({ id: 'm1' })
   })
@@ -58,7 +58,7 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('records ok:false + error text when isError:true', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog('m365_email_message_delete', 'write', async () => ({ isError: true, content: [{ type: 'text', text: 'gone' }] }))
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ isError: true, content: [{ type: 'text', text: 'gone' }] }))
     await wrapped({ id: 'm1' })
     await new Promise((r) => setTimeout(r, 20))
     const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
@@ -66,27 +66,27 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(event.error).toBe('gone')
   })
 
-  it('skips read-role tools by default', async () => {
+  it('skips read-level tools by default', async () => {
     const { withAuditLog } = await import('./audit-log.js')
     const handler = vi.fn(async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     expect(withAuditLog('m365_email_messages_list', 'read', handler)).toBe(handler)
   })
 
-  it('logs read-role tools when MCP_M365_AUDIT_LOG=all', async () => {
+  it('logs read-level tools when MCP_M365_AUDIT_LOG=all', async () => {
     process.env.MCP_M365_AUDIT_LOG = 'all'
     const { withAuditLog } = await import('./audit-log.js')
     const wrapped = withAuditLog('m365_email_messages_list', 'read', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     await wrapped({})
     await new Promise((r) => setTimeout(r, 20))
     const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
-    expect(event.role).toBe('read')
+    expect(event.level).toBe('read')
   })
 
-  it('skips all roles when MCP_M365_AUDIT_LOG=off', async () => {
+  it('skips all levels when MCP_M365_AUDIT_LOG=off', async () => {
     process.env.MCP_M365_AUDIT_LOG = 'off'
     const { withAuditLog } = await import('./audit-log.js')
     const writeHandler = vi.fn(async (_args: unknown) => ({ content: [{ type: 'text', text: 'ok' }] }))
-    expect(withAuditLog('m365_email_message_delete', 'write', writeHandler)).toBe(writeHandler)
+    expect(withAuditLog('m365_email_message_delete', 'destructive', writeHandler)).toBe(writeHandler)
     await writeHandler({})
     await new Promise((r) => setTimeout(r, 20))
     await expect(fs.access(logPath)).rejects.toThrow()
@@ -103,7 +103,7 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(((await fs.stat(logPath)).mode & 0o777).toString(8)).toBe('644')
 
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog('m365_email_message_delete', 'write', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     await wrapped({})
     await new Promise((r) => setTimeout(r, 20))
 
@@ -111,43 +111,59 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(mode.toString(8)).toBe('600')
   })
 
-  it('infers role from tool-name prefix via makeRoleGatedRegister', async () => {
+  it('infers level from annotations via makeAccessGatedRegister', async () => {
     process.env.MCP_M365_AUDIT_LOG = 'all'
-    process.env.MCP_M365_ROLES = 'read,write'
-    const { makeRoleGatedRegister } = await import('./roles.js')
+    process.env.MCP_M365_ACCESS_LEVEL = 'destructive'
+    const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string; handler: (args: unknown) => Promise<unknown> }[] = []
     const stub = { registerTool: (name: string, _config: unknown, handler: (args: unknown) => Promise<unknown>) => calls.push({ name, handler }) }
-    const wrapped = makeRoleGatedRegister(stub as any)
+    const wrapped = makeAccessGatedRegister(stub as any)
     wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
-    wrapped('m365_email_message_delete', { annotations: { readOnlyHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_delete', { annotations: { readOnlyHint: false, destructiveHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     await calls[0].handler({})
     await calls[1].handler({})
+    await calls[2].handler({})
     await new Promise((r) => setTimeout(r, 20))
     const events = (await fs.readFile(logPath, 'utf-8'))
       .trim()
       .split('\n')
       .map((l) => JSON.parse(l))
-    expect(events.find((e) => e.tool === 'm365_email_messages_list').role).toBe('read')
-    expect(events.find((e) => e.tool === 'm365_email_message_delete').role).toBe('write')
+    expect(events.find((e) => e.tool === 'm365_email_messages_list').level).toBe('read')
+    expect(events.find((e) => e.tool === 'm365_email_message_send').level).toBe('write')
+    expect(events.find((e) => e.tool === 'm365_email_message_delete').level).toBe('destructive')
   })
 
-  it('skips registration for disabled roles via makeRoleGatedRegister', async () => {
-    process.env.MCP_M365_ROLES = 'read'
-    const { makeRoleGatedRegister } = await import('./roles.js')
+  it('skips registration for tools whose level exceeds MCP_M365_ACCESS_LEVEL (default = read)', async () => {
+    process.env.MCP_M365_ACCESS_LEVEL = 'read'
+    const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string }[] = []
     const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
-    const wrapped = makeRoleGatedRegister(stub as any)
+    const wrapped = makeAccessGatedRegister(stub as any)
     wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
-    wrapped('m365_email_message_delete', { annotations: { readOnlyHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_delete', { annotations: { readOnlyHint: false, destructiveHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     expect(calls.map((c) => c.name)).toEqual(['m365_email_messages_list'])
   })
 
-  it('treats an unannotated tool as write (fail-safe — skipped when only read role is enabled)', async () => {
-    process.env.MCP_M365_ROLES = 'read'
-    const { makeRoleGatedRegister } = await import('./roles.js')
+  it('registers read + non-destructive writes but skips destructive when MCP_M365_ACCESS_LEVEL=write', async () => {
+    process.env.MCP_M365_ACCESS_LEVEL = 'write'
+    const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string }[] = []
     const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
-    const wrapped = makeRoleGatedRegister(stub as any)
+    const wrapped = makeAccessGatedRegister(stub as any)
+    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_message_delete', { annotations: { readOnlyHint: false, destructiveHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    expect(calls.map((c) => c.name)).toEqual(['m365_email_messages_list', 'm365_email_message_send'])
+  })
+
+  it('treats an unannotated tool as destructive (fail-safe — skipped when only read is configured)', async () => {
+    process.env.MCP_M365_ACCESS_LEVEL = 'read'
+    const { makeAccessGatedRegister } = await import('./access-level.js')
+    const calls: { name: string }[] = []
+    const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
+    const wrapped = makeAccessGatedRegister(stub as any)
     wrapped('unannotated_tool', {}, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     expect(calls).toEqual([])
   })

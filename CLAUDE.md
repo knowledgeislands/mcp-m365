@@ -25,14 +25,16 @@ Token persistence + refresh is hand-rolled in [src/auth.ts](./src/auth.ts) — n
 
 Tool names follow `<app>_<service>_<resource>_<action>` (snake_case) with `<app>` = `m365` and `<service>` ∈ {`email`, `calendar`, `onedrive`}. Plural resource for collection ops, singular for single-item ops. The auth tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) are server-level metadata and drop service/resource segments.
 
-### Role gate — driven by annotations, not names
+### Access-level gate — driven by annotations, not names
 
-[src/utils/roles.ts](./src/utils/roles.ts) `makeRoleGatedRegister()` decides at startup whether to register each tool, based on `config.annotations.readOnlyHint`:
+[src/utils/access-level.ts](./src/utils/access-level.ts) `makeAccessGatedRegister()` decides at startup whether to register each tool, based on `config.annotations`:
 
-- `readOnlyHint: true` → `read` role
-- anything else → `write` role (fail-safe; an unannotated tool is treated as destructive)
+- `readOnlyHint: true` → `read`
+- `destructiveHint: true` → `destructive`
+- explicit `readOnlyHint: false` AND `destructiveHint: false` → `write` (non-destructive Graph mutation)
+- anything else (unannotated / partially annotated) → `destructive` (fail-safe)
 
-Only tools whose role is in `MCP_M365_ROLES` (default: `read`) are registered. New tools MUST set `annotations` to one of the presets in [src/utils/annotations.ts](./src/utils/annotations.ts) — `READ_ONLY`/`READ_ONLY_REMOTE` for pure reads; `ADDITIVE_REMOTE`/`STATE_TOGGLE_REMOTE`/`DESTRUCTIVE_REMOTE` for the corresponding Graph mutations. Annotations must be honest about what the tool does — `m365_auth_start` is `ADDITIVE_REMOTE` (not `READ_ONLY_REMOTE`) because it persists tokens to disk; misrepresenting it would silently classify it as `read` under the new gate. Do not bypass the proxy.
+A tool registers when its derived level is at or below `MCP_M365_ACCESS_LEVEL` (default: `read`). Levels nest: `read` registers only readers; `write` adds non-destructive mutations like `m365_email_message_send` and `m365_calendar_event_create`; `destructive` adds delete/overwrite. New tools MUST set `annotations` to one of the presets in [src/utils/annotations.ts](./src/utils/annotations.ts) — `READ_ONLY`/`READ_ONLY_REMOTE` for pure reads; `ADDITIVE_REMOTE`/`STATE_TOGGLE_REMOTE` for non-destructive Graph mutations; `DESTRUCTIVE_REMOTE` for deletes. Annotations must be honest about what the tool does — `m365_auth_start` is `ADDITIVE_REMOTE` (not `READ_ONLY_REMOTE`) because it persists tokens to disk; misrepresenting it would silently classify it as `read` under the gate. Do not bypass the proxy.
 
 ## Security Requirements
 

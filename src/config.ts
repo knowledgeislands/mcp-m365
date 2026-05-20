@@ -36,24 +36,27 @@ const parseScopes = (raw: string | undefined): string[] => {
     .filter(Boolean)
 }
 
-export type Role = 'read' | 'write'
-export const ALL_ROLES: readonly Role[] = ['read', 'write'] as const
+/**
+ * Single ordinal access level. Each level implies all lower ones:
+ *   `read`        — only readOnly tools registered.
+ *   `write`       — readOnly + non-destructive mutations (create, send, toggle).
+ *   `destructive` — everything, including delete / overwrite / prune.
+ *
+ * The gate uses ACCESS_LEVEL_RANK for ordinal comparison; a tool registers when
+ * its derived level ≤ the configured level.
+ */
+export type AccessLevel = 'read' | 'write' | 'destructive'
+export const ACCESS_LEVELS: readonly AccessLevel[] = ['read', 'write', 'destructive'] as const
+export const ACCESS_LEVEL_RANK: Record<AccessLevel, number> = { read: 1, write: 2, destructive: 3 }
 
-const parseRoles = (raw: string | undefined): Set<Role> => {
-  if (raw === undefined || raw.trim() === '') return new Set(['read'])
-  const requested = raw
-    .split(',')
-    .map((s) => s.trim())
-    .filter((s) => s.length > 0)
-  if (requested.length === 0) return new Set(['read'])
-  const invalid = requested.filter((r): r is string => !(ALL_ROLES as readonly string[]).includes(r))
-  if (invalid.length > 0) {
-    throw new Error(`Invalid MCP_M365_ROLES entries: ${invalid.join(', ')}. Allowed: ${ALL_ROLES.join(', ')}`)
-  }
-  return new Set(requested as Role[])
+const parseAccessLevel = (raw: string | undefined): AccessLevel => {
+  const v = raw?.trim()
+  if (v === undefined || v === '') return 'read'
+  if ((ACCESS_LEVELS as readonly string[]).includes(v)) return v as AccessLevel
+  throw new Error(`Invalid MCP_M365_ACCESS_LEVEL="${raw}". Allowed: ${ACCESS_LEVELS.join(', ')}`)
 }
 
-export const ENABLED_ROLES: ReadonlySet<Role> = parseRoles(process.env.MCP_M365_ROLES)
+export const ACCESS_LEVEL: AccessLevel = parseAccessLevel(process.env.MCP_M365_ACCESS_LEVEL)
 
 const AUTH_PORT = Number.parseInt(process.env.MCP_M365_AUTH_PORT || '3333', 10)
 
@@ -88,9 +91,10 @@ export const AUDIT_LOG_PATH: string = process.env.MCP_M365_AUDIT_LOG_PATH?.trim(
   : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl')
 
 /**
- * Scope of tool invocations to record. Default `writes` logs state-mutating
- * tools only; `all` adds read-only ones; `off` disables logging entirely (the
- * wrapper short-circuits and never opens the file).
+ * Scope of tool invocations to record. Default `writes` logs any tool whose
+ * derived level is not `read` (i.e. `write` or `destructive`); `all` adds
+ * `read` too; `off` disables logging entirely (the wrapper short-circuits and
+ * never opens the file).
  */
 export type AuditLogMode = 'off' | 'writes' | 'all'
 
