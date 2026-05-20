@@ -188,6 +188,10 @@ bun install
 | `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
 | `MCP_M365_ACCESS_LEVEL` | no | `read` | Maximum tool access level to register. One of: `read` (default — 11 read-only tools, least privilege), `write` (adds 15 non-destructive mutations such as send-email, create-event, OneDrive upload — 26 tools total), `destructive` (adds 6 delete tools — all 32 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup. |
+| `MCP_M365_AUDIT_LOG` | no | `writes` | Audit-log scope. One of `off`, `writes` (record only non-read tool calls), `all` (record every invocation). |
+| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
+| `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
+| `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
 | `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
 
 **Notes:**
