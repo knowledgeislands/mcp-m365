@@ -78,6 +78,7 @@ const rotateIfNeeded = async (): Promise<void> => {
   try {
     size = (await fs.stat(AUDIT_LOG_PATH)).size
   } catch {
+    /* v8 ignore next — defensive: log was just appended; stat failing here is a TOCTOU race we accept */
     return
   }
   if (size <= AUDIT_LOG_MAX_BYTES) return

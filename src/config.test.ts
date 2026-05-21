@@ -103,3 +103,42 @@ describe('AUTH_CONFIG client credentials', () => {
     expect(AUTH_CONFIG.clientSecret).toBe('my-secret')
   })
 })
+
+describe('parseAccessLevel', () => {
+  afterEach(() => {
+    delete process.env.MCP_M365_ACCESS_LEVEL
+  })
+
+  it('throws on an unknown value', async () => {
+    process.env.MCP_M365_ACCESS_LEVEL = 'godmode'
+    await expect(import('./config.js')).rejects.toThrow(/Invalid MCP_M365_ACCESS_LEVEL="godmode"/)
+  })
+
+  it('accepts an explicit valid value', async () => {
+    process.env.MCP_M365_ACCESS_LEVEL = 'write'
+    const { ACCESS_LEVEL } = await import('./config.js')
+    expect(ACCESS_LEVEL).toBe('write')
+  })
+})
+
+describe('parseNonNegativeInt (via MCP_M365_AUDIT_LOG_MAX_BYTES)', () => {
+  afterEach(() => {
+    delete process.env.MCP_M365_AUDIT_LOG_MAX_BYTES
+  })
+
+  it('parses a valid integer', async () => {
+    process.env.MCP_M365_AUDIT_LOG_MAX_BYTES = '2048'
+    const { AUDIT_LOG_MAX_BYTES } = await import('./config.js')
+    expect(AUDIT_LOG_MAX_BYTES).toBe(2048)
+  })
+
+  it('throws on a non-numeric value', async () => {
+    process.env.MCP_M365_AUDIT_LOG_MAX_BYTES = 'oops'
+    await expect(import('./config.js')).rejects.toThrow(/Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="oops"/)
+  })
+
+  it('throws on a negative value', async () => {
+    process.env.MCP_M365_AUDIT_LOG_MAX_BYTES = '-5'
+    await expect(import('./config.js')).rejects.toThrow(/Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="-5"/)
+  })
+})

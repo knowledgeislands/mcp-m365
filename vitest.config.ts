@@ -27,11 +27,16 @@ export default defineConfig({
         'src/tools/index.ts',
         'src/tools/*/index.ts'
       ],
+      // Thresholds locked at the current achievable floor so future regressions
+      // break CI without requiring a full coverage push to 100%. m365 is the
+      // outlier of the sibling-MCP family (kb-fs/housekeeping/git-audit/gmail/
+      // voicenotes-edit all enforce 100/100/100/100) — see ROADMAP.md for the
+      // backlog of test work that would let m365 join them.
       thresholds: {
         lines: 95,
-        functions: 95,
-        branches: 80,
-        statements: 90
+        functions: 97,
+        branches: 85,
+        statements: 94
       }
     }
   }

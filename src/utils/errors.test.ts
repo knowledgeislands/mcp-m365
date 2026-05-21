@@ -15,6 +15,43 @@ describe('errMessage', () => {
     expect(errMessage(null)).toBe('null')
     expect(errMessage({ toString: () => 'custom' })).toBe('custom')
   })
+
+  it('formats Graph-style "HTTP <status>: <apiMsg>" when both are present', () => {
+    const err = { response: { status: 404, data: { error: { message: 'Not found' } } } }
+    expect(errMessage(err)).toBe('HTTP 404: Not found')
+  })
+
+  it('falls back to HTTP <status>: <e.message> when apiMsg is missing', () => {
+    const err = { statusCode: 500, message: 'Internal' }
+    expect(errMessage(err)).toBe('HTTP 500: Internal')
+  })
+
+  it('returns apiMsg alone when status is missing', () => {
+    const err = { response: { data: { error: { message: 'Just a message' } } } }
+    expect(errMessage(err)).toBe('Just a message')
+  })
+
+  it('returns e.message alone when both status and apiMsg are missing', () => {
+    expect(errMessage({ message: 'bare message' })).toBe('bare message')
+  })
+
+  it('extracts numeric status from a string code field', () => {
+    const err = { code: '503', message: 'Unavailable' }
+    expect(errMessage(err)).toBe('HTTP 503: Unavailable')
+  })
+
+  it('appends auth hint on 401 status', () => {
+    const err = { response: { status: 401, data: { error: { message: 'token expired' } } } }
+    expect(errMessage(err)).toContain('m365_auth_start')
+  })
+
+  it('appends auth hint when message hints at unauthorized', () => {
+    expect(errMessage(new Error('InvalidAuthenticationToken'))).toContain('m365_auth_start')
+  })
+
+  it('does not append auth hint on non-auth failures', () => {
+    expect(errMessage(new Error('rate limited'))).toBe('rate limited')
+  })
 })
 
 describe('errCode', () => {

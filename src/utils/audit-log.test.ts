@@ -167,4 +167,68 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     wrapped('unannotated_tool', {}, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     expect(calls).toEqual([])
   })
+
+  it('truncates args when the serialized form exceeds MAX_ARG_CHARS', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    await wrapped({ huge: 'x'.repeat(5000) })
+    await new Promise((r) => setTimeout(r, 20))
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.args._truncated).toBe(true)
+    expect(typeof event.args.preview).toBe('string')
+  })
+
+  it('rotates the audit log when it exceeds MCP_M365_AUDIT_LOG_MAX_BYTES (keeps history)', async () => {
+    process.env.MCP_M365_AUDIT_LOG_MAX_BYTES = '100'
+    process.env.MCP_M365_AUDIT_LOG_KEEP = '2'
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    for (let i = 0; i < 6; i++) await wrapped({ idx: i })
+    await new Promise((r) => setTimeout(r, 50))
+    await expect(fs.access(`${logPath}.1`)).resolves.toBeUndefined()
+    delete process.env.MCP_M365_AUDIT_LOG_MAX_BYTES
+    delete process.env.MCP_M365_AUDIT_LOG_KEEP
+  })
+
+  it('rotates by truncating the log when KEEP=0 (no history)', async () => {
+    process.env.MCP_M365_AUDIT_LOG_MAX_BYTES = '100'
+    process.env.MCP_M365_AUDIT_LOG_KEEP = '0'
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    for (let i = 0; i < 6; i++) await wrapped({ idx: i })
+    await new Promise((r) => setTimeout(r, 50))
+    await expect(fs.access(`${logPath}.1`)).rejects.toThrow()
+    delete process.env.MCP_M365_AUDIT_LOG_MAX_BYTES
+    delete process.env.MCP_M365_AUDIT_LOG_KEEP
+  })
+
+  it('records ok:false + error message when the handler throws', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => {
+      throw new Error('kaboom')
+    })
+    await expect(wrapped({ id: 'm1' })).rejects.toThrow(/kaboom/)
+    await new Promise((r) => setTimeout(r, 20))
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.ok).toBe(false)
+    expect(event.error).toBe('kaboom')
+  })
+
+  it('coerces non-Error thrown values via String() when recording the error field', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => {
+      throw 'bare string thrown'
+    })
+    await expect(wrapped({})).rejects.toBe('bare string thrown')
+    await new Promise((r) => setTimeout(r, 20))
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.error).toBe('bare string thrown')
+  })
+
+  it('swallows appendFile failures (e.g. path is a directory) without throwing', async () => {
+    await fs.mkdir(logPath, { recursive: true })
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog('m365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    await expect(wrapped({})).resolves.toBeDefined()
+  })
 })

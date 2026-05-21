@@ -30,6 +30,7 @@ export const errMessage = (error: unknown): string => {
     if (apiMsg) return withAuthHint(status, apiMsg)
     if (e.message) return withAuthHint(status, e.message)
   }
+  /* v8 ignore next — unreachable: the object branch above already handles `instanceof Error` (Error has a `message` field) */
   if (error instanceof Error) return withAuthHint(undefined, error.message)
   if (typeof error === 'string') return withAuthHint(undefined, error)
   return String(error)
