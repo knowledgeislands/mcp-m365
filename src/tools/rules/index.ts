@@ -3,7 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { ADDITIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
+import { READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleCreateRule } from './create.js'
 import { handleEditRuleSequence } from './edit-sequence.js'
 import { handleListRules } from './list.js'
@@ -39,7 +39,7 @@ export const registerRulesTools = (server: McpServer): void => {
           sequence: z.number().int().min(0).max(10000).optional().describe('Order in which the rule is executed (lower numbers run first, default: 100). Graph rejects negative values.')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleCreateRule
   )
@@ -54,7 +54,7 @@ export const registerRulesTools = (server: McpServer): void => {
           sequence: z.number().int().min(0).max(10000).describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
         })
         .strict(),
-      annotations: STATE_TOGGLE_REMOTE
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleEditRuleSequence
   )

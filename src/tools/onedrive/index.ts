@@ -3,7 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleDownload } from './download.js'
 import { handleCreateFolder, handleDeleteItem } from './folder.js'
 import { handleListFiles } from './list.js'
@@ -69,7 +69,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
           conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleUpload
   )
@@ -85,7 +85,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
           conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleUploadLarge
   )
@@ -102,7 +102,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
           scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleShare
   )
@@ -117,7 +117,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
           name: z.string().describe('Name of the new folder')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleCreateFolder
   )

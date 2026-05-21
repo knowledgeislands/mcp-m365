@@ -3,7 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleDeleteEmail } from './delete.js'
 import { handleDraftEmail } from './draft.js'
 import { handleListEmails } from './list.js'
@@ -85,7 +85,7 @@ export const registerEmailTools = (server: McpServer): void => {
           saveToSentItems: z.boolean().optional().describe('Whether to save the email to sent items')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleSendEmail
   )
@@ -104,7 +104,7 @@ export const registerEmailTools = (server: McpServer): void => {
           importance: z.enum(['normal', 'high', 'low']).optional().describe('Email importance (normal, high, low)')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleDraftEmail
   )
@@ -119,7 +119,7 @@ export const registerEmailTools = (server: McpServer): void => {
           isRead: z.boolean().optional().describe('Whether to mark as read (true) or unread (false). Default: true')
         })
         .strict(),
-      annotations: STATE_TOGGLE_REMOTE
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleMarkAsRead
   )

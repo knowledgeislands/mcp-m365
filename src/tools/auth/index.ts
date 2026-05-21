@@ -8,7 +8,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { tokenStorage } from '../../auth.js'
-import { ADDITIVE_REMOTE, READ_ONLY } from '../../utils/annotations.js'
+import { READ_ONLY, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
 
 export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
@@ -45,7 +45,7 @@ export const registerAuthTools = (server: McpServer): void => {
           force: z.boolean().optional().describe('Force re-authentication even if already authenticated')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleAuthenticate
   )

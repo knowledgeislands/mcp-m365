@@ -3,7 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleAcceptEvent } from './accept.js'
 import { handleCancelEvent } from './cancel.js'
 import { handleCreateEvent } from './create.js'
@@ -38,7 +38,7 @@ export const registerCalendarTools = (server: McpServer): void => {
           comment: z.string().optional().describe('Optional comment for accepting the event')
         })
         .strict(),
-      annotations: STATE_TOGGLE_REMOTE
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleAcceptEvent
   )
@@ -72,7 +72,7 @@ export const registerCalendarTools = (server: McpServer): void => {
           body: z.string().optional().describe('Optional body content for the event')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleCreateEvent
   )

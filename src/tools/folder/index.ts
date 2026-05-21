@@ -3,7 +3,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { ADDITIVE_REMOTE, DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, STATE_TOGGLE_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleCreateFolder } from './create.js'
 import { handleDeleteFolder } from './delete.js'
 import { handleListFolders } from './list.js'
@@ -36,7 +36,7 @@ export const registerFolderTools = (server: McpServer): void => {
           parentFolder: z.string().optional().describe('Optional parent folder path (default is root)')
         })
         .strict(),
-      annotations: ADDITIVE_REMOTE
+      annotations: WRITE_REMOTE
     },
     handleCreateFolder
   )
@@ -51,7 +51,7 @@ export const registerFolderTools = (server: McpServer): void => {
           newName: z.string().describe('New leaf name for the folder')
         })
         .strict(),
-      annotations: STATE_TOGGLE_REMOTE
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleRenameFolder
   )
@@ -82,7 +82,7 @@ export const registerFolderTools = (server: McpServer): void => {
           sourceFolder: z.string().optional().describe('Optional source folder path (default is inbox)')
         })
         .strict(),
-      annotations: STATE_TOGGLE_REMOTE
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleMoveEmails
   )
