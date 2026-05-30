@@ -1,9 +1,11 @@
 import crypto from 'node:crypto'
 import { promises as fs } from 'node:fs'
 import https from 'node:https'
+import os from 'node:os'
 import path from 'node:path'
 import querystring from 'node:querystring'
-import { AUTH_CONFIG, M365_DEFAULT_SCOPES } from './config.js'
+import type { Config } from '../../config/index.js'
+import { M365_DEFAULT_SCOPES } from '../../config/index.js'
 
 export interface TokenStorageConfig {
   tokenStorePath?: string
@@ -33,24 +35,26 @@ class TokenStorage {
   _refreshPromise: Promise<StoredTokens> | null
 
   constructor(config: TokenStorageConfig = {}) {
-    const tenantId = process.env.MCP_M365_TENANT_ID || 'common'
-    const authorityHost = (process.env.MCP_M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, '')
-
-    const clientId = process.env.MCP_M365_CLIENT_ID
-    const clientSecret = process.env.MCP_M365_CLIENT_SECRET
+    // Defaults below are only fallbacks for fields the caller omits. The MCP
+    // server and auth-server pass a fully-populated slice derived from
+    // `loadConfig()` (see `createTokenStorage(cfg)`), so in production nothing
+    // here is guessed. Tests construct with an explicit `config` literal.
+    const tenantId = 'common'
+    const authorityHost = 'https://login.microsoftonline.com'
 
     this.config = {
-      tokenStorePath: path.join(process.env.HOME || process.env.USERPROFILE || '', '.mcp-m365-tokens.json'),
-      clientId: clientId || '',
-      clientSecret: clientSecret || '',
-      redirectUri: AUTH_CONFIG.redirectUri,
-      // Use the canonical scope list from src/config.ts so the consent flow
-      // (auth-server) and the refresh flow (here) cannot drift. Microsoft's
-      // refresh endpoint treats `scope` as a subset request — a narrower list
-      // here would silently downgrade access tokens on first refresh.
-      scopes: process.env.MCP_M365_SCOPES ? process.env.MCP_M365_SCOPES.split(/\s+/).filter(Boolean) : M365_DEFAULT_SCOPES,
+      tokenStorePath: path.join(os.homedir() || '', '.mcp-m365-tokens.json'),
+      clientId: '',
+      clientSecret: '',
+      redirectUri: '',
+      // The canonical scope list lives in src/config/index.ts as
+      // M365_DEFAULT_SCOPES so the consent flow (auth-server) and the refresh
+      // flow (here) cannot drift. Microsoft's refresh endpoint treats `scope`
+      // as a subset request — a narrower list here would silently downgrade
+      // access tokens on first refresh.
+      scopes: M365_DEFAULT_SCOPES,
       tenantId,
-      tokenEndpoint: process.env.MCP_M365_TOKEN_ENDPOINT || `${authorityHost}/${tenantId}/oauth2/v2.0/token`,
+      tokenEndpoint: `${authorityHost}/${tenantId}/oauth2/v2.0/token`,
       refreshTokenBuffer: 5 * 60 * 1000,
       ...config
     } as Required<TokenStorageConfig>
@@ -317,10 +321,52 @@ class TokenStorage {
 export default TokenStorage
 
 /**
- * Shared `TokenStorage` instance.
- *
- * Both `registerAuthTools` (for `ensureAuthenticated`) and `handleCheckAuthStatus`
- * need to read the persisted token. Sharing one instance avoids duplicate
- * caches and keeps refresh deduplication working across callers.
+ * Build a `TokenStorage` from a loaded `Config`. The auth slice carries the
+ * OAuth client credentials, the redirect URI, the token endpoint, the scope
+ * list, and the on-disk token path — everything the refresh/exchange flows
+ * need. Nothing is read from `process.env` here.
  */
-export const tokenStorage = new TokenStorage()
+export const createTokenStorage = (cfg: Config): TokenStorage =>
+  new TokenStorage({
+    tokenStorePath: cfg.auth.tokenStorePath,
+    clientId: cfg.auth.clientId,
+    clientSecret: cfg.auth.clientSecret,
+    redirectUri: cfg.auth.redirectUri,
+    scopes: cfg.auth.scopes,
+    tenantId: cfg.auth.tenantId,
+    tokenEndpoint: cfg.auth.tokenEndpoint
+  })
+
+/**
+ * Process-lifetime shared `TokenStorage` instance.
+ *
+ * Both `ensureAuthenticated` and `handleCheckAuthStatus` need to read the
+ * persisted token; sharing one instance avoids duplicate caches and keeps
+ * refresh deduplication working across callers. The instance is created lazily
+ * from the injected `Config` on first use (NOT at import) via
+ * `initTokenStorage(cfg)`, called once by each server entry point at boot.
+ * `_resetTokenStorage()` clears the cache for test isolation.
+ */
+let sharedTokenStorage: TokenStorage | null = null
+
+/** Initialise (or replace) the shared instance from a loaded Config. Returns it. */
+export const initTokenStorage = (cfg: Config): TokenStorage => {
+  sharedTokenStorage = createTokenStorage(cfg)
+  return sharedTokenStorage
+}
+
+/**
+ * The shared instance. Throws if accessed before `initTokenStorage(cfg)` — a
+ * server entry point must initialise it at boot.
+ */
+export const getTokenStorage = (): TokenStorage => {
+  if (!sharedTokenStorage) {
+    throw new Error('TokenStorage not initialised — call initTokenStorage(loadConfig()) at startup.')
+  }
+  return sharedTokenStorage
+}
+
+/** Test hook: drop the cached shared instance so the next init starts clean. */
+export const _resetTokenStorage = (): void => {
+  sharedTokenStorage = null
+}

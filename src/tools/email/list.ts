@@ -1,8 +1,8 @@
 /**
  * List emails functionality
  */
-import config from '../../config.js'
-import { callGraphAPIPaginated } from '../../utils/graph-api.js'
+import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
+import { callGraphAPIPaginated } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
@@ -10,7 +10,7 @@ export const handleListEmails = async (args: any): Promise<any> => {
   const folder = args.folder || 'inbox'
   const folderId = args.folderId || ''
   const folderRef = folderId ? `folderId:${folderId}` : folder
-  const requestedCount = Math.max(1, Math.min(args.count || config.DEFAULT_LIST_SIZE, config.MAX_RESULT_COUNT))
+  const requestedCount = Math.max(1, Math.min(args.count || DEFAULT_LIST_SIZE, MAX_RESULT_COUNT))
   const includeCount = args.includeCount === true
   const listContext = {
     folder,
@@ -27,9 +27,9 @@ export const handleListEmails = async (args: any): Promise<any> => {
     const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(accessToken, folder)
 
     const queryParams: Record<string, any> = {
-      $top: Math.min(config.DEFAULT_PAGE_SIZE, requestedCount),
+      $top: Math.min(DEFAULT_PAGE_SIZE, requestedCount),
       $orderby: 'receivedDateTime desc',
-      $select: config.EMAIL_SELECT_FIELDS
+      $select: EMAIL_SELECT_FIELDS
     }
 
     if (includeCount) {

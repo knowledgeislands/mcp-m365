@@ -1,10 +1,10 @@
 import type { Mock, MockInstance } from 'vitest'
-import { callGraphAPIPaginated } from '../../utils/graph-api.js'
+import { callGraphAPIPaginated } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 import { handleSearchEmails } from './search.js'
 
-vi.mock('../../utils/graph-api', () => ({
+vi.mock('../../main/graph-client/index.js', () => ({
   callGraphAPIPaginated: vi.fn()
 }))
 vi.mock('../auth')

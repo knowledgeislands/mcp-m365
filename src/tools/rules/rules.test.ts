@@ -3,14 +3,14 @@
  */
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from '../folder/folder-utils.js'
 import { handleCreateRule } from './create.js'
 import { handleEditRuleSequence } from './edit-sequence.js'
 import { handleListRules } from './list.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../auth')
 vi.mock('../folder/folder-utils')
 

@@ -1,13 +1,18 @@
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { tokenStorage } from '../../auth.js'
+import { loadConfig } from '../../config/index.js'
+import { _resetTokenStorage, getTokenStorage, initTokenStorage } from '../../main/auth/index.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
+
+const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'test-client', MCP_M365_AUTH_PORT: '3333' } as NodeJS.ProcessEnv)
 
 let getTokensSpy: Mock
 let isExpiredSpy: Mock
 let consoleErrorSpy: MockInstance
 
 beforeEach(() => {
+  initTokenStorage(cfg)
+  const tokenStorage = getTokenStorage()
   getTokensSpy = vi.fn()
   isExpiredSpy = vi.fn()
   vi.spyOn(tokenStorage, 'getTokens').mockImplementation(getTokensSpy)
@@ -18,11 +23,12 @@ beforeEach(() => {
 afterEach(() => {
   vi.restoreAllMocks()
   consoleErrorSpy.mockRestore()
+  _resetTokenStorage()
 })
 
 describe('handleAbout', () => {
   it('returns server name, version, and module summary', async () => {
-    const r = await handleAbout()
+    const r = await handleAbout(cfg)
     expect(r.content[0].text).toMatch(/MCP M365 Server v/)
     expect(r.content[0].text).toContain('Outlook')
     expect(r.content[0].text).toContain('OneDrive')
@@ -31,7 +37,7 @@ describe('handleAbout', () => {
 
 describe('handleAuthenticate', () => {
   it('returns the auth URL', async () => {
-    const r = await handleAuthenticate({})
+    const r = await handleAuthenticate(cfg)
     expect(r.content[0].text).toMatch(/Please visit the following URL/)
     expect(r.content[0].text).toMatch(/client_id=/)
   })

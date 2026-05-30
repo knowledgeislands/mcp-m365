@@ -2,8 +2,8 @@
  * Create event functionality
  */
 
-import { DEFAULT_TIMEZONE } from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { DEFAULT_TIMEZONE } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleCreateEvent = async (args: any): Promise<any> => {

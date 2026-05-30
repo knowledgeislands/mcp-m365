@@ -4,7 +4,7 @@
  */
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { processHtmlEmail } from '../../utils/html-sanitizer.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { handleDeleteEmail } from './delete.js'
@@ -13,7 +13,7 @@ import { handleMarkAsRead } from './mark-as-read.js'
 import { handleReadEmail } from './read.js'
 import { handleSendEmail } from './send.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../../utils/html-sanitizer')
 vi.mock('../auth')
 

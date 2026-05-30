@@ -5,7 +5,7 @@ import { EventEmitter } from 'node:events'
 import https from 'node:https'
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { handleDownload } from './download.js'
 import { handleCreateFolder, handleDeleteItem } from './folder.js'
@@ -15,7 +15,7 @@ import { handleShare } from './share.js'
 import { handleUpload } from './upload.js'
 import { handleUploadLarge } from './upload-large.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../auth')
 vi.mock('node:https', () => ({
   default: { request: vi.fn() }

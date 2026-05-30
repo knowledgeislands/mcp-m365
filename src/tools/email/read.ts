@@ -4,8 +4,8 @@
  * Security: HTML emails are sanitized to remove hidden content that could
  * be used for prompt injection attacks. Only visible text is extracted.
  */
-import config from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { EMAIL_DETAIL_FIELDS } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { processHtmlEmail } from '../../utils/html-sanitizer.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
@@ -24,7 +24,7 @@ export const handleReadEmail = async (args: any): Promise<any> => {
 
     const endpoint = `me/messages/${encodeURIComponent(emailId)}`
     const queryParams = {
-      $select: config.EMAIL_DETAIL_FIELDS
+      $select: EMAIL_DETAIL_FIELDS
     }
 
     try {

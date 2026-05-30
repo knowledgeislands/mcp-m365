@@ -1,12 +1,12 @@
 /**
  * List events functionality
  */
-import config from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { CALENDAR_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleListEvents = async (args: any): Promise<any> => {
-  const count = Math.min(args.count || 10, config.MAX_RESULT_COUNT)
+  const count = Math.min(args.count || 10, MAX_RESULT_COUNT)
 
   try {
     const accessToken = await ensureAuthenticated()
@@ -32,7 +32,7 @@ export const handleListEvents = async (args: any): Promise<any> => {
       endDateTime: endDate.toISOString(),
       $top: count,
       $orderby: 'start/dateTime',
-      $select: config.CALENDAR_SELECT_FIELDS
+      $select: CALENDAR_SELECT_FIELDS
     }
 
     const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)

@@ -1,7 +1,7 @@
 /**
  * Create rule functionality
  */
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from '../folder/folder-utils.js'
 import { getInboxRules } from './list.js'

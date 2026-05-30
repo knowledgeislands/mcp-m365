@@ -1,8 +1,8 @@
 /**
  * OneDrive list files/folders functionality
  */
-import config from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
@@ -23,7 +23,7 @@ export const handleListFiles = async (args: any): Promise<any> => {
 
     const queryParams = {
       $top: Math.min(50, count),
-      $select: config.ONEDRIVE_SELECT_FIELDS,
+      $select: ONEDRIVE_SELECT_FIELDS,
       $orderby: 'name'
     }
 

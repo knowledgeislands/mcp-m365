@@ -2,9 +2,9 @@
  * Microsoft Graph API helper functions
  */
 import https from 'node:https'
-import config from '../config.js'
-import type { GraphResponse, GraphValue } from '../types.js'
-import { errMessage } from './errors.js'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
+import type { GraphResponse, GraphValue } from '../../types.js'
+import { errMessage } from '../../utils/errors.js'
 
 export const callGraphAPI = async <T = GraphResponse>(accessToken: string, method: string, path: string, data: unknown = null, queryParams: Record<string, unknown> = {}): Promise<T> => {
   try {
@@ -46,7 +46,7 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
         console.error(`Query string: ${queryString}`)
       }
 
-      finalUrl = `${config.GRAPH_API_ENDPOINT}${encodedPath}${queryString}`
+      finalUrl = `${GRAPH_API_ENDPOINT}${encodedPath}${queryString}`
       console.error(`Full URL: ${finalUrl}`)
     }
 
@@ -161,7 +161,7 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
 
 export const callGraphAPIDownload = async (accessToken: string, path: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const fullUrl = `${config.GRAPH_API_ENDPOINT}${path}`
+    const fullUrl = `${GRAPH_API_ENDPOINT}${path}`
     console.error(`Making download request: GET ${fullUrl}`)
 
     const options: https.RequestOptions = {

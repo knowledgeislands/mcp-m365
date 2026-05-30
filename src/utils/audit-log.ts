@@ -8,14 +8,24 @@
  * Path is configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
  * `~/.local/state/mcp-m365/audit.jsonl`.
  *
- * Failures to write the audit line are swallowed (stderr only) — a broken log
- * must never prevent a tool call from completing.
+ * The mode/path/size config is passed in as an `AuditConfig` (the audit slice
+ * of the loaded `Config`), keeping this util MCP-agnostic — nothing here reads
+ * env. Failures to write the audit line are swallowed (stderr only) — a broken
+ * log must never prevent a tool call from completing.
  */
 import * as fs from 'node:fs/promises'
 import * as path from 'node:path'
-import { type AccessLevel, AUDIT_LOG_KEEP, AUDIT_LOG_MAX_BYTES, AUDIT_LOG_MODE, AUDIT_LOG_PATH, SERVER_NAME } from '../config.js'
+import { type AccessLevel, type AuditLogMode, SERVER_NAME } from '../config/index.js'
 
-export type { AccessLevel } from '../config.js'
+export type { AccessLevel } from '../config/index.js'
+
+/** The audit-log slice of Config the caller passes in (keeps this util MCP-agnostic). */
+export interface AuditConfig {
+  mode: AuditLogMode
+  path: string
+  maxBytes: number
+  keep: number
+}
 
 export interface AuditEvent {
   ts: string
@@ -72,48 +82,48 @@ let chmodEnsured = false
  * `fs.rename`. Best-effort: any failure logs to stderr and leaves the file in
  * place so the next append still succeeds.
  */
-const rotateIfNeeded = async (): Promise<void> => {
-  if (AUDIT_LOG_MAX_BYTES === 0) return
+const rotateIfNeeded = async (audit: AuditConfig): Promise<void> => {
+  if (audit.maxBytes === 0) return
   let size: number
   try {
-    size = (await fs.stat(AUDIT_LOG_PATH)).size
+    size = (await fs.stat(audit.path)).size
   } catch {
     /* v8 ignore next — defensive: log was just appended; stat failing here is a TOCTOU race we accept */
     return
   }
-  if (size <= AUDIT_LOG_MAX_BYTES) return
+  if (size <= audit.maxBytes) return
   try {
-    if (AUDIT_LOG_KEEP > 0) {
-      await fs.rm(`${AUDIT_LOG_PATH}.${AUDIT_LOG_KEEP}`, { force: true })
-      for (let i = AUDIT_LOG_KEEP - 1; i >= 1; i--) {
+    if (audit.keep > 0) {
+      await fs.rm(`${audit.path}.${audit.keep}`, { force: true })
+      for (let i = audit.keep - 1; i >= 1; i--) {
         try {
-          await fs.rename(`${AUDIT_LOG_PATH}.${i}`, `${AUDIT_LOG_PATH}.${i + 1}`)
+          await fs.rename(`${audit.path}.${i}`, `${audit.path}.${i + 1}`)
         } catch {
           // missing slot — fine, rotation history may not be full yet
         }
       }
-      await fs.rename(AUDIT_LOG_PATH, `${AUDIT_LOG_PATH}.1`)
+      await fs.rename(audit.path, `${audit.path}.1`)
     } else {
-      await fs.rm(AUDIT_LOG_PATH, { force: true })
+      await fs.rm(audit.path, { force: true })
     }
   } catch (err) {
     console.error(`[audit-log] rotation failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
 
-const writeAuditEvent = async (event: AuditEvent): Promise<void> => {
+const writeAuditEvent = async (audit: AuditConfig, event: AuditEvent): Promise<void> => {
   try {
-    await fs.mkdir(path.dirname(AUDIT_LOG_PATH), { recursive: true })
-    await fs.appendFile(AUDIT_LOG_PATH, `${JSON.stringify(event)}\n`, { encoding: 'utf-8', mode: 0o600 })
+    await fs.mkdir(path.dirname(audit.path), { recursive: true })
+    await fs.appendFile(audit.path, `${JSON.stringify(event)}\n`, { encoding: 'utf-8', mode: 0o600 })
     if (!chmodEnsured) {
       try {
-        await fs.chmod(AUDIT_LOG_PATH, 0o600)
+        await fs.chmod(audit.path, 0o600)
       } catch {
         // best-effort — log may have been rotated/removed between write and chmod
       }
       chmodEnsured = true
     }
-    await rotateIfNeeded()
+    await rotateIfNeeded(audit)
   } catch (err) {
     console.error(`[audit-log] failed to write: ${err instanceof Error ? err.message : String(err)}`)
   }
@@ -125,8 +135,8 @@ const writeAuditEvent = async (event: AuditEvent): Promise<void> => {
 // errors are swallowed inside writeAuditEvent so the chain never rejects.
 let auditQueue: Promise<void> = Promise.resolve()
 
-export const appendAuditEvent = (event: AuditEvent): Promise<void> => {
-  auditQueue = auditQueue.then(() => writeAuditEvent(event))
+export const appendAuditEvent = (audit: AuditConfig, event: AuditEvent): Promise<void> => {
+  auditQueue = auditQueue.then(() => writeAuditEvent(audit, event))
   return auditQueue
 }
 
@@ -139,9 +149,9 @@ const extractErrorText = (result: unknown): string | undefined => {
   return first?.text
 }
 
-export const withAuditLog = (toolName: string, level: AccessLevel, callback: ToolCallback): ToolCallback => {
-  if (AUDIT_LOG_MODE === 'off') return callback
-  if (level === 'read' && AUDIT_LOG_MODE !== 'all') return callback
+export const withAuditLog = (audit: AuditConfig, toolName: string, level: AccessLevel, callback: ToolCallback): ToolCallback => {
+  if (audit.mode === 'off') return callback
+  if (level === 'read' && audit.mode !== 'all') return callback
   return async (...callbackArgs: unknown[]) => {
     const start = Date.now()
     const args = callbackArgs[0]
@@ -149,7 +159,7 @@ export const withAuditLog = (toolName: string, level: AccessLevel, callback: Too
       const result = await callback(...callbackArgs)
       const isError = typeof result === 'object' && result !== null && (result as { isError?: boolean }).isError === true
       const errText = isError ? extractErrorText(result) : undefined
-      void appendAuditEvent({
+      void appendAuditEvent(audit, {
         ts: new Date().toISOString(),
         server: SERVER_NAME,
         tool: toolName,
@@ -161,7 +171,7 @@ export const withAuditLog = (toolName: string, level: AccessLevel, callback: Too
       })
       return result
     } catch (err) {
-      void appendAuditEvent({
+      void appendAuditEvent(audit, {
         ts: new Date().toISOString(),
         server: SERVER_NAME,
         tool: toolName,

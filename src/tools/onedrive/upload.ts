@@ -1,8 +1,8 @@
 /**
  * OneDrive simple upload functionality (files < 4MB)
  */
-import config from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { ONEDRIVE_UPLOAD_THRESHOLD } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
@@ -24,7 +24,7 @@ export const handleUpload = async (args: any): Promise<any> => {
   }
 
   const contentSize = Buffer.byteLength(content, 'utf8')
-  if (contentSize > config.ONEDRIVE_UPLOAD_THRESHOLD) {
+  if (contentSize > ONEDRIVE_UPLOAD_THRESHOLD) {
     return {
       content: [{ type: 'text', text: `File is too large for simple upload (${formatSize(contentSize)}). Use onedrive-upload-large for files over 4MB.` }]
     }

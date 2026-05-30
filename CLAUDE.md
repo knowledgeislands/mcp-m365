@@ -7,19 +7,32 @@ Guidance for Claude Code when working in this repo. The user-facing tool surface
 This project uses Bun (≥ 1.3) for install and dev scripts, but the compiled `dist/` runs under Node (≥ 22) — that's what Claude Desktop launches.
 
 - `bun run test` (NOT `bun test` — the latter invokes Bun's own runner instead of vitest).
-- Bun auto-loads `.env.${NODE_ENV}` from the CWD; Node needs the explicit `process.loadEnvFile()` call in [src/config.ts](./src/config.ts). The try/catch swallows the `TypeError` Bun raises (no `process.loadEnvFile`), so the same code works under both.
+- Bun auto-loads `.env.${NODE_ENV}` from the CWD; Node needs the explicit `process.loadEnvFile()` call inside `loadConfig()` in [src/config/index.ts](./src/config/index.ts). The try/catch swallows the `TypeError` Bun raises (no `process.loadEnvFile`), so the same code works under both.
 - `NODE_ENV` is set to `development` only by `server:*:dev` and `server:mcp:inspect`. Claude Desktop doesn't set it, so `.env.*` is ignored in production — `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET` must come from the Claude Desktop config `env` block.
 
 Run `bun run` with no args for the full script list. `bun run test:smoke` boots the server over stdio and asserts the wire-level tool surface matches `EXPECTED_TOOLS` in [scripts/smoke.ts](./scripts/smoke.ts) — keep that list in sync when adding or removing tools.
 
 ## Architecture Invariants
 
+### Project layout & config injection (the workspace MCP shape)
+
+This is the canonical layout we roll out across the MCPs:
+
+- **[src/config/index.ts](./src/config/index.ts)** — `loadConfig(env?) → Config`. Reads env (optionally hydrated from `.env.${NODE_ENV}`) into a plain `Config` value. **There is no module-level config singleton — nothing reads `process.env` at import time.** Genuinely static, non-env constants (server name/version, `GRAPH_API_ENDPOINT`, the `$select` field lists, page-size defaults, `M365_DEFAULT_SCOPES`, `AccessLevel`/`AuditLogMode` types + rank tables) stay as plain module exports — they read no env and never differ per run.
+- **[src/mcp-server/index.ts](./src/mcp-server/index.ts)** — the stdio MCP wrapper. Calls `loadConfig()` once, then threads `Config` into the access gate, the shared token storage (`initTokenStorage(config)`), and tool registration. Startup logging reads from `config`.
+- **[src/auth-server/index.ts](./src/auth-server/index.ts)** — the OAuth callback server, a second top-level entry. Also calls `loadConfig()` once at boot and uses `config.auth`.
+- **[src/tools/](./src/tools/)** — MCP tool definitions, organised by `<service>` with per-action files + handlers. Thin: validate args, call into a `main/`/`utils/` function, map result/throw to an MCP envelope. The `index.ts` aggregators are excluded from coverage.
+- **[src/main/](./src/main/)** — implementation reusable outside the MCP server: `main/graph-client/index.ts` (the Microsoft Graph HTTP layer) and `main/auth/index.ts` (the hand-rolled token persistence/refresh + the config-injected `createTokenStorage(cfg)` factory).
+- **[src/utils/](./src/utils/)** — cross-MCP reusable helpers; keep in sync with sibling repos. These take the **specific config primitive/slice** they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), not the whole `Config`, so they stay MCP-agnostic.
+
+To use the code from a script: `const cfg = loadConfig(); const ts = createTokenStorage(cfg)`.
+
 ### Two processes
 
 - `mcp-m365` — the stdio MCP server (entry: `dist/mcp-server/index.js`).
 - `mcp-m365-auth` — long-running OAuth callback server on `:3333` (entry: `dist/auth-server/index.js`). Must be up to complete the `m365_auth_start` flow.
 
-Token persistence + refresh is hand-rolled in [src/auth.ts](./src/auth.ts) — no MSAL dependency.
+Token persistence + refresh is hand-rolled in [src/main/auth/index.ts](./src/main/auth/index.ts) — no MSAL dependency. The `TokenStorage` instance is **not** a module-level singleton: each entry point calls `initTokenStorage(loadConfig())` at boot, and `ensureAuthenticated()` / `handleCheckAuthStatus` read it via `getTokenStorage()` (which throws if accessed before init). `_resetTokenStorage()` is a test hook.
 
 ### Naming convention
 
@@ -27,7 +40,7 @@ Tool names follow `<app>_<service>_<resource>_<action>` (snake_case) with `<app>
 
 ### Access-level gate — driven by annotations, not names
 
-[src/utils/access-level.ts](./src/utils/access-level.ts) `makeAccessGatedRegister()` decides at startup whether to register each tool, based on `config.annotations`:
+[src/utils/access-level.ts](./src/utils/access-level.ts) `makeAccessGatedRegister(server, accessLevel, audit)` decides at startup whether to register each tool, based on `config.annotations`:
 
 - `readOnlyHint: true` → `read`
 - `destructiveHint: true` → `destructive`
@@ -40,7 +53,7 @@ A tool registers when its derived level is at or below `MCP_M365_ACCESS_LEVEL` (
 
 This server holds OAuth refresh tokens that grant Outlook read/write/send, Calendar read/write, and OneDrive read/write across the user's tenant. Token leakage = mailbox + drive compromise. Destructive Graph operations cannot be undone via Graph itself. New tools and changes to existing tools MUST preserve every invariant below.
 
-1. **Tokens are never logged.** [src/auth.ts](./src/auth.ts) logs status strings only — never token contents. `m365_auth_status` returns presence + scope + expiry only. If an error must be logged, extract only safe fields (`error.code`, `error.message`).
+1. **Tokens are never logged.** [src/main/auth/index.ts](./src/main/auth/index.ts) logs status strings only — never token contents. `m365_auth_status` returns presence + scope + expiry only. If an error must be logged, extract only safe fields (`error.code`, `error.message`).
 2. **Token persistence is atomic and `0600`.** `_saveTokensToFile()` writes to `<path>.tmp.<pid>.<rand>` then `fs.rename` into place; both temp and final files use `mode: 0o600`. Refresh and exchange flows both go through `_saveTokensToFile` — keep it that way.
 3. **Refresh deduplication.** `_refreshPromise` ensures concurrent `getValidAccessToken()` callers share a single refresh request. New auth code must preserve the dedupe — without it a burst of tool calls would race for token persistence.
 4. **All Zod schemas are `.strict()` with bounded numerics.** Already true; new schemas must continue this — e.g. `count` is `z.number().int().positive().max(50)` for calendar/onedrive listings, `.max(1000)` for email; `sequence` (rule ordering) is `.min(0).max(10000)`.
@@ -51,7 +64,7 @@ This server holds OAuth refresh tokens that grant Outlook read/write/send, Calen
 9. **No shell-string interpolation.** This server doesn't shell out. If a future tool needs to, use `execFile` with an argv array.
 10. **If a future tool writes Graph response bytes to disk, add a configurable download root** (e.g. `MCP_M365_DOWNLOAD_PATH`, default `~/Downloads`) and validate `outputPath` via a two-layer (lexical + realpath) helper, mirroring [`assertOutputPathWithinDownloadRoot()`](../mcp-gmail/src/utils/paths.ts) in mcp-gmail. Today, `m365_onedrive_item_download` returns a pre-authenticated URL rather than writing bytes.
 
-Atomic-write, mode-0600, redacted summary, and refresh-dedup tests live in [src/auth.test.ts](./src/auth.test.ts).
+Atomic-write, mode-0600, redacted summary, and refresh-dedup tests live in [src/main/auth/index.test.ts](./src/main/auth/index.test.ts).
 
 ## Tool registration call sites
 

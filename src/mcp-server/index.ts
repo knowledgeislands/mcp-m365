@@ -8,25 +8,39 @@
  * Uses the high-level `McpServer` from `@modelcontextprotocol/sdk` so each
  * tool is registered with a Zod input schema and tool annotations. Init,
  * tools/list, and tools/call are handled by the SDK.
+ *
+ * Config is loaded once here via `loadConfig()` and threaded into the access
+ * gate, the shared token storage, and every tool-registration function — no
+ * module reads `process.env` at import.
  */
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
-import config, { ACCESS_LEVEL } from '../config.js'
+import { loadConfig } from '../config/index.js'
+import { initTokenStorage } from '../main/auth/index.js'
 import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
 import { makeAccessGatedRegister } from '../utils/access-level.js'
 
-console.error(`${config.SERVER_NAME} starting...`)
-console.error(`  SERVER_NAME=${config.SERVER_NAME}`)
-console.error(`  MCP_M365_ACCESS_LEVEL=${ACCESS_LEVEL}`)
-console.error(`  MCP_M365_AUDIT_LOG=${config.AUDIT_LOG_MODE}${config.AUDIT_LOG_MODE === 'off' ? '' : ` (path: ${config.AUDIT_LOG_PATH})`}`)
+const config = loadConfig()
+
+console.error(`${config.serverName} starting...`)
+console.error(`  SERVER_NAME=${config.serverName}`)
+console.error(`  MCP_M365_ACCESS_LEVEL=${config.accessLevel}`)
+console.error(`  MCP_M365_AUDIT_LOG=${config.auditLogMode}${config.auditLogMode === 'off' ? '' : ` (path: ${config.auditLogPath})`}`)
+
+initTokenStorage(config)
 
 const server = new McpServer({
-  name: config.SERVER_NAME,
-  version: config.SERVER_VERSION
+  name: config.serverName,
+  version: config.serverVersion
 })
-server.registerTool = makeAccessGatedRegister(server)
+server.registerTool = makeAccessGatedRegister(server, config.accessLevel, {
+  mode: config.auditLogMode,
+  path: config.auditLogPath,
+  maxBytes: config.auditLogMaxBytes,
+  keep: config.auditLogKeep
+})
 
-registerAuthTools(server)
+registerAuthTools(server, config)
 registerCalendarTools(server)
 registerEmailTools(server)
 registerFolderTools(server)
@@ -40,7 +54,7 @@ process.on('SIGTERM', () => {
 const main = async (): Promise<void> => {
   const transport = new StdioServerTransport()
   await server.connect(transport)
-  console.error(`${config.SERVER_NAME} ready`)
+  console.error(`${config.serverName} ready`)
 }
 
 main().catch((error: Error) => {

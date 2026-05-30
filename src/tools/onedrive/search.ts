@@ -1,8 +1,8 @@
 /**
  * OneDrive search files functionality
  */
-import config from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleSearchFiles = async (args: any): Promise<any> => {
@@ -22,7 +22,7 @@ export const handleSearchFiles = async (args: any): Promise<any> => {
 
     const queryParams = {
       $top: Math.min(50, count),
-      $select: config.ONEDRIVE_SELECT_FIELDS
+      $select: ONEDRIVE_SELECT_FIELDS
     }
 
     const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)

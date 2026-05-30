@@ -1,8 +1,8 @@
 import type { Mock, MockInstance } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { fetchFoldersRecursive, getAllFolders, getFolderIdByName, resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 
-vi.mock('../../utils/graph-api', () => ({
+vi.mock('../../main/graph-client/index.js', () => ({
   callGraphAPI: vi.fn()
 }))
 

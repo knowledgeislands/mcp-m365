@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
-import { DEFAULT_TIMEZONE } from '../../config.js'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { DEFAULT_TIMEZONE } from '../../config/index.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { handleCreateEvent } from './create.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../auth')
 
 const mockCallGraphAPI = callGraphAPI as Mock

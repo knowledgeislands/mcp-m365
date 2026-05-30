@@ -7,22 +7,22 @@
  * material to the LLM.
  */
 
-import { tokenStorage } from '../../auth.js'
-import config from '../../config.js'
+import type { Config } from '../../config/index.js'
+import { getTokenStorage } from '../../main/auth/index.js'
 
-export const handleAbout = async (): Promise<any> => {
+export const handleAbout = async (cfg: Config): Promise<any> => {
   return {
     content: [
       {
         type: 'text',
-        text: `MCP M365 Server v${config.SERVER_VERSION}\n\nProvides access to Microsoft 365 services through Microsoft Graph API:\n- Outlook (email, calendar, folders, rules)\n- OneDrive (files, folders, sharing)\n\nModular architecture for improved maintainability.`
+        text: `MCP M365 Server v${cfg.serverVersion}\n\nProvides access to Microsoft 365 services through Microsoft Graph API:\n- Outlook (email, calendar, folders, rules)\n- OneDrive (files, folders, sharing)\n\nModular architecture for improved maintainability.`
       }
     ]
   }
 }
 
-export const handleAuthenticate = async (_args: any): Promise<any> => {
-  const authUrl = `${config.AUTH_CONFIG.authServerUrl}/auth?client_id=${config.AUTH_CONFIG.clientId}`
+export const handleAuthenticate = async (cfg: Config): Promise<any> => {
+  const authUrl = `${cfg.auth.authServerUrl}/auth?client_id=${cfg.auth.clientId}`
 
   return {
     content: [
@@ -35,6 +35,7 @@ export const handleAuthenticate = async (_args: any): Promise<any> => {
 }
 
 export const handleCheckAuthStatus = async (): Promise<any> => {
+  const tokenStorage = getTokenStorage()
   const tokens = await tokenStorage.getTokens()
 
   if (!tokens?.access_token) {

@@ -7,7 +7,8 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { tokenStorage } from '../../auth.js'
+import type { Config } from '../../config/index.js'
+import { getTokenStorage } from '../../main/auth/index.js'
 import { READ_ONLY, WRITE_REMOTE } from '../../utils/annotations.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
 
@@ -16,7 +17,7 @@ export const ensureAuthenticated = async (forceNew = false): Promise<string> => 
     throw new Error('Authentication required')
   }
 
-  const accessToken = await tokenStorage.getValidAccessToken()
+  const accessToken = await getTokenStorage().getValidAccessToken()
   if (!accessToken) {
     throw new Error('Authentication required')
   }
@@ -24,7 +25,7 @@ export const ensureAuthenticated = async (forceNew = false): Promise<string> => 
   return accessToken
 }
 
-export const registerAuthTools = (server: McpServer): void => {
+export const registerAuthTools = (server: McpServer, cfg: Config): void => {
   server.registerTool(
     'm365_about',
     {
@@ -32,7 +33,7 @@ export const registerAuthTools = (server: McpServer): void => {
       inputSchema: z.object({}).strict(),
       annotations: READ_ONLY
     },
-    handleAbout
+    () => handleAbout(cfg)
   )
 
   server.registerTool(
@@ -47,7 +48,7 @@ export const registerAuthTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleAuthenticate
+    () => handleAuthenticate(cfg)
   )
 
   server.registerTool(

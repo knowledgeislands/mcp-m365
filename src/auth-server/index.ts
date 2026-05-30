@@ -5,14 +5,10 @@ import http from 'node:http'
 import https from 'node:https'
 import querystring from 'node:querystring'
 import url from 'node:url'
-import { M365_DEFAULT_SCOPES, AUTH_CONFIG as SHARED_AUTH_CONFIG } from '../config.js'
+import { loadConfig } from '../config/index.js'
 import * as templates from './templates.js'
 
-try {
-  process.loadEnvFile(`./.env.${process.env.NODE_ENV}`)
-} catch {
-  // no .env present — that's fine
-}
+const config = loadConfig()
 
 console.log('Starting m365 Authentication Server')
 
@@ -29,25 +25,10 @@ setInterval(
   5 * 60 * 1000
 ).unref()
 
-const parseScopes = (raw: string | undefined): string[] => {
-  if (!raw?.trim()) return M365_DEFAULT_SCOPES
-  return raw
-    .split(/\s+/)
-    .map((s) => s.trim())
-    .filter(Boolean)
-}
-
-const AUTH_CONFIG = {
-  clientId: process.env.MCP_M365_CLIENT_ID || '',
-  clientSecret: process.env.MCP_M365_CLIENT_SECRET || '',
-  tenantId: process.env.MCP_M365_TENANT_ID || 'common',
-  authorityHost: (process.env.MCP_M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, ''),
-  redirectUri: SHARED_AUTH_CONFIG.redirectUri,
-  // Canonical scope list lives in src/config.ts as M365_DEFAULT_SCOPES so the
-  // consent flow (here) and the refresh flow (src/auth.ts) cannot drift.
-  scopes: parseScopes(process.env.MCP_M365_SCOPES),
-  tokenStorePath: SHARED_AUTH_CONFIG.tokenStorePath
-}
+// The OAuth slice of the loaded Config. The canonical scope list lives in
+// src/config/index.ts as M365_DEFAULT_SCOPES so the consent flow (here) and
+// the refresh flow (src/main/auth/index.ts) cannot drift.
+const AUTH_CONFIG = config.auth
 
 const server = http.createServer((req, res) => {
   const parsedUrl = url.parse(req.url ?? '/', true)
@@ -120,7 +101,7 @@ const server = http.createServer((req, res) => {
     res.end()
   } else if (pathname === '/') {
     res.writeHead(200, { 'Content-Type': 'text/html' })
-    res.end(templates.rootInfo(SHARED_AUTH_CONFIG.authServerUrl))
+    res.end(templates.rootInfo(AUTH_CONFIG.authServerUrl))
   } else {
     res.writeHead(404, { 'Content-Type': 'text/plain' })
     res.end('Not Found')
@@ -185,7 +166,7 @@ const exchangeCodeForTokens = (code: string): Promise<any> => {
   })
 }
 
-const PORT = SHARED_AUTH_CONFIG.authServerPort
+const PORT = AUTH_CONFIG.authServerPort
 server.listen(PORT, () => {
   console.log(`Authentication server running at http://localhost:${PORT}`)
   console.log(`Waiting for authentication callback at ${AUTH_CONFIG.redirectUri}`)

@@ -3,7 +3,7 @@
  */
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { handleCreateFolder } from './create.js'
 import { handleDeleteFolder } from './delete.js'
@@ -12,7 +12,7 @@ import { handleListFolders } from './list.js'
 import { handleMoveEmails } from './move.js'
 import { handleRenameFolder } from './rename.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../auth')
 vi.mock('./folder-utils')
 

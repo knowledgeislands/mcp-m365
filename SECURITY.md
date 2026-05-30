@@ -18,8 +18,8 @@ You should expect an acknowledgement within 72 hours. We aim to triage, investig
 
 In scope:
 
-- Authentication and token handling (`src/auth-server/`, `src/tools/auth/`).
-- Tools that call Microsoft Graph (`src/tools/calendar/`, `src/tools/email/`, `src/tools/folder/`, `src/tools/onedrive/`, `src/tools/rules/`).
+- Authentication and token handling (`src/auth-server/`, `src/tools/auth/`, `src/main/auth/`).
+- The Microsoft Graph HTTP client (`src/main/graph-client/`) and the tools that call it (`src/tools/calendar/`, `src/tools/email/`, `src/tools/folder/`, `src/tools/onedrive/`, `src/tools/rules/`).
 - HTML sanitization in `src/utils/html-sanitizer.ts` (used to render email bodies).
 
 Out of scope:

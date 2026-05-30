@@ -2,7 +2,7 @@
  * OneDrive chunked upload functionality (files > 4MB)
  */
 import https from 'node:https'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { ensureAuthenticated } from '../auth/index.js'
 

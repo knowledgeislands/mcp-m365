@@ -1,8 +1,4 @@
-import * as os from 'node:os'
-import * as path from 'node:path'
 import { defineConfig } from 'vitest/config'
-
-const TEST_ROOT = path.join(os.tmpdir(), 'knowledgeislands-tests')
 
 export default defineConfig({
   test: {
@@ -10,9 +6,6 @@ export default defineConfig({
     environment: 'node',
     include: ['src/**/*.test.ts'],
     fileParallelism: false,
-    env: {
-      ROOT_PATH: TEST_ROOT
-    },
     coverage: {
       provider: 'v8',
       reporter: ['text', 'lcov', 'html'],
@@ -25,7 +18,9 @@ export default defineConfig({
         'src/mcp-server/index.ts',
         'src/auth-server/**',
         'src/tools/index.ts',
-        'src/tools/*/index.ts'
+        'src/tools/*/index.ts',
+        // Pure-data annotation presets — no logic to cover.
+        'src/utils/annotations.ts'
       ],
       // Thresholds locked at the current achievable floor so future regressions
       // break CI without requiring a full coverage push to 100%. m365 is the

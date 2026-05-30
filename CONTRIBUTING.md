@@ -35,9 +35,10 @@ bun run lint:md             # prettier + markdownlint for *.md
 
 - **TypeScript ES modules** — `"type": "module"`, internal imports use `.js` extensions (e.g. `from './tools/calendar/list.js'`) so `tsc` emits valid JS.
 - **Arrow functions** for top-level declarations (`export const foo = () => …`).
-- **Strict path safety**: any tool input that touches the filesystem must go through `resolveWithinRoot(ROOT_PATH, …)` from `src/utils.ts`. Inputs that resolve outside the root throw `Path escapes root`.
-- **Errors**: tools return MCP errors via `errorResult(...)`; structured results via `jsonResult(...)`.
-- **Annotations**: be honest with `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` on every tool registration.
+- **Config injection, no env at import**: env is read only inside `loadConfig(env?)` in `src/config/index.ts`. Nothing reads `process.env` at module load. Entry points (`src/mcp-server/index.ts`, `src/auth-server/index.ts`) call `loadConfig()` once and thread the `Config` (or a slice) into the access gate, `initTokenStorage(config)`, and tool registration. `src/utils/*` helpers take the config primitive/slice they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), never the global env.
+- **OneDrive path safety**: any caller-supplied OneDrive path interpolated into a Graph endpoint must go through `sanitizeOneDrivePath()` from `src/utils/odata-helpers.ts` (rejects `:`/`\`/`.`/`..`/empty segments, `encodeURIComponent`s the rest).
+- **Errors**: tools surface Graph errors via `errorResult(action, err)` (so the 401 auth hint is appended by `errMessage()` in `src/utils/errors.ts`).
+- **Annotations**: be honest with `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` on every tool registration — the access gate derives each tool's level from them.
 
 ### Commits
 
@@ -61,7 +62,7 @@ Add `!` for breaking changes (`feat!:` / `fix!:`) — bumps major.
 ### Testing
 
 - New code should ship with tests. Vitest is configured with V8 coverage and has thresholds in `vitest.config.ts` — if your change drops coverage below the threshold, CI fails.
-- File-level isolation: tests share `ROOT_PATH` (set to a tmpdir in `vitest.config.ts`), so tests should clean up after themselves with `beforeEach`/`afterEach`.
+- File-level isolation: config is injected, so most tests build a `Config`/`AuditConfig` literal (or call `loadConfig(env)` with an explicit env slice) instead of mutating `process.env`. A couple of modules keep process-lifetime caches (the audit-log append queue + `chmodEnsured` flag, the shared `TokenStorage`); their tests `vi.resetModules()` or call the `_resetTokenStorage()` hook. Tests that touch the filesystem clean up after themselves with `beforeEach`/`afterEach`.
 
 ## Before opening a PR
 

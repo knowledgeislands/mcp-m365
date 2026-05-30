@@ -1,15 +1,15 @@
 /**
  * Improved search emails functionality
  */
-import config from '../../config.js'
-import { callGraphAPIPaginated } from '../../utils/graph-api.js'
+import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
+import { callGraphAPIPaginated } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
 export const handleSearchEmails = async (args: any): Promise<any> => {
   const folder = args.folder || 'inbox'
   const folderId = args.folderId || ''
-  const requestedCount = Math.max(1, Math.min(args.count || config.DEFAULT_LIST_SIZE, config.MAX_RESULT_COUNT))
+  const requestedCount = Math.max(1, Math.min(args.count || DEFAULT_LIST_SIZE, MAX_RESULT_COUNT))
   const query = args.query || ''
   const from = args.from || ''
   const to = args.to || ''
@@ -115,7 +115,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
   const searchErrors: string[] = []
 
   try {
-    const params = buildSearchParams(searchTerms, filterTerms, Math.min(config.DEFAULT_PAGE_SIZE, maxCount))
+    const params = buildSearchParams(searchTerms, filterTerms, Math.min(DEFAULT_PAGE_SIZE, maxCount))
     console.error('Attempting combined search with params:', params)
     searchAttempts.push('combined-search')
 
@@ -138,8 +138,8 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
         searchAttempts.push(`single-term-${term}`)
 
         const simplifiedParams: Record<string, any> = {
-          $top: Math.min(config.DEFAULT_PAGE_SIZE, maxCount),
-          $select: config.EMAIL_SELECT_FIELDS
+          $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
+          $select: EMAIL_SELECT_FIELDS
         }
 
         const kqlParts: string[] = []
@@ -172,8 +172,8 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
       searchAttempts.push('boolean-filters-only')
 
       const filterOnlyParams: Record<string, any> = {
-        $top: Math.min(config.DEFAULT_PAGE_SIZE, maxCount),
-        $select: config.EMAIL_SELECT_FIELDS,
+        $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
+        $select: EMAIL_SELECT_FIELDS,
         $orderby: 'receivedDateTime desc'
       }
 
@@ -192,8 +192,8 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
   searchAttempts.push('recent-emails')
 
   const basicParams: Record<string, any> = {
-    $top: Math.min(config.DEFAULT_PAGE_SIZE, maxCount),
-    $select: config.EMAIL_SELECT_FIELDS,
+    $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
+    $select: EMAIL_SELECT_FIELDS,
     $orderby: 'receivedDateTime desc'
   }
 
@@ -220,7 +220,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
 const buildSearchParams = (searchTerms: any, filterTerms: any, count: number): Record<string, any> => {
   const params: Record<string, any> = {
     $top: count,
-    $select: config.EMAIL_SELECT_FIELDS
+    $select: EMAIL_SELECT_FIELDS
   }
 
   const kqlTerms: string[] = []

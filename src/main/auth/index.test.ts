@@ -3,7 +3,8 @@ import https from 'node:https'
 import path from 'node:path'
 import querystring from 'node:querystring'
 import type { Mock } from 'vitest'
-import TokenStorage from './auth.js'
+import { loadConfig } from '../../config/index.js'
+import TokenStorage, { _resetTokenStorage, createTokenStorage, getTokenStorage, initTokenStorage } from './index.js'
 
 vi.mock('fs', () => ({
   promises: {
@@ -557,6 +558,33 @@ describe('TokenStorage', () => {
 
       expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting token file:', expect.any(Error))
       consoleErrorSpy.mockRestore()
+    })
+  })
+
+  describe('config-injected factory + shared instance', () => {
+    afterEach(() => {
+      _resetTokenStorage()
+    })
+
+    it('createTokenStorage maps the Config auth slice onto TokenStorage config', () => {
+      const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
+      const ts = createTokenStorage(cfg)
+      expect(ts.config.clientId).toBe('cid')
+      expect(ts.config.clientSecret).toBe('sec')
+      expect(ts.config.tokenStorePath).toBe('/mock/home/.mcp-m365-tokens.json')
+      expect(ts.config.scopes).toEqual(cfg.auth.scopes)
+      expect(ts.config.tokenEndpoint).toBe(cfg.auth.tokenEndpoint)
+    })
+
+    it('getTokenStorage throws before initTokenStorage is called', () => {
+      _resetTokenStorage()
+      expect(() => getTokenStorage()).toThrow(/TokenStorage not initialised/)
+    })
+
+    it('initTokenStorage caches a shared instance returned by getTokenStorage', () => {
+      const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
+      const created = initTokenStorage(cfg)
+      expect(getTokenStorage()).toBe(created)
     })
   })
 })

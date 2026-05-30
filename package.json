@@ -30,6 +30,25 @@
   "engines": {
     "node": ">=22.0.0"
   },
+  "exports": {
+    ".": {
+      "types": "./dist/mcp-server/index.d.ts",
+      "import": "./dist/mcp-server/index.js"
+    },
+    "./config": {
+      "types": "./dist/config/index.d.ts",
+      "import": "./dist/config/index.js"
+    },
+    "./auth": {
+      "types": "./dist/main/auth/index.d.ts",
+      "import": "./dist/main/auth/index.js"
+    },
+    "./graph-client": {
+      "types": "./dist/main/graph-client/index.d.ts",
+      "import": "./dist/main/graph-client/index.js"
+    },
+    "./package.json": "./package.json"
+  },
   "files": [
     "dist"
   ],

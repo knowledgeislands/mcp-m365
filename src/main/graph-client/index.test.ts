@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import https from 'node:https'
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI, callGraphAPIDownload, callGraphAPIPaginated } from './graph-api.js'
+import { callGraphAPI, callGraphAPIDownload, callGraphAPIPaginated } from './index.js'
 
 vi.mock('node:https', () => ({
   default: { request: vi.fn() }

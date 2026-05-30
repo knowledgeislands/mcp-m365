@@ -4,7 +4,7 @@
  */
 import type { Mock, MockInstance } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { handleAcceptEvent } from './accept.js'
 import { handleCancelEvent } from './cancel.js'
@@ -12,7 +12,7 @@ import { handleDeclineEvent } from './decline.js'
 import { handleDeleteEvent } from './delete.js'
 import { handleListEvents } from './list.js'
 
-vi.mock('../../utils/graph-api')
+vi.mock('../../main/graph-client/index.js')
 vi.mock('../auth')
 
 const mockCallGraphAPI = callGraphAPI as Mock

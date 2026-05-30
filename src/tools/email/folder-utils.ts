@@ -1,7 +1,7 @@
 /**
  * Email folder utilities
  */
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 
 export const WELL_KNOWN_FOLDERS = {
   inbox: 'me/mailFolders/inbox/messages',

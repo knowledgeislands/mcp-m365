@@ -1,7 +1,7 @@
 /**
  * Accept event functionality
  */
-import { callGraphAPI } from '../../utils/graph-api.js'
+import { callGraphAPI } from '../../main/graph-client/index.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleAcceptEvent = async (args: any): Promise<any> => {
