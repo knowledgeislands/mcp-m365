@@ -18,6 +18,14 @@ An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 s
 
 Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
 
+### Auth & meta
+
+| Tool               | Description                                                                              |
+| ------------------ | ---------------------------------------------------------------------------------------- |
+| `m365_about`       | Returns information about this MCP M365 server.                                          |
+| `m365_auth_start`  | Initiate the OAuth flow and persist tokens to disk (registered at the `write` level).    |
+| `m365_auth_status` | Check authentication status — presence + scope/expiry metadata only, never token values. |
+
 ### Outlook (Email & Calendar)
 
 | Tool | Description |
@@ -185,14 +193,17 @@ bun install
 | `MCP_M365_TENANT_ID` | recommended | `common` | Directory (tenant) ID. Set explicitly for single-tenant apps to avoid `/common` endpoint errors. |
 | `MCP_M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.). |
 | `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
-| `MCP_M365_SCOPES` | no | `offline_access User.Read Mail.Read` | Space-separated OAuth scopes requested for the access token. |
+| `MCP_M365_AUTH_PORT` | no | `3333` | Port the auth server listens on. Must match the redirect URI port. |
+| `MCP_M365_SCOPES` | no | † | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
 | `MCP_M365_ACCESS_LEVEL` | no | `read` | Maximum tool access level to register. One of: `read` (default — 11 read-only tools, least privilege), `write` (adds 15 non-destructive mutations such as send-email, create-event, OneDrive upload — 26 tools total), `destructive` (adds 6 delete tools — all 32 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup. |
 | `MCP_M365_AUDIT_LOG` | no | `writes` | Audit-log scope. One of `off`, `writes` (record only non-read tool calls), `all` (record every invocation). |
 | `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
 | `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
-| `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config.ts`](./src/config.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
+| `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config/index.ts`](./src/config/index.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
+
+† Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
 
 **Notes:**
 
@@ -230,7 +241,7 @@ bun run server:mcp:dev    # MCP server
 bun run server:auth:dev   # OAuth server on :3333
 ```
 
-The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`, and [`src/config.ts`](./src/config.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up `.env.development` from the CWD automatically (Bun also auto-loads `.env.development` natively). Claude Desktop does not set `NODE_ENV`, so the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
+The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`, and `loadConfig()` in [`src/config/index.ts`](./src/config/index.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up `.env.development` from the CWD automatically (Bun also auto-loads `.env.development` natively). Claude Desktop does not set `NODE_ENV`, so the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
 
 ## Authentication
 
@@ -265,7 +276,7 @@ bun run lint:md            # prettier + markdownlint for *.md
 - OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
 - The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
 - Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
-- Every Graph API call goes through [`src/utils/graph-api.ts`](./src/utils/graph-api.ts), which centralises retries and 401 → token-refresh handling.
+- Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
 
 ## Directory Structure
 
@@ -274,27 +285,32 @@ bun run lint:md            # prettier + markdownlint for *.md
 ├── package.json
 ├── tsconfig.json                    # Base TS config
 ├── tsconfig.build.json              # Build config (emits to dist/)
-├── .env.example                     # Template for M365_* vars (copy to .env.development)
+├── .env.example                     # Template for MCP_M365_* vars (copy to .env.development)
 ├── src/
-│   ├── config.ts                    # Centralised configuration + .env.development loader
-│   ├── auth-server/index.ts         # Standalone OAuth server (port 3333)
+│   ├── config/index.ts              # loadConfig(env?) → Config; no module-level env reads
 │   ├── mcp-server/index.ts          # MCP server entry point
+│   ├── auth-server/index.ts         # Standalone OAuth callback server (port 3333)
+│   ├── main/                        # Implementation reusable outside the MCP server
+│   │   ├── auth/index.ts            # Token persistence/refresh + createTokenStorage(cfg)
+│   │   └── graph-client/index.ts    # Microsoft Graph HTTP layer (retries + refresh)
 │   ├── tools/                       # Tool modules + aggregator
 │   │   ├── index.ts                 # Central tools export
-│   │   ├── auth/                    # OAuth tools + token manager/storage
+│   │   ├── auth/                    # OAuth tools (m365_auth_start / m365_auth_status)
 │   │   ├── calendar/                # Calendar tools
 │   │   ├── email/                   # Email tools
 │   │   ├── folder/                  # Mail folder tools
 │   │   ├── rules/                   # Inbox rules tools
 │   │   └── onedrive/                # OneDrive tools
 │   └── utils/
-│       ├── graph-api.ts             # Microsoft Graph API helper (retries + refresh)
+│       ├── access-level.ts          # Access-level gate (registers tools ≤ MCP_M365_ACCESS_LEVEL)
+│       ├── annotations.ts           # MCP annotation presets
+│       ├── audit-log.ts             # JSONL audit log + size-based rotation
 │       ├── html-sanitizer.ts        # HTML body sanitisation
 │       └── odata-helpers.ts         # OData query building
 └── dist/                            # Build output (gitignored, created by `bun run build`)
 ```
 
-`src/auth-server/` is the standalone OAuth server and its tests. `src/tools/auth/` is the tool-layer counterpart — token storage/refresh utilities consumed by the MCP server. They're deliberately decoupled so the auth server can run independently of the MCP server.
+`src/auth-server/` is the standalone OAuth callback server and its tests; `src/main/auth/` is the reusable token storage/refresh layer (the config-injected `createTokenStorage(cfg)` factory) consumed by both entry points. They're deliberately decoupled so the auth server can run independently of the MCP server. Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate, token storage, and tool registration — nothing reads `process.env` at import time.
 
 ## Troubleshooting
 
@@ -327,4 +343,4 @@ Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `m365_auth_start` t
 4. Re-export it from [`src/tools/index.ts`](./src/tools/index.ts).
 5. Wire it into [`src/mcp-server/index.ts`](./src/mcp-server/index.ts) alongside the existing `register*Tools(...)` calls.
 
-Route every Graph API call through [`src/utils/graph-api.ts`](./src/utils/graph-api.ts) so token refresh and error handling stay consistent.
+Route every Graph API call through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts) so token refresh and error handling stay consistent.
