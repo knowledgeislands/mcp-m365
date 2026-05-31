@@ -77,7 +77,7 @@ export const registerFolderTools = (server: McpServer): void => {
       description: 'Moves emails from one folder to another',
       inputSchema: z
         .object({
-          emailIds: z.string().describe('Comma-separated list of email IDs to move'),
+          emailIds: z.string().min(1).max(8192).describe('Comma-separated list of email IDs to move'),
           targetFolder: z.string().describe('Folder path to move emails to'),
           sourceFolder: z.string().optional().describe('Optional source folder path (default is inbox)')
         })

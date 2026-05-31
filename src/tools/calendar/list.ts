@@ -3,6 +3,7 @@
  */
 import { CALENDAR_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleListEvents = async (args: any): Promise<any> => {
@@ -15,14 +16,7 @@ export const handleListEvents = async (args: any): Promise<any> => {
     const endDate = args.endDateTime ? new Date(args.endDateTime) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Invalid date range. Provide valid startDateTime/endDateTime with endDateTime > startDateTime.'
-          }
-        ]
-      }
+      return errorText('Invalid date range. Provide valid startDateTime/endDateTime with endDateTime > startDateTime.')
     }
 
     const endpoint = 'me/calendarView'
@@ -90,14 +84,10 @@ export const handleListEvents = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error listing events: ${error.message}` }]
-    }
+    return errorText(`Error listing events: ${error.message}`)
   }
 }
 

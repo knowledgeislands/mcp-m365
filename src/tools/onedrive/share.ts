@@ -3,6 +3,7 @@
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleShare = async (args: any): Promise<any> => {
@@ -12,9 +13,7 @@ export const handleShare = async (args: any): Promise<any> => {
   const scope = args.scope || 'anonymous'
 
   if (!itemId && !path) {
-    return {
-      content: [{ type: 'text', text: 'Either itemId or path is required.' }]
-    }
+    return errorText('Either itemId or path is required.')
   }
 
   try {
@@ -28,16 +27,14 @@ export const handleShare = async (args: any): Promise<any> => {
       const itemResponse = await callGraphAPI(accessToken, 'GET', itemEndpoint)
 
       if (!itemResponse?.id) {
-        return {
-          content: [{ type: 'text', text: `File not found at path: ${path}` }]
-        }
+        return errorText(`File not found at path: ${path}`)
       }
 
       resolvedItemId = itemResponse.id
       itemName = itemResponse.name
     }
 
-    const endpoint = `me/drive/items/${resolvedItemId}/createLink`
+    const endpoint = `me/drive/items/${encodeURIComponent(resolvedItemId)}/createLink`
     const body = {
       type: type,
       scope: scope
@@ -46,9 +43,7 @@ export const handleShare = async (args: any): Promise<any> => {
     const response = await callGraphAPI(accessToken, 'POST', endpoint, body)
 
     if (!response?.link) {
-      return {
-        content: [{ type: 'text', text: 'Failed to create sharing link.' }]
-      }
+      return errorText('Failed to create sharing link.')
     }
 
     const linkInfo = response.link
@@ -64,14 +59,10 @@ export const handleShare = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error creating sharing link: ${error.message}` }]
-    }
+    return errorText(`Error creating sharing link: ${error.message}`)
   }
 }
 

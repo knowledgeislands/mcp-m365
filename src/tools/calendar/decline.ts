@@ -2,15 +2,14 @@
  * Decline event functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleDeclineEvent = async (args: any): Promise<any> => {
   const { eventId, comment, dry_run = true } = args
 
   if (!eventId) {
-    return {
-      content: [{ type: 'text', text: 'Event ID is required to decline an event.' }]
-    }
+    return errorText('Event ID is required to decline an event.')
   }
 
   try {
@@ -37,14 +36,10 @@ export const handleDeclineEvent = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error declining event: ${error.message}` }]
-    }
+    return errorText(`Error declining event: ${error.message}`)
   }
 }
 

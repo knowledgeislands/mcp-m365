@@ -3,6 +3,7 @@
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleCreateFolder = async (args: any): Promise<any> => {
@@ -10,9 +11,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
   const name = args.name
 
   if (!name) {
-    return {
-      content: [{ type: 'text', text: 'Folder name is required.' }]
-    }
+    return errorText('Folder name is required.')
   }
 
   try {
@@ -34,9 +33,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
     const response = await callGraphAPI(accessToken, 'POST', endpoint, body)
 
     if (!response?.id) {
-      return {
-        content: [{ type: 'text', text: 'Failed to create folder.' }]
-      }
+      return errorText('Failed to create folder.')
     }
 
     return {
@@ -49,14 +46,10 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error creating folder: ${error.message}` }]
-    }
+    return errorText(`Error creating folder: ${error.message}`)
   }
 }
 
@@ -66,9 +59,7 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
   const dry_run = args.dry_run !== false
 
   if (!itemId && !path) {
-    return {
-      content: [{ type: 'text', text: 'Either itemId or path is required.' }]
-    }
+    return errorText('Either itemId or path is required.')
   }
 
   try {
@@ -84,9 +75,7 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
     const itemInfo = await callGraphAPI(accessToken, 'GET', endpoint)
 
     if (!itemInfo?.id) {
-      return {
-        content: [{ type: 'text', text: 'Item not found.' }]
-      }
+      return errorText('Item not found.')
     }
 
     const itemName = itemInfo.name
@@ -116,13 +105,9 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error deleting item: ${error.message}` }]
-    }
+    return errorText(`Error deleting item: ${error.message}`)
   }
 }

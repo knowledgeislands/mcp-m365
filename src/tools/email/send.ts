@@ -2,27 +2,22 @@
  * Send email functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleSendEmail = async (args: any): Promise<any> => {
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, isHtml } = args
 
   if (!to) {
-    return {
-      content: [{ type: 'text', text: 'Recipient (to) is required.' }]
-    }
+    return errorText('Recipient (to) is required.')
   }
 
   if (!subject) {
-    return {
-      content: [{ type: 'text', text: 'Subject is required.' }]
-    }
+    return errorText('Subject is required.')
   }
 
   if (!body) {
-    return {
-      content: [{ type: 'text', text: 'Body content is required.' }]
-    }
+    return errorText('Body content is required.')
   }
 
   try {
@@ -76,14 +71,10 @@ export const handleSendEmail = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error sending email: ${error.message}` }]
-    }
+    return errorText(`Error sending email: ${error.message}`)
   }
 }
 

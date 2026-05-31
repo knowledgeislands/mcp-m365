@@ -3,6 +3,7 @@
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleDownload = async (args: any): Promise<any> => {
@@ -10,9 +11,7 @@ export const handleDownload = async (args: any): Promise<any> => {
   const path = args.path
 
   if (!itemId && !path) {
-    return {
-      content: [{ type: 'text', text: 'Either itemId or path is required.' }]
-    }
+    return errorText('Either itemId or path is required.')
   }
 
   try {
@@ -32,23 +31,17 @@ export const handleDownload = async (args: any): Promise<any> => {
     const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
 
     if (!response) {
-      return {
-        content: [{ type: 'text', text: 'File not found.' }]
-      }
+      return errorText('File not found.')
     }
 
     const downloadUrl = response['@microsoft.graph.downloadUrl']
 
     if (!downloadUrl) {
       if (response.folder) {
-        return {
-          content: [{ type: 'text', text: `"${response.name}" is a folder and cannot be downloaded directly.` }]
-        }
+        return errorText(`"${response.name}" is a folder and cannot be downloaded directly.`)
       }
 
-      return {
-        content: [{ type: 'text', text: 'Could not get download URL for this item.' }]
-      }
+      return errorText('Could not get download URL for this item.')
     }
 
     return {
@@ -61,14 +54,10 @@ export const handleDownload = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error getting download URL: ${error.message}` }]
-    }
+    return errorText(`Error getting download URL: ${error.message}`)
   }
 }
 

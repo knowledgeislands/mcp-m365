@@ -4,6 +4,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import { graphIdSchema } from '../../utils/odata-helpers.js'
 import { handleDeleteEmail } from './delete.js'
 import { handleDraftEmail } from './draft.js'
 import { handleListEmails } from './list.js'
@@ -20,7 +21,7 @@ export const registerEmailTools = (server: McpServer): void => {
       inputSchema: z
         .object({
           folder: z.string().optional().describe("Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: z.string().optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           count: z.number().int().positive().max(1000).optional().describe('Number of emails to retrieve (default: 10, max: 1000)'),
           includeCount: z.boolean().optional().describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
         })
@@ -38,7 +39,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .object({
           query: z.string().optional().describe('Search query text to find in emails'),
           folder: z.string().optional().describe("Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: z.string().optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           from: z.string().optional().describe('Filter by sender email address or name'),
           to: z.string().optional().describe('Filter by recipient email address or name'),
           subject: z.string().optional().describe('Filter by email subject'),
@@ -60,7 +61,7 @@ export const registerEmailTools = (server: McpServer): void => {
       description: 'Reads the content of a specific email. HTML emails are securely sanitized to extract only visible text, preventing prompt injection attacks via hidden content.',
       inputSchema: z
         .object({
-          id: z.string().describe('ID of the email to read'),
+          id: graphIdSchema.describe('ID of the email to read'),
           includeRawHtml: z.boolean().optional().describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
         })
         .strict(),
@@ -115,7 +116,7 @@ export const registerEmailTools = (server: McpServer): void => {
       description: 'Marks an email as read or unread',
       inputSchema: z
         .object({
-          id: z.string().describe('ID of the email to mark as read/unread'),
+          id: graphIdSchema.describe('ID of the email to mark as read/unread'),
           isRead: z.boolean().optional().describe('Whether to mark as read (true) or unread (false). Default: true')
         })
         .strict(),
@@ -131,7 +132,7 @@ export const registerEmailTools = (server: McpServer): void => {
         'Deletes an email by moving it to Deleted Items (trash). Use permanent=true to hard delete. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the message metadata and returns subject/sender/date.',
       inputSchema: z
         .object({
-          id: z.string().min(1).describe('ID of the email to delete'),
+          id: graphIdSchema.describe('ID of the email to delete'),
           permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
           dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })

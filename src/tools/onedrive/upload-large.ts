@@ -4,6 +4,7 @@
 import https from 'node:https'
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 const CHUNK_SIZE = 320 * 1024 * 10
@@ -14,15 +15,11 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
   const conflictBehavior = args.conflictBehavior || 'rename'
 
   if (!path) {
-    return {
-      content: [{ type: 'text', text: "Path is required (e.g., '/Documents/largefile.zip')." }]
-    }
+    return errorText("Path is required (e.g., '/Documents/largefile.zip').")
   }
 
   if (!content) {
-    return {
-      content: [{ type: 'text', text: 'Content is required.' }]
-    }
+    return errorText('Content is required.')
   }
 
   try {
@@ -40,9 +37,7 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
     const sessionResponse = await callGraphAPI(accessToken, 'POST', sessionEndpoint, sessionBody)
 
     if (!sessionResponse?.uploadUrl) {
-      return {
-        content: [{ type: 'text', text: 'Failed to create upload session.' }]
-      }
+      return errorText('Failed to create upload session.')
     }
 
     const uploadUrl = sessionResponse.uploadUrl
@@ -57,9 +52,7 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
       response = await uploadChunk(uploadUrl, chunk, offset, chunkEnd - 1, fileSize)
 
       if (response.error) {
-        return {
-          content: [{ type: 'text', text: `Upload failed at byte ${offset}: ${response.error}` }]
-        }
+        return errorText(`Upload failed at byte ${offset}: ${response.error}`)
       }
 
       offset = chunkEnd
@@ -69,9 +62,7 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
     }
 
     if (!response?.id) {
-      return {
-        content: [{ type: 'text', text: 'Upload completed but no file info returned.' }]
-      }
+      return errorText('Upload completed but no file info returned.')
     }
 
     return {
@@ -84,14 +75,10 @@ export const handleUploadLarge = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error uploading large file: ${error.message}` }]
-    }
+    return errorText(`Error uploading large file: ${error.message}`)
   }
 }
 

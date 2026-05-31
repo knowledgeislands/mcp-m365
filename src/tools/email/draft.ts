@@ -2,6 +2,7 @@
  * Draft email functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleDraftEmail = async (args: any): Promise<any> => {
@@ -61,25 +62,14 @@ export const handleDraftEmail = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
     if (error.message?.includes('status 403')) {
-      return {
-        content: [
-          {
-            type: 'text',
-            text: 'Draft creation was denied by Microsoft Graph (403). The token likely lacks Mail.ReadWrite scope. Re-authenticate with force=true to refresh consent, then try again.'
-          }
-        ]
-      }
+      return errorText('Draft creation was denied by Microsoft Graph (403). The token likely lacks Mail.ReadWrite scope. Re-authenticate with force=true to refresh consent, then try again.')
     }
 
-    return {
-      content: [{ type: 'text', text: `Error creating draft email: ${error.message}` }]
-    }
+    return errorText(`Error creating draft email: ${error.message}`)
   }
 }
 

@@ -4,15 +4,14 @@
 
 import { DEFAULT_TIMEZONE } from '../../config/index.js'
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleCreateEvent = async (args: any): Promise<any> => {
   const { subject, start, end, attendees, body } = args
 
   if (!subject || !start || !end) {
-    return {
-      content: [{ type: 'text', text: 'Subject, start, and end times are required to create an event.' }]
-    }
+    return errorText('Subject, start, and end times are required to create an event.')
   }
 
   try {
@@ -35,14 +34,10 @@ export const handleCreateEvent = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error creating event: ${error.message}` }]
-    }
+    return errorText(`Error creating event: ${error.message}`)
   }
 }
 

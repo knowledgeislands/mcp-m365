@@ -65,13 +65,15 @@ describe('TokenStorage', () => {
     })
 
     it('should return null and log if file does not exist (ENOENT)', async () => {
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      // Diagnostics go to stderr (console.error) — stdout is the JSON-RPC channel
+      // under StdioServerTransport, so nothing in main/ may write to it.
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       ;(fs.readFile as Mock).mockRejectedValue({ code: 'ENOENT' })
       const loaded = await tokenStorage._loadTokensFromFile()
       expect(loaded).toBeNull()
       expect(tokenStorage.tokens).toBeNull()
-      expect(consoleLogSpy).toHaveBeenCalledWith('Token file not found. No tokens loaded.')
-      consoleLogSpy.mockRestore()
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Token file not found. No tokens loaded.')
+      consoleErrorSpy.mockRestore()
     })
 
     it('should return null and log error for other read errors', async () => {
@@ -542,12 +544,12 @@ describe('TokenStorage', () => {
 
     it('should log if token file does not exist during unlink', async () => {
       ;(fs.unlink as Mock).mockRejectedValue({ code: 'ENOENT' })
-      const consoleLogSpy = vi.spyOn(console, 'log').mockImplementation(() => {})
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await tokenStorage.clearTokens()
 
-      expect(consoleLogSpy).toHaveBeenCalledWith('Token file not found, nothing to delete.')
-      consoleLogSpy.mockRestore()
+      expect(consoleErrorSpy).toHaveBeenCalledWith('Token file not found, nothing to delete.')
+      consoleErrorSpy.mockRestore()
     })
 
     it('should log error for other unlink errors', async () => {

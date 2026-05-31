@@ -3,6 +3,8 @@
  */
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
 import { callGraphAPIPaginated } from '../../main/graph-client/index.js'
+import { escapeKqlValue } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
@@ -16,8 +18,14 @@ export const handleSearchEmails = async (args: any): Promise<any> => {
   const subject = args.subject || ''
   const hasAttachments = args.hasAttachments
   const unreadOnly = args.unreadOnly
-  const receivedAfter = normalizeDateFilterValue(args.receivedAfter)
-  const receivedBefore = normalizeDateFilterValue(args.receivedBefore)
+  let receivedAfter: string
+  let receivedBefore: string
+  try {
+    receivedAfter = normalizeDateFilterValue(args.receivedAfter)
+    receivedBefore = normalizeDateFilterValue(args.receivedBefore)
+  } catch (error: any) {
+    return errorText(`Error searching emails: ${error.message}`)
+  }
   const searchContext = {
     folder,
     folderId,
@@ -54,6 +62,7 @@ export const handleSearchEmails = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
+        isError: true as const,
         content: [
           {
             type: 'text',
@@ -69,12 +78,16 @@ export const handleSearchEmails = async (args: any): Promise<any> => {
       }
     }
 
-    return createSearchResponse(`Error searching emails: ${formatSearchError(error, searchContext)}`, {
-      type: 'email-search',
-      success: false,
-      error: error.message || 'Unknown error',
-      context: searchContext
-    })
+    return {
+      isError: true as const,
+      content: [{ type: 'text', text: `Error searching emails: ${formatSearchError(error, searchContext)}` }],
+      structuredContent: {
+        type: 'email-search',
+        success: false,
+        error: error.message || 'Unknown error',
+        context: searchContext
+      }
+    }
   }
 }
 
@@ -145,9 +158,9 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
         const kqlParts: string[] = []
 
         if (term === 'query') {
-          kqlParts.push(searchTerms[term])
+          kqlParts.push(escapeKqlValue(searchTerms[term]))
         } else {
-          kqlParts.push(`${term}:${searchTerms[term]}`)
+          kqlParts.push(`${term}:"${escapeKqlValue(searchTerms[term])}"`)
         }
 
         addBooleanFiltersAsKQL(kqlParts, filterTerms)
@@ -226,19 +239,19 @@ const buildSearchParams = (searchTerms: any, filterTerms: any, count: number): R
   const kqlTerms: string[] = []
 
   if (searchTerms.query) {
-    kqlTerms.push(searchTerms.query)
+    kqlTerms.push(escapeKqlValue(searchTerms.query))
   }
 
   if (searchTerms.subject) {
-    kqlTerms.push(`subject:"${searchTerms.subject}"`)
+    kqlTerms.push(`subject:"${escapeKqlValue(searchTerms.subject)}"`)
   }
 
   if (searchTerms.from) {
-    kqlTerms.push(`from:"${searchTerms.from}"`)
+    kqlTerms.push(`from:"${escapeKqlValue(searchTerms.from)}"`)
   }
 
   if (searchTerms.to) {
-    kqlTerms.push(`to:"${searchTerms.to}"`)
+    kqlTerms.push(`to:"${escapeKqlValue(searchTerms.to)}"`)
   }
 
   if (kqlTerms.length > 0) {

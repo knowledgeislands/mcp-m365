@@ -4,6 +4,7 @@
 import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleListFiles = async (args: any): Promise<any> => {
@@ -50,14 +51,10 @@ export const handleListFiles = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error listing files: ${error.message}` }]
-    }
+    return errorText(`Error listing files: ${error.message}`)
   }
 }
 

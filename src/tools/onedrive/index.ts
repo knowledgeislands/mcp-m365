@@ -4,6 +4,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import { graphIdSchema } from '../../utils/odata-helpers.js'
 import { handleDownload } from './download.js'
 import { handleCreateFolder, handleDeleteItem } from './folder.js'
 import { handleListFiles } from './list.js'
@@ -49,7 +50,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
       description: "Get a download URL for a file in OneDrive. Either 'itemId' or 'path' must be provided.",
       inputSchema: z
         .object({
-          itemId: z.string().optional().describe('ID of the item to download'),
+          itemId: graphIdSchema.optional().describe('ID of the item to download'),
           path: z.string().optional().describe('Path to the file (alternative to itemId)')
         })
         .strict(),
@@ -96,7 +97,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
       description: 'Create a sharing link for a file or folder in OneDrive',
       inputSchema: z
         .object({
-          itemId: z.string().optional().describe('ID of the item to share'),
+          itemId: graphIdSchema.optional().describe('ID of the item to share'),
           path: z.string().optional().describe('Path to the item (alternative to itemId)'),
           type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
           scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
@@ -128,7 +129,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
       description: 'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
       inputSchema: z
         .object({
-          itemId: z.string().min(1).optional().describe('ID of the item to delete'),
+          itemId: graphIdSchema.optional().describe('ID of the item to delete'),
           path: z.string().min(1).optional().describe('Path to the item (alternative to itemId)'),
           dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })

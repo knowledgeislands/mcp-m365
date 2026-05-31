@@ -35,16 +35,21 @@ export const handleListFolders = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
+        isError: true as const,
         content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
       }
     }
 
-    return createFolderListResponse(`Error listing folders: ${formatFolderListError(error, listContext)}`, {
-      type: 'folder-list',
-      success: false,
-      error: error.message || 'Unknown error',
-      context: listContext
-    })
+    return {
+      isError: true as const,
+      content: [{ type: 'text', text: `Error listing folders: ${formatFolderListError(error, listContext)}` }],
+      structuredContent: {
+        type: 'folder-list',
+        success: false,
+        error: error.message || 'Unknown error',
+        context: listContext
+      }
+    }
   }
 }
 

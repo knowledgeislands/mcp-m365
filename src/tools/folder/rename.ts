@@ -2,6 +2,7 @@
  * Rename folder functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
@@ -11,15 +12,11 @@ export const handleRenameFolder = async (args: any): Promise<any> => {
   const renameContext = { folder, newName }
 
   if (!folder) {
-    return {
-      content: [{ type: 'text', text: 'Folder path is required.' }]
-    }
+    return errorText('Folder path is required.')
   }
 
   if (!newName) {
-    return {
-      content: [{ type: 'text', text: 'New folder name is required.' }]
-    }
+    return errorText('New folder name is required.')
   }
 
   try {
@@ -27,9 +24,7 @@ export const handleRenameFolder = async (args: any): Promise<any> => {
     const folderId = await getFolderIdByName(accessToken, folder)
 
     if (!folderId) {
-      return {
-        content: [{ type: 'text', text: `Folder "${folder}" not found. Use a valid full path for custom folders.` }]
-      }
+      return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
     }
 
     await callGraphAPI(accessToken, 'PATCH', `me/mailFolders/${folderId}`, {
@@ -41,14 +36,10 @@ export const handleRenameFolder = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error renaming folder: ${formatFolderMutationError(error, renameContext)}` }]
-    }
+    return errorText(`Error renaming folder: ${formatFolderMutationError(error, renameContext)}`)
   }
 }
 

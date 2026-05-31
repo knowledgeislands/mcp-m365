@@ -1,6 +1,43 @@
 /**
  * OData helper functions for Microsoft Graph API
  */
+import { z } from 'zod'
+
+/**
+ * Escape a caller-supplied value before embedding it inside a KQL `$search`
+ * phrase (e.g. `subject:"<value>"`). The value is wrapped in double quotes by
+ * the caller, so the only break-out risk is an embedded `"`. We drop double
+ * quotes (KQL has no in-phrase escape for them) and strip control characters,
+ * leaving the rest of the term intact for matching.
+ *
+ * This is deliberately narrower than `escapeODataString` (which is for OData
+ * `$filter` string literals and strips most metacharacters); KQL free-text
+ * search is more permissive, so over-stripping here would hurt recall.
+ */
+export const escapeKqlValue = (value: string): string => {
+  if (!value) return value
+  // biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control chars is the intent
+  return value.replace(/"/g, '').replace(/[\u0000-\u001f]/g, '')
+}
+
+/**
+ * Shared schema for Microsoft Graph identifiers that become path/API tokens
+ * (message ids, folder ids, event ids, drive-item ids). These flow into Graph
+ * endpoints like `me/messages/${id}` and must not carry option-injection or
+ * path-traversal payloads. We reject a leading `-`, any `..` substring, and
+ * path separators (`/`, `\`); cap the length; and require the first character
+ * to be alphanumeric. Graph ids are long opaque base64url-ish tokens, so this
+ * is comfortably permissive for legitimate values while closing the hole.
+ *
+ * Free-form fields (search queries, folder display-name paths) are NOT ids and
+ * keep their own length-capped string schemas.
+ */
+export const graphIdSchema = z
+  .string()
+  .min(1)
+  .max(512)
+  .regex(/^[A-Za-z0-9][A-Za-z0-9_.@=+%-]*$/, 'must be a valid identifier (no path separators, no leading "-", no "..")')
+  .refine((v) => !v.includes('..'), 'must not contain ".."')
 
 export const escapeODataString = (str: string): string => {
   if (!str) return str

@@ -2,6 +2,7 @@
  * Delete email functionality (move to Deleted Items / trash)
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
@@ -10,9 +11,7 @@ export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
   const dry_run = args.dry_run !== false
 
   if (!emailId) {
-    return {
-      content: [{ type: 'text', text: 'Email ID is required.' }]
-    }
+    return errorText('Email ID is required.')
   }
 
   try {
@@ -46,13 +45,9 @@ export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required' || error.message === 'UNAUTHORIZED') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
-    return {
-      content: [{ type: 'text', text: `Failed to delete email: ${error.message}` }]
-    }
+    return errorText(`Failed to delete email: ${error.message}`)
   }
 }
 

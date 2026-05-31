@@ -2,6 +2,7 @@
  * Create rule functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from '../folder/folder-utils.js'
 import { getInboxRules } from './list.js'
@@ -10,30 +11,22 @@ export const handleCreateRule = async (args: any): Promise<any> => {
   const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled = true, sequence } = args
 
   if (sequence !== undefined && (Number.isNaN(sequence) || sequence < 1)) {
-    return {
-      content: [{ type: 'text', text: 'Sequence must be a positive number greater than zero.' }]
-    }
+    return errorText('Sequence must be a positive number greater than zero.')
   }
 
   if (!name) {
-    return {
-      content: [{ type: 'text', text: 'Rule name is required.' }]
-    }
+    return errorText('Rule name is required.')
   }
 
   const hasCondition = fromAddresses || containsSubject || hasAttachments === true
   const hasAction = moveToFolder || markAsRead === true
 
   if (!hasCondition) {
-    return {
-      content: [{ type: 'text', text: 'At least one condition is required. Specify fromAddresses, containsSubject, or hasAttachments.' }]
-    }
+    return errorText('At least one condition is required. Specify fromAddresses, containsSubject, or hasAttachments.')
   }
 
   if (!hasAction) {
-    return {
-      content: [{ type: 'text', text: 'At least one action is required. Specify moveToFolder or markAsRead.' }]
-    }
+    return errorText('At least one action is required. Specify moveToFolder or markAsRead.')
   }
 
   try {
@@ -61,14 +54,10 @@ export const handleCreateRule = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error creating rule: ${error.message}` }]
-    }
+    return errorText(`Error creating rule: ${error.message}`)
   }
 }
 

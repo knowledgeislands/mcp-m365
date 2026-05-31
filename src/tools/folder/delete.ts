@@ -2,6 +2,7 @@
  * Delete folder functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
@@ -11,9 +12,7 @@ export const handleDeleteFolder = async (args: any): Promise<any> => {
   const deleteContext = { folder }
 
   if (!folder) {
-    return {
-      content: [{ type: 'text', text: 'Folder path is required.' }]
-    }
+    return errorText('Folder path is required.')
   }
 
   try {
@@ -21,9 +20,7 @@ export const handleDeleteFolder = async (args: any): Promise<any> => {
     const folderId = await getFolderIdByName(accessToken, folder)
 
     if (!folderId) {
-      return {
-        content: [{ type: 'text', text: `Folder "${folder}" not found. Use a valid full path for custom folders.` }]
-      }
+      return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
     }
 
     if (dry_run) {
@@ -44,14 +41,10 @@ export const handleDeleteFolder = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error deleting folder: ${formatFolderDeleteError(error, deleteContext)}` }]
-    }
+    return errorText(`Error deleting folder: ${formatFolderDeleteError(error, deleteContext)}`)
   }
 }
 

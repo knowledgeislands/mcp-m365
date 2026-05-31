@@ -3,6 +3,7 @@
  */
 import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleSearchFiles = async (args: any): Promise<any> => {
@@ -10,9 +11,7 @@ export const handleSearchFiles = async (args: any): Promise<any> => {
   const count = args.count || 25
 
   if (!query) {
-    return {
-      content: [{ type: 'text', text: 'Search query is required.' }]
-    }
+    return errorText('Search query is required.')
   }
 
   try {
@@ -49,14 +48,10 @@ export const handleSearchFiles = async (args: any): Promise<any> => {
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error searching files: ${error.message}` }]
-    }
+    return errorText(`Error searching files: ${error.message}`)
   }
 }
 

@@ -4,6 +4,7 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import { graphIdSchema } from '../../utils/odata-helpers.js'
 import { handleAcceptEvent } from './accept.js'
 import { handleCancelEvent } from './cancel.js'
 import { handleCreateEvent } from './create.js'
@@ -34,7 +35,7 @@ export const registerCalendarTools = (server: McpServer): void => {
       description: 'Accepts a calendar event',
       inputSchema: z
         .object({
-          eventId: z.string().describe('The ID of the event to accept'),
+          eventId: graphIdSchema.describe('The ID of the event to accept'),
           comment: z.string().optional().describe('Optional comment for accepting the event')
         })
         .strict(),
@@ -49,12 +50,14 @@ export const registerCalendarTools = (server: McpServer): void => {
       description: 'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
         .object({
-          eventId: z.string().min(1).describe('The ID of the event to decline'),
+          eventId: graphIdSchema.describe('The ID of the event to decline'),
           comment: z.string().optional().describe('Optional comment for declining the event'),
           dry_run: z.boolean().optional().describe('Preview only; do not decline. Default true — pass false to actually decline.')
         })
         .strict(),
-      annotations: DESTRUCTIVE_REMOTE
+      // Declining an invite is a non-destructive, idempotent RSVP (end state =
+      // declined), same risk class as accept — not a destructive mutation.
+      annotations: WRITE_IDEMPOTENT_REMOTE
     },
     handleDeclineEvent
   )
@@ -83,7 +86,7 @@ export const registerCalendarTools = (server: McpServer): void => {
       description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
       inputSchema: z
         .object({
-          eventId: z.string().min(1).describe('The ID of the event to cancel'),
+          eventId: graphIdSchema.describe('The ID of the event to cancel'),
           comment: z.string().optional().describe('Optional comment for cancelling the event'),
           dry_run: z.boolean().optional().describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
         })
@@ -99,7 +102,7 @@ export const registerCalendarTools = (server: McpServer): void => {
       description: 'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
         .object({
-          eventId: z.string().min(1).describe('The ID of the event to delete'),
+          eventId: graphIdSchema.describe('The ID of the event to delete'),
           dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),

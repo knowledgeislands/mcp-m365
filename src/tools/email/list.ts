@@ -76,15 +76,20 @@ export const handleListEmails = async (args: any): Promise<any> => {
   } catch (error: any) {
     if (error.message === 'Authentication required') {
       return {
+        isError: true as const,
         content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
       }
     }
-    return createResponse(`Error listing emails: ${formatListError(error, listContext)}`, {
-      type: 'email-list',
-      success: false,
-      error: error.message || 'Unknown error',
-      context: listContext
-    })
+    return {
+      isError: true as const,
+      content: [{ type: 'text', text: `Error listing emails: ${formatListError(error, listContext)}` }],
+      structuredContent: {
+        type: 'email-list',
+        success: false,
+        error: error.message || 'Unknown error',
+        context: listContext
+      }
+    }
   }
 }
 

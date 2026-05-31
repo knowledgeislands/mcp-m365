@@ -2,6 +2,7 @@
  * Move emails functionality
  */
 import { callGraphAPI } from '../../main/graph-client/index.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
@@ -12,15 +13,11 @@ export const handleMoveEmails = async (args: any): Promise<any> => {
   const moveContext = { emailIds, targetFolder, sourceFolder }
 
   if (!emailIds) {
-    return {
-      content: [{ type: 'text', text: 'Email IDs are required. Please provide a comma-separated list of email IDs to move.' }]
-    }
+    return errorText('Email IDs are required. Please provide a comma-separated list of email IDs to move.')
   }
 
   if (!targetFolder) {
-    return {
-      content: [{ type: 'text', text: 'Target folder name is required.' }]
-    }
+    return errorText('Target folder name is required.')
   }
 
   try {
@@ -32,26 +29,24 @@ export const handleMoveEmails = async (args: any): Promise<any> => {
       .filter((id: string) => id)
 
     if (ids.length === 0) {
-      return {
-        content: [{ type: 'text', text: 'No valid email IDs provided.' }]
-      }
+      return errorText('No valid email IDs provided.')
     }
 
     const result = await moveEmailsToFolder(accessToken, ids, targetFolder, sourceFolder)
+
+    if (!result.success) {
+      return errorText(result.message)
+    }
 
     return {
       content: [{ type: 'text', text: result.message }]
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error moving emails: ${formatMoveError(error, moveContext)}` }]
-    }
+    return errorText(`Error moving emails: ${formatMoveError(error, moveContext)}`)
   }
 }
 
@@ -101,7 +96,7 @@ const moveEmailsToFolder = async (accessToken: string, emailIds: string[], targe
 
     for (const emailId of emailIds) {
       try {
-        await callGraphAPI(accessToken, 'POST', `me/messages/${emailId}/move`, { destinationId: targetFolderId })
+        await callGraphAPI(accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, { destinationId: targetFolderId })
 
         results.successful.push(emailId)
       } catch (error: any) {

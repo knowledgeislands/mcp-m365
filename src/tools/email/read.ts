@@ -7,6 +7,7 @@
 import { EMAIL_DETAIL_FIELDS } from '../../config/index.js'
 import { callGraphAPI } from '../../main/graph-client/index.js'
 import { processHtmlEmail } from '../../utils/html-sanitizer.js'
+import { errorText } from '../../utils/results.js'
 import { ensureAuthenticated } from '../auth/index.js'
 
 export const handleReadEmail = async (args: any): Promise<any> => {
@@ -14,9 +15,7 @@ export const handleReadEmail = async (args: any): Promise<any> => {
   const includeRawHtml = args.includeRawHtml === true
 
   if (!emailId) {
-    return {
-      content: [{ type: 'text', text: 'Email ID is required.' }]
-    }
+    return errorText('Email ID is required.')
   }
 
   try {
@@ -31,9 +30,7 @@ export const handleReadEmail = async (args: any): Promise<any> => {
       const email = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
 
       if (!email) {
-        return {
-          content: [{ type: 'text', text: `Email with ID ${emailId} not found.` }]
-        }
+        return errorText(`Email with ID ${emailId} not found.`)
       }
 
       const sender = email.from ? `${email.from.emailAddress.name} (${email.from.emailAddress.address})` : 'Unknown'
@@ -92,25 +89,17 @@ ${body}`
       console.error(`Error reading email: ${error.message}`)
 
       if (error.message.includes("doesn't belong to the targeted mailbox")) {
-        return {
-          content: [{ type: 'text', text: "The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID." }]
-        }
+        return errorText("The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID.")
       } else {
-        return {
-          content: [{ type: 'text', text: `Failed to read email: ${error.message}` }]
-        }
+        return errorText(`Failed to read email: ${error.message}`)
       }
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return {
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
-      }
+      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
     }
 
-    return {
-      content: [{ type: 'text', text: `Error accessing email: ${error.message}` }]
-    }
+    return errorText(`Error accessing email: ${error.message}`)
   }
 }
 

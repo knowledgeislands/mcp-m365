@@ -141,4 +141,35 @@ describe('handleSearchEmails', () => {
     expect(result.content[0].text).toContain('Source: Microsoft Graph API (400).')
     expect(result.content[0].text).toContain('Context:')
   })
+
+  test('returns an isError envelope for an invalid date filter without calling Graph', async () => {
+    const result = await handleSearchEmails({ receivedAfter: 'not-a-date' })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toMatch(/Invalid date value "not-a-date"/)
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+  })
+
+  test('escapes a double-quote so a search term cannot break out of the KQL phrase', async () => {
+    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
+    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
+    mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
+
+    await handleSearchEmails({ subject: 'a" OR from:"evil', count: 10 })
+
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[3] as { $search?: string }
+    expect(params.$search).not.toContain('a"')
+    expect(params.$search).toContain('subject:"a OR from:evil"')
+  })
+
+  test('reports no matches when the search returns an empty result set', async () => {
+    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
+    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
+    mockCallGraphAPIPaginated.mockResolvedValue({ value: [] })
+
+    const result = await handleSearchEmails({ query: 'nothingmatches', count: 10 })
+
+    expect(result.content[0].text).toContain('No emails found matching your search criteria.')
+    expect(result.isError).toBeUndefined()
+  })
 })

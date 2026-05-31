@@ -12,18 +12,29 @@ const config = loadConfig()
 
 console.log('Starting m365 Authentication Server')
 
-const pendingStates = new Map<string, number>()
+// Each entry pairs the single-use `state` with its PKCE `codeVerifier` and a
+// creation timestamp for expiry. The verifier is generated per authorize
+// request and consumed exactly once at the callback (alongside the state).
+interface PendingAuth {
+  ts: number
+  codeVerifier: string
+}
+const pendingStates = new Map<string, PendingAuth>()
 const TEN_MINUTES = 10 * 60 * 1000
 
 setInterval(
   () => {
     const now = Date.now()
-    for (const [key, timestamp] of pendingStates.entries()) {
-      if (now - timestamp > TEN_MINUTES) pendingStates.delete(key)
+    for (const [key, entry] of pendingStates.entries()) {
+      if (now - entry.ts > TEN_MINUTES) pendingStates.delete(key)
     }
   },
   5 * 60 * 1000
 ).unref()
+
+/** RFC 7636 S256 PKCE: base64url(SHA-256(verifier)). */
+const base64UrlEncode = (buf: Buffer): string => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const pkceChallengeS256 = (verifier: string): string => base64UrlEncode(crypto.createHash('sha256').update(verifier).digest())
 
 // The OAuth slice of the loaded Config. The canonical scope list lives in
 // src/config/index.ts as M365_DEFAULT_SCOPES so the consent flow (here) and
@@ -39,12 +50,14 @@ const server = http.createServer((req, res) => {
   if (pathname === '/auth/callback') {
     const query = parsedUrl.query as Record<string, string>
 
-    if (!query.state || !pendingStates.has(query.state)) {
+    const pending = query.state ? pendingStates.get(query.state) : undefined
+    if (!query.state || !pending) {
       console.error('Invalid or missing OAuth state parameter')
       res.writeHead(403, { 'Content-Type': 'text/html' })
       res.end(templates.invalidState())
       return
     }
+    // Single-use: consume the state + its PKCE verifier now.
     pendingStates.delete(query.state)
 
     if (query.error) {
@@ -57,7 +70,7 @@ const server = http.createServer((req, res) => {
     if (query.code) {
       console.log('Authorization code received, exchanging for tokens...')
 
-      exchangeCodeForTokens(query.code)
+      exchangeCodeForTokens(query.code, pending.codeVerifier)
         .then(() => {
           console.log('Token exchange successful')
           res.writeHead(200, { 'Content-Type': 'text/html' })
@@ -83,7 +96,12 @@ const server = http.createServer((req, res) => {
     }
 
     const state = crypto.randomBytes(32).toString('hex')
-    pendingStates.set(state, Date.now())
+    // PKCE (RFC 7636): a fresh high-entropy verifier per flow, stored server-side
+    // alongside the state and sent only as its S256 challenge on the authorize
+    // URL. m365 is a confidential client (has a client_secret), so PKCE is
+    // defense-in-depth on top of the existing secret + single-use state.
+    const codeVerifier = base64UrlEncode(crypto.randomBytes(32))
+    pendingStates.set(state, { ts: Date.now(), codeVerifier })
 
     const authParams = {
       client_id: AUTH_CONFIG.clientId,
@@ -91,7 +109,9 @@ const server = http.createServer((req, res) => {
       redirect_uri: AUTH_CONFIG.redirectUri,
       scope: AUTH_CONFIG.scopes.join(' '),
       response_mode: 'query',
-      state
+      state,
+      code_challenge: pkceChallengeS256(codeVerifier),
+      code_challenge_method: 'S256'
     }
 
     const authUrl = `${AUTH_CONFIG.authorityHost}/${AUTH_CONFIG.tenantId}/oauth2/v2.0/authorize?${querystring.stringify(authParams)}`
@@ -108,7 +128,7 @@ const server = http.createServer((req, res) => {
   }
 })
 
-const exchangeCodeForTokens = (code: string): Promise<any> => {
+const exchangeCodeForTokens = (code: string, codeVerifier: string): Promise<any> => {
   return new Promise((resolve, reject) => {
     const postData = querystring.stringify({
       client_id: AUTH_CONFIG.clientId,
@@ -116,7 +136,8 @@ const exchangeCodeForTokens = (code: string): Promise<any> => {
       code: code,
       redirect_uri: AUTH_CONFIG.redirectUri,
       grant_type: 'authorization_code',
-      scope: AUTH_CONFIG.scopes.join(' ')
+      scope: AUTH_CONFIG.scopes.join(' '),
+      code_verifier: codeVerifier
     })
 
     const options: https.RequestOptions = {
