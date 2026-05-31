@@ -3,12 +3,8 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { folderListResultSchema, handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder } from '../../main/folder/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
-import { handleCreateFolder } from './create.js'
-import { handleDeleteFolder } from './delete.js'
-import { handleListFolders } from './list.js'
-import { handleMoveEmails } from './move.js'
-import { handleRenameFolder } from './rename.js'
 
 export const registerFolderTools = (server: McpServer): void => {
   server.registerTool(
@@ -21,6 +17,7 @@ export const registerFolderTools = (server: McpServer): void => {
           includeChildren: z.boolean().optional().describe('Include child folders in hierarchy')
         })
         .strict(),
+      outputSchema: folderListResultSchema,
       annotations: READ_ONLY_REMOTE
     },
     handleListFolders
@@ -88,4 +85,4 @@ export const registerFolderTools = (server: McpServer): void => {
   )
 }
 
-export { handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder }
+export { handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder } from '../../main/folder/index.js'

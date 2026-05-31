@@ -10,9 +10,9 @@ An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 s
 - **Outlook coverage** — read/search/send/delete email, manage folders + rules, create/accept/decline/cancel calendar events.
 - **OneDrive coverage** — list/search/download/upload (with chunked >4 MB upload), create folders, share files.
 - **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool annotations.
-- **Modular structure** — service modules under `src/tools/<service>/` keep email, calendar, folder, rules, and OneDrive logic isolated.
+- **Modular structure** — the implementation lives in `src/main/<concern>/` (email, calendar, folder, rules, OneDrive); `src/tools/<service>/index.ts` is a thin registration shell that validates args and maps the result to an MCP envelope.
 
-**Quality:** 387 tests; ~95% line / ~97% function coverage, with all destructive paths covered.
+**Quality:** 100% line / branch / function / statement coverage on the `main/` + `utils/` logic, with all destructive paths covered (the wiring-only `mcp-server` / `tools/**/index.ts` / `auth-server` and pure-data modules are coverage-excluded).
 
 ## Available Tools
 

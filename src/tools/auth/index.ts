@@ -1,29 +1,14 @@
 /**
- * Authentication module for MCP M365 server.
- *
- * Exposes:
- *  - `ensureAuthenticated` for tool handlers to obtain a valid access token.
- *  - `registerAuthTools` to register the auth tools on an `McpServer`.
+ * Auth tool group — thin registration shells. The implementation
+ * (`handleAbout` / `handleAuthenticate` / `handleCheckAuthStatus`, and the
+ * `ensureAuthenticated` gate) lives in `main/auth`; this file only validates
+ * args and wires the handlers behind the access-gated `registerTool` proxy.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Config } from '../../config/index.js'
-import { getTokenStorage } from '../../main/auth/index.js'
+import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from '../../main/auth/index.js'
 import { READ_ONLY, WRITE_REMOTE } from '../../utils/annotations.js'
-import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './tools.js'
-
-export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
-  if (forceNew) {
-    throw new Error('Authentication required')
-  }
-
-  const accessToken = await getTokenStorage().getValidAccessToken()
-  if (!accessToken) {
-    throw new Error('Authentication required')
-  }
-
-  return accessToken
-}
 
 export const registerAuthTools = (server: McpServer, cfg: Config): void => {
   server.registerTool(
@@ -61,5 +46,3 @@ export const registerAuthTools = (server: McpServer, cfg: Config): void => {
     handleCheckAuthStatus
   )
 }
-
-export { handleAbout, handleAuthenticate, handleCheckAuthStatus }

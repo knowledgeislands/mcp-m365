@@ -4,7 +4,7 @@ import path from 'node:path'
 import querystring from 'node:querystring'
 import type { Mock } from 'vitest'
 import { loadConfig } from '../../config/index.js'
-import TokenStorage, { _resetTokenStorage, createTokenStorage, getTokenStorage, initTokenStorage } from './index.js'
+import TokenStorage, { _resetTokenStorage, createTokenStorage, ensureAuthenticated, getTokenStorage, initTokenStorage } from './index.js'
 
 vi.mock('fs', () => ({
   promises: {
@@ -299,6 +299,36 @@ describe('TokenStorage', () => {
       await expect(exchangePromise).rejects.toThrow('Network fail')
     })
 
+    it('uses the status-based message when the exchange error omits error_description', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const exchangePromise = tokenStorage.exchangeCodeForTokens(mockAuthCode)
+      const mockRes = {
+        statusCode: 400,
+        on: (event: string, cb: any) => {
+          if (event === 'data') cb(Buffer.from(JSON.stringify({ error: 'invalid_grant' })))
+          if (event === 'end') cb()
+        }
+      }
+      mockHttpsRequest.callback(mockRes)
+      await expect(exchangePromise).rejects.toThrow('Token exchange failed with status 400')
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('rejects with a processing error when the 2xx body is not valid JSON', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const exchangePromise = tokenStorage.exchangeCodeForTokens(mockAuthCode)
+      const mockRes = {
+        statusCode: 200,
+        on: (event: string, cb: any) => {
+          if (event === 'data') cb(Buffer.from('not-json{'))
+          if (event === 'end') cb()
+        }
+      }
+      mockHttpsRequest.callback(mockRes)
+      await expect(exchangePromise).rejects.toThrow(/Error processing token response/)
+      consoleErrorSpy.mockRestore()
+    })
+
     it('should reject if client ID or secret is missing', async () => {
       tokenStorage.config.clientId = ''
       await expect(tokenStorage.exchangeCodeForTokens(mockAuthCode)).rejects.toThrow('Client ID or Client Secret is not configured. Cannot exchange code for tokens.')
@@ -422,6 +452,59 @@ describe('TokenStorage', () => {
     it('should throw if no refresh token is available', async () => {
       if (tokenStorage.tokens) tokenStorage.tokens.refresh_token = undefined
       await expect(tokenStorage.refreshAccessToken()).rejects.toThrow('No refresh token available to refresh the access token.')
+    })
+
+    it('rejects when the refresh 2xx body has no access_token', async () => {
+      const refreshPromise = tokenStorage.refreshAccessToken()
+      const mockRes = {
+        statusCode: 200,
+        on: (event: string, cb: any) => {
+          if (event === 'data') cb(Buffer.from(JSON.stringify({ expires_in: 3600 })))
+          if (event === 'end') cb()
+        }
+      }
+      mockHttpsRequest.callback(mockRes)
+      await expect(refreshPromise).rejects.toThrow('Refresh succeeded but no access token returned.')
+    })
+
+    it('uses the status-based message when an error response omits error_description', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const refreshPromise = tokenStorage.refreshAccessToken()
+      const mockRes = {
+        statusCode: 400,
+        on: (event: string, cb: any) => {
+          if (event === 'data') cb(Buffer.from(JSON.stringify({ error: 'invalid_grant' })))
+          if (event === 'end') cb()
+        }
+      }
+      mockHttpsRequest.callback(mockRes)
+      await expect(refreshPromise).rejects.toThrow('Token refresh failed with status 400')
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('rejects and clears the promise when the 2xx body is not valid JSON', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const refreshPromise = tokenStorage.refreshAccessToken()
+      const mockRes = {
+        statusCode: 200,
+        on: (event: string, cb: any) => {
+          if (event === 'data') cb(Buffer.from('not-json{'))
+          if (event === 'end') cb()
+        }
+      }
+      mockHttpsRequest.callback(mockRes)
+      await expect(refreshPromise).rejects.toBeInstanceOf(Error)
+      expect(tokenStorage._refreshPromise).toBeNull()
+      consoleErrorSpy.mockRestore()
+    })
+
+    it('rejects and clears the promise on an HTTP transport error', async () => {
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const refreshPromise = tokenStorage.refreshAccessToken()
+      mockHttpsRequest.errorHandler(new Error('socket reset'))
+      await expect(refreshPromise).rejects.toThrow('socket reset')
+      expect(tokenStorage._refreshPromise).toBeNull()
+      consoleErrorSpy.mockRestore()
     })
 
     it('should handle concurrent refresh calls by returning the same promise', async () => {
@@ -587,6 +670,33 @@ describe('TokenStorage', () => {
       const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
       const created = initTokenStorage(cfg)
       expect(getTokenStorage()).toBe(created)
+    })
+  })
+
+  describe('ensureAuthenticated', () => {
+    const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
+
+    afterEach(() => {
+      _resetTokenStorage()
+    })
+
+    it('returns the access token from the shared storage when one is available', async () => {
+      const ts = initTokenStorage(cfg)
+      vi.spyOn(ts, 'getValidAccessToken').mockResolvedValue('tok-abc')
+      await expect(ensureAuthenticated()).resolves.toBe('tok-abc')
+    })
+
+    it('throws "Authentication required" when no token is available', async () => {
+      const ts = initTokenStorage(cfg)
+      vi.spyOn(ts, 'getValidAccessToken').mockResolvedValue(null)
+      await expect(ensureAuthenticated()).rejects.toThrow('Authentication required')
+    })
+
+    it('throws "Authentication required" when forceNew is requested, without touching storage', async () => {
+      const ts = initTokenStorage(cfg)
+      const spy = vi.spyOn(ts, 'getValidAccessToken')
+      await expect(ensureAuthenticated(true)).rejects.toThrow('Authentication required')
+      expect(spy).not.toHaveBeenCalled()
     })
   })
 })

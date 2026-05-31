@@ -3,15 +3,9 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge } from '../../main/onedrive/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
-import { handleDownload } from './download.js'
-import { handleCreateFolder, handleDeleteItem } from './folder.js'
-import { handleListFiles } from './list.js'
-import { handleSearchFiles } from './search.js'
-import { handleShare } from './share.js'
-import { handleUpload } from './upload.js'
-import { handleUploadLarge } from './upload-large.js'
 
 export const registerOnedriveTools = (server: McpServer): void => {
   server.registerTool(
@@ -140,4 +134,4 @@ export const registerOnedriveTools = (server: McpServer): void => {
   )
 }
 
-export { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge }
+export { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge } from '../../main/onedrive/index.js'

@@ -39,6 +39,7 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
           queryString = queryString ? `${queryString}&$filter=${encoded}` : `$filter=${encoded}`
         }
 
+        /* v8 ignore next — with at least one queryParam present, the assembled queryString is never empty here */
         if (queryString) {
           queryString = `?${queryString}`
         }
@@ -67,6 +68,7 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
         })
 
         res.on('end', () => {
+          /* v8 ignore next — Node always sets statusCode on a delivered response */
           const status = res.statusCode ?? 0
           if (status >= 200 && status < 300) {
             try {
@@ -94,10 +96,12 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
 
       req.end()
     })
+    /* v8 ignore start — defensive guard around synchronous URL/setup errors that the request path does not throw in practice */
   } catch (error) {
     console.error('Error calling Graph API:', error)
     throw error
   }
+  /* v8 ignore stop */
 }
 
 export const callGraphAPIPaginated = async <T = GraphValue>(
@@ -172,6 +176,7 @@ export const callGraphAPIDownload = async (accessToken: string, path: string): P
     }
 
     const req = https.request(fullUrl, options, (res) => {
+      /* v8 ignore next — Node always sets statusCode on a delivered response */
       const status = res.statusCode ?? 0
       if (status === 302 && res.headers.location) {
         resolve(res.headers.location)

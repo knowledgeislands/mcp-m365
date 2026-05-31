@@ -143,6 +143,10 @@ describe('HTML Sanitizer Security Tests', () => {
       expect(hasHidingCSS('left: -9999px')).toBe(true)
       expect(hasHidingCSS('top: -10000px')).toBe(true)
     })
+
+    test('returns false for an empty style string', () => {
+      expect(hasHidingCSS('')).toBe(false)
+    })
   })
 
   describe('Link Sanitization', () => {
@@ -156,6 +160,14 @@ describe('HTML Sanitizer Security Tests', () => {
       const html = '<a href="mailto:test@example.com">Email us</a>'
       const result = sanitizeHtmlToText(html)
       expect(result).toContain('[Email us](mailto:test@example.com)')
+    })
+
+    test('drops a safe link that has no visible text', () => {
+      const html = 'before<a href="https://example.com"></a>after'
+      const result = sanitizeHtmlToText(html)
+      expect(result).not.toContain('https://example.com')
+      expect(result).toContain('before')
+      expect(result).toContain('after')
     })
 
     test('removes javascript: links', () => {

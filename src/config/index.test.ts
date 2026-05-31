@@ -104,6 +104,25 @@ describe('parseAuditLogMode', () => {
   it('throws on an unknown value', () => {
     expect(() => loadConfig(baseEnv({ MCP_M365_AUDIT_LOG: 'sometimes' }))).toThrow(/Invalid MCP_M365_AUDIT_LOG/)
   })
+
+  it('accepts each valid mode (off / writes / all), case-insensitively', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_AUDIT_LOG: 'off' })).auditLogMode).toBe('off')
+    expect(loadConfig(baseEnv({ MCP_M365_AUDIT_LOG: 'WRITES' })).auditLogMode).toBe('writes')
+    expect(loadConfig(baseEnv({ MCP_M365_AUDIT_LOG: 'All' })).auditLogMode).toBe('all')
+  })
+})
+
+describe('auditLogPath', () => {
+  it('resolves an explicit MCP_M365_AUDIT_LOG_PATH to an absolute path', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_PATH: 'relative/audit.jsonl' }))
+    expect(cfg.auditLogPath.endsWith('relative/audit.jsonl')).toBe(true)
+    expect(cfg.auditLogPath.startsWith('/')).toBe(true)
+  })
+
+  it('falls back to the default state path when MCP_M365_AUDIT_LOG_PATH is blank', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_PATH: '   ' }))
+    expect(cfg.auditLogPath).toMatch(/\.local\/state\/mcp-m365\/audit\.jsonl$/)
+  })
 })
 
 describe('parseNonNegativeInt (via auditLogMaxBytes)', () => {

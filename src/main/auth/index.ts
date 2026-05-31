@@ -43,6 +43,7 @@ class TokenStorage {
     const authorityHost = 'https://login.microsoftonline.com'
 
     this.config = {
+      /* v8 ignore next — os.homedir() always returns a path on supported platforms; '' is a defensive fallback */
       tokenStorePath: path.join(os.homedir() || '', '.mcp-m365-tokens.json'),
       clientId: '',
       clientSecret: '',
@@ -197,6 +198,7 @@ class TokenStorage {
         res.on('end', async () => {
           try {
             const responseBody = JSON.parse(data)
+            /* v8 ignore next — Node always sets statusCode on a delivered response */
             const status = res.statusCode ?? 0
             if (status >= 200 && status < 300) {
               tokens.access_token = responseBody.access_token
@@ -266,6 +268,7 @@ class TokenStorage {
         res.on('end', async () => {
           try {
             const responseBody = JSON.parse(data)
+            /* v8 ignore next — Node always sets statusCode on a delivered response */
             const status = res.statusCode ?? 0
             if (status >= 200 && status < 300) {
               this.tokens = {
@@ -370,3 +373,24 @@ export const getTokenStorage = (): TokenStorage => {
 export const _resetTokenStorage = (): void => {
   sharedTokenStorage = null
 }
+
+/**
+ * The auth gate every Graph-calling `main/` function awaits first. Returns a
+ * valid access token (refreshing if needed) from the shared `TokenStorage`, or
+ * throws `Error('Authentication required')` when no usable token is available —
+ * which the thin tool boundary maps to the `m365_auth_start` remediation hint.
+ */
+export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
+  if (forceNew) {
+    throw new Error('Authentication required')
+  }
+
+  const accessToken = await getTokenStorage().getValidAccessToken()
+  if (!accessToken) {
+    throw new Error('Authentication required')
+  }
+
+  return accessToken
+}
+
+export { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './handlers.js'

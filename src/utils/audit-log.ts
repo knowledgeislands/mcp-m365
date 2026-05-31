@@ -107,6 +107,7 @@ const rotateIfNeeded = async (audit: AuditConfig): Promise<void> => {
       await fs.rm(audit.path, { force: true })
     }
   } catch (err) {
+    /* v8 ignore next — fs rejects with Error objects; the String() coercion is a defensive fallback */
     console.error(`[audit-log] rotation failed: ${err instanceof Error ? err.message : String(err)}`)
   }
 }
@@ -125,6 +126,7 @@ const writeAuditEvent = async (audit: AuditConfig, event: AuditEvent): Promise<v
     }
     await rotateIfNeeded(audit)
   } catch (err) {
+    /* v8 ignore next — fs rejects with Error objects; the String() coercion is a defensive fallback */
     console.error(`[audit-log] failed to write: ${err instanceof Error ? err.message : String(err)}`)
   }
 }

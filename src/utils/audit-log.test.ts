@@ -212,4 +212,45 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     const wrapped = withAuditLog(auditCfg(), 'm365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     await expect(wrapped({})).resolves.toBeDefined()
   })
+
+  it('records non-object args verbatim (array args are not treated as a redactable map)', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    await wrapped(['a', 'b'] as unknown as Record<string, unknown>)
+    await flushAsync()
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.args).toEqual(['a', 'b'])
+  })
+
+  it('does not rotate when maxBytes is 0 (rotation disabled)', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg({ maxBytes: 0, keep: 2 }), 'm365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    for (let i = 0; i < 6; i++) await wrapped({ idx: i })
+    await new Promise((r) => setTimeout(r, 50))
+    await expect(fs.access(`${logPath}.1`)).rejects.toThrow()
+    await expect(fs.access(logPath)).resolves.toBeUndefined()
+  })
+
+  it('swallows a rotation failure (e.g. the rotated slot is a non-empty directory)', async () => {
+    // Pre-create `${logPath}.1` as a NON-EMPTY directory so renaming the log
+    // onto it fails (ENOTEMPTY), exercising the rotation catch.
+    await fs.mkdir(`${logPath}.1`, { recursive: true })
+    await fs.writeFile(path.join(`${logPath}.1`, 'blocker'), 'x')
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg({ maxBytes: 100, keep: 2 }), 'm365_email_message_delete', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    for (let i = 0; i < 6; i++) await wrapped({ idx: i })
+    await new Promise((r) => setTimeout(r, 50))
+    // The append still succeeds; rotation failure is swallowed.
+    await expect(fs.access(logPath)).resolves.toBeUndefined()
+  })
+
+  it('records an empty error string when an isError result has a non-array content', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_message_delete', 'destructive', async () => ({ isError: true, content: 'oops' }) as unknown as { content: { type: string; text: string }[] })
+    await wrapped({})
+    await flushAsync()
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.ok).toBe(false)
+    expect(event.error ?? '').toBe('')
+  })
 })

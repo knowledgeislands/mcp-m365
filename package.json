@@ -47,6 +47,26 @@
       "types": "./dist/main/graph-client/index.d.ts",
       "import": "./dist/main/graph-client/index.js"
     },
+    "./email": {
+      "types": "./dist/main/email/index.d.ts",
+      "import": "./dist/main/email/index.js"
+    },
+    "./folder": {
+      "types": "./dist/main/folder/index.d.ts",
+      "import": "./dist/main/folder/index.js"
+    },
+    "./calendar": {
+      "types": "./dist/main/calendar/index.d.ts",
+      "import": "./dist/main/calendar/index.js"
+    },
+    "./onedrive": {
+      "types": "./dist/main/onedrive/index.d.ts",
+      "import": "./dist/main/onedrive/index.js"
+    },
+    "./rules": {
+      "types": "./dist/main/rules/index.d.ts",
+      "import": "./dist/main/rules/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

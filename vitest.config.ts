@@ -18,20 +18,19 @@ export default defineConfig({
         'src/mcp-server/index.ts',
         'src/auth-server/**',
         'src/tools/index.ts',
-        'src/tools/*/index.ts',
+        'src/tools/**/index.ts',
         // Pure-data annotation presets — no logic to cover.
         'src/utils/annotations.ts'
       ],
-      // Thresholds locked at the current achievable floor so future regressions
-      // break CI without requiring a full coverage push to 100%. m365 is the
-      // outlier of the sibling-MCP family (kb-fs/housekeeping/git-audit/gmail/
-      // voicenotes-edit all enforce 100/100/100/100) — see ROADMAP.md for the
-      // backlog of test work that would let m365 join them.
+      // All four metrics enforced at 100%, matching the rest of the sibling-MCP
+      // family (kb-fs / housekeeping / git-audit / gmail / voicenotes-edit). The
+      // real implementation now lives in `main/`; only the wiring-only entry
+      // points and pure-data modules above are excluded.
       thresholds: {
-        lines: 95,
-        functions: 97,
-        branches: 85,
-        statements: 94
+        lines: 100,
+        functions: 100,
+        branches: 100,
+        statements: 100
       }
     }
   }

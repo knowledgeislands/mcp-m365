@@ -3,10 +3,8 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { handleCreateRule, handleEditRuleSequence, handleListRules } from '../../main/rules/index.js'
 import { READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
-import { handleCreateRule } from './create.js'
-import { handleEditRuleSequence } from './edit-sequence.js'
-import { handleListRules } from './list.js'
 
 export const registerRulesTools = (server: McpServer): void => {
   server.registerTool(
@@ -60,4 +58,4 @@ export const registerRulesTools = (server: McpServer): void => {
   )
 }
 
-export { handleCreateRule, handleEditRuleSequence, handleListRules }
+export { handleCreateRule, handleEditRuleSequence, handleListRules } from '../../main/rules/index.js'

@@ -3,14 +3,9 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
-import { handleAcceptEvent } from './accept.js'
-import { handleCancelEvent } from './cancel.js'
-import { handleCreateEvent } from './create.js'
-import { handleDeclineEvent } from './decline.js'
-import { handleDeleteEvent } from './delete.js'
-import { handleListEvents } from './list.js'
 
 export const registerCalendarTools = (server: McpServer): void => {
   server.registerTool(
@@ -112,4 +107,4 @@ export const registerCalendarTools = (server: McpServer): void => {
   )
 }
 
-export { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents }
+export { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'

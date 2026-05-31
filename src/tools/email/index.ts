@@ -3,15 +3,19 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import {
+  emailListResultSchema,
+  emailSearchResultSchema,
+  handleDeleteEmail,
+  handleDraftEmail,
+  handleListEmails,
+  handleMarkAsRead,
+  handleReadEmail,
+  handleSearchEmails,
+  handleSendEmail
+} from '../../main/email/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
-import { handleDeleteEmail } from './delete.js'
-import { handleDraftEmail } from './draft.js'
-import { handleListEmails } from './list.js'
-import { handleMarkAsRead } from './mark-as-read.js'
-import { handleReadEmail } from './read.js'
-import { handleSearchEmails } from './search.js'
-import { handleSendEmail } from './send.js'
 
 export const registerEmailTools = (server: McpServer): void => {
   server.registerTool(
@@ -26,6 +30,7 @@ export const registerEmailTools = (server: McpServer): void => {
           includeCount: z.boolean().optional().describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
         })
         .strict(),
+      outputSchema: emailListResultSchema,
       annotations: READ_ONLY_REMOTE
     },
     handleListEmails
@@ -50,6 +55,7 @@ export const registerEmailTools = (server: McpServer): void => {
           count: z.number().int().positive().max(1000).optional().describe('Number of results to return (default: 10, max: 1000)')
         })
         .strict(),
+      outputSchema: emailSearchResultSchema,
       annotations: READ_ONLY_REMOTE
     },
     handleSearchEmails
@@ -143,4 +149,4 @@ export const registerEmailTools = (server: McpServer): void => {
   )
 }
 
-export { handleDeleteEmail, handleDraftEmail, handleListEmails, handleMarkAsRead, handleReadEmail, handleSearchEmails, handleSendEmail }
+export { handleDeleteEmail, handleDraftEmail, handleListEmails, handleMarkAsRead, handleReadEmail, handleSearchEmails, handleSendEmail } from '../../main/email/index.js'

@@ -96,6 +96,22 @@ describe('callGraphAPI', () => {
     expect(url).toContain('$filter=isRead%20eq%20false')
   })
 
+  it('builds a query string from non-filter params only', async () => {
+    mockHttpsOnce({ statusCode: 200, body: '{}' })
+    await callGraphAPI('tok', 'GET', 'me/messages', null, { $top: 5, $orderby: 'receivedDateTime desc' })
+    const url = (https.request as unknown as Mock).mock.calls[0][0] as string
+    expect(url).toContain('%24top=5')
+    expect(url).not.toContain('$filter')
+  })
+
+  it('builds a query string from $filter alone (no other params)', async () => {
+    mockHttpsOnce({ statusCode: 200, body: '{}' })
+    await callGraphAPI('tok', 'GET', 'me/messages', null, { $filter: 'isRead eq false' })
+    const url = (https.request as unknown as Mock).mock.calls[0][0] as string
+    expect(url).toContain('?$filter=isRead%20eq%20false')
+    expect(url).not.toContain('&')
+  })
+
   it('writes a JSON-stringified body for POST', async () => {
     const handle = mockHttpsOnce({ statusCode: 200, body: '{}' })
     await callGraphAPI('tok', 'POST', 'me/messages', { subject: 'Hi' })
@@ -138,6 +154,13 @@ describe('callGraphAPIPaginated', () => {
     const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages')
     expect((r.value ?? []).map((v) => v.id)).toEqual(['1', '2'])
     expect(r['@odata.count']).toBe(2)
+  })
+
+  it('tolerates a page that omits the value array', async () => {
+    mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ '@odata.context': 'x' }) })
+    const r = await callGraphAPIPaginated('tok', 'GET', 'me/messages')
+    expect(r.value).toEqual([])
+    expect(r['@odata.count']).toBe(0)
   })
 
   it('follows nextLink across multiple pages', async () => {
