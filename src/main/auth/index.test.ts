@@ -46,11 +46,17 @@ describe('TokenStorage', () => {
       expect(tokenStorage.config.refreshTokenBuffer).toBe(5 * 60 * 1000)
     })
 
-    it('should warn if client ID or secret is missing', () => {
+    it('constructs without printing when client ID or secret is missing (signal is surfaced on use, not logged)', () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
-      new TokenStorage({ ...baseConfig, clientId: undefined as any })
-      expect(consoleWarnSpy).toHaveBeenCalledWith('TokenStorage: MCP_M365_CLIENT_ID or MCP_M365_CLIENT_SECRET is not configured. Token refresh will fail.')
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+      const ts = new TokenStorage({ ...baseConfig, clientId: undefined as any })
+      expect(ts.config.clientId).toBeFalsy()
+      // main/ never prints: an unconfigured client surfaces as a thrown error
+      // from exchangeCodeForTokens (asserted in that describe block), not a log.
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
       consoleWarnSpy.mockRestore()
+      consoleErrorSpy.mockRestore()
     })
   })
 
@@ -64,25 +70,26 @@ describe('TokenStorage', () => {
       expect(tokenStorage.tokens).toEqual(mockTokens)
     })
 
-    it('should return null and log if file does not exist (ENOENT)', async () => {
-      // Diagnostics go to stderr (console.error) — stdout is the JSON-RPC channel
-      // under StdioServerTransport, so nothing in main/ may write to it.
+    it('should return null when the file does not exist (ENOENT), without printing', async () => {
+      // main/ returns data, not log lines: an absent/unreadable token cache is
+      // reported by the null return, which the tool boundary maps to the
+      // m365_auth_start hint. Nothing here may write to stdout/stderr.
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       ;(fs.readFile as Mock).mockRejectedValue({ code: 'ENOENT' })
       const loaded = await tokenStorage._loadTokensFromFile()
       expect(loaded).toBeNull()
       expect(tokenStorage.tokens).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Token file not found. No tokens loaded.')
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
     })
 
-    it('should return null and log error for other read errors', async () => {
+    it('should return null for other read errors, without printing', async () => {
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       ;(fs.readFile as Mock).mockRejectedValue(new Error('Read error'))
       const loaded = await tokenStorage._loadTokensFromFile()
       expect(loaded).toBeNull()
       expect(tokenStorage.tokens).toBeNull()
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error loading token cache:', expect.any(Error))
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
     })
   })
@@ -103,14 +110,14 @@ describe('TokenStorage', () => {
       expect(fs.rename).toHaveBeenCalledWith(writtenPath, tokenStorePath)
     })
 
-    it('should log warning if no tokens to save', async () => {
+    it('returns false (without printing) when there are no tokens to save', async () => {
       const consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       tokenStorage.tokens = null
       const result = await tokenStorage._saveTokensToFile()
       expect(result).toBe(false)
       expect(fs.writeFile).not.toHaveBeenCalled()
       expect(fs.rename).not.toHaveBeenCalled()
-      expect(consoleWarnSpy).toHaveBeenCalledWith('No tokens to save.')
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
       consoleWarnSpy.mockRestore()
     })
 
@@ -300,7 +307,6 @@ describe('TokenStorage', () => {
     })
 
     it('uses the status-based message when the exchange error omits error_description', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const exchangePromise = tokenStorage.exchangeCodeForTokens(mockAuthCode)
       const mockRes = {
         statusCode: 400,
@@ -311,11 +317,9 @@ describe('TokenStorage', () => {
       }
       mockHttpsRequest.callback(mockRes)
       await expect(exchangePromise).rejects.toThrow('Token exchange failed with status 400')
-      consoleErrorSpy.mockRestore()
     })
 
     it('rejects with a processing error when the 2xx body is not valid JSON', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const exchangePromise = tokenStorage.exchangeCodeForTokens(mockAuthCode)
       const mockRes = {
         statusCode: 200,
@@ -326,7 +330,6 @@ describe('TokenStorage', () => {
       }
       mockHttpsRequest.callback(mockRes)
       await expect(exchangePromise).rejects.toThrow(/Error processing token response/)
-      consoleErrorSpy.mockRestore()
     })
 
     it('should reject if client ID or secret is missing', async () => {
@@ -468,7 +471,6 @@ describe('TokenStorage', () => {
     })
 
     it('uses the status-based message when an error response omits error_description', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const refreshPromise = tokenStorage.refreshAccessToken()
       const mockRes = {
         statusCode: 400,
@@ -479,11 +481,9 @@ describe('TokenStorage', () => {
       }
       mockHttpsRequest.callback(mockRes)
       await expect(refreshPromise).rejects.toThrow('Token refresh failed with status 400')
-      consoleErrorSpy.mockRestore()
     })
 
     it('rejects and clears the promise when the 2xx body is not valid JSON', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const refreshPromise = tokenStorage.refreshAccessToken()
       const mockRes = {
         statusCode: 200,
@@ -495,16 +495,13 @@ describe('TokenStorage', () => {
       mockHttpsRequest.callback(mockRes)
       await expect(refreshPromise).rejects.toBeInstanceOf(Error)
       expect(tokenStorage._refreshPromise).toBeNull()
-      consoleErrorSpy.mockRestore()
     })
 
     it('rejects and clears the promise on an HTTP transport error', async () => {
-      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
       const refreshPromise = tokenStorage.refreshAccessToken()
       mockHttpsRequest.errorHandler(new Error('socket reset'))
       await expect(refreshPromise).rejects.toThrow('socket reset')
       expect(tokenStorage._refreshPromise).toBeNull()
-      consoleErrorSpy.mockRestore()
     })
 
     it('should handle concurrent refresh calls by returning the same promise', async () => {
@@ -590,7 +587,7 @@ describe('TokenStorage', () => {
 
       const token = await tokenStorage.getValidAccessToken()
       expect(token).toBeNull()
-      expect(consoleWarnSpy).toHaveBeenCalledWith('No refresh token available. Cannot refresh access token.')
+      expect(consoleWarnSpy).not.toHaveBeenCalled()
       expect(tokenStorage.tokens).toBeNull()
       expect(saveSpy).toHaveBeenCalled()
       consoleWarnSpy.mockRestore()
@@ -625,23 +622,25 @@ describe('TokenStorage', () => {
       expect(fs.unlink).toHaveBeenCalledWith(tokenStorePath)
     })
 
-    it('should log if token file does not exist during unlink', async () => {
+    it('swallows ENOENT during unlink without printing (already-cleared is success)', async () => {
       ;(fs.unlink as Mock).mockRejectedValue({ code: 'ENOENT' })
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await tokenStorage.clearTokens()
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Token file not found, nothing to delete.')
+      expect(tokenStorage.tokens).toBeNull()
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
     })
 
-    it('should log error for other unlink errors', async () => {
+    it('swallows other unlink errors without printing (in-memory tokens are already cleared)', async () => {
       ;(fs.unlink as Mock).mockRejectedValue(new Error('Deletion failed'))
       const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
       await tokenStorage.clearTokens()
 
-      expect(consoleErrorSpy).toHaveBeenCalledWith('Error deleting token file:', expect.any(Error))
+      expect(tokenStorage.tokens).toBeNull()
+      expect(consoleErrorSpy).not.toHaveBeenCalled()
       consoleErrorSpy.mockRestore()
     })
   })

@@ -2,7 +2,7 @@ import { EventEmitter } from 'node:events'
 import https from 'node:https'
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { callGraphAPI, callGraphAPIDownload, callGraphAPIPaginated } from './index.js'
+import { assertGraphUrl, callGraphAPI, callGraphAPIDownload, callGraphAPIPaginated } from './index.js'
 
 vi.mock('node:https', () => ({
   default: { request: vi.fn() }
@@ -44,10 +44,27 @@ const mockHttpsOnce = (opts: { statusCode: number; body?: string; headers?: Reco
   return { reqWritten }
 }
 
+describe('assertGraphUrl', () => {
+  it('accepts an https Graph URL', () => {
+    expect(() => assertGraphUrl('https://graph.microsoft.com/v1.0/me/messages?$skip=1')).not.toThrow()
+  })
+
+  it('rejects a non-Graph host', () => {
+    expect(() => assertGraphUrl('https://evil.example.com/v1.0/me')).toThrow(/non-Graph URL/)
+  })
+
+  it('rejects a non-https scheme', () => {
+    expect(() => assertGraphUrl('http://graph.microsoft.com/v1.0/me')).toThrow(/non-Graph URL/)
+  })
+
+  it('rejects a malformed URL', () => {
+    expect(() => assertGraphUrl('not a url')).toThrow(/malformed URL/)
+  })
+})
+
 describe('callGraphAPI', () => {
   beforeEach(() => {
     ;(https.request as unknown as Mock).mockReset()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -78,11 +95,22 @@ describe('callGraphAPI', () => {
     await expect(callGraphAPI('tok', 'GET', 'me/messages')).rejects.toThrow(/Error parsing API response/)
   })
 
-  it('uses a full URL directly when path starts with https://', async () => {
+  it('uses a full URL directly when path starts with https:// and is host-pinned to Graph', async () => {
     mockHttpsOnce({ statusCode: 200, body: '{}' })
     await callGraphAPI('tok', 'GET', 'https://graph.microsoft.com/v1.0/me/messages?$skip=10')
     const url = (https.request as unknown as Mock).mock.calls[0][0] as string
     expect(url).toBe('https://graph.microsoft.com/v1.0/me/messages?$skip=10')
+  })
+
+  it('rejects a full URL pointing at a non-Graph host before attaching the Bearer token (SSRF, §13.5)', async () => {
+    await expect(callGraphAPI('tok', 'GET', 'https://evil.example.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
+    // The token must never have been sent: no request should have been made.
+    expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
+  })
+
+  it('rejects a full http:// (non-TLS) Graph URL before sending the token', async () => {
+    await expect(callGraphAPI('tok', 'GET', 'http://graph.microsoft.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
+    expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('builds query string from queryParams (with $filter encoded last)', async () => {
@@ -139,7 +167,6 @@ describe('callGraphAPI', () => {
 describe('callGraphAPIPaginated', () => {
   beforeEach(() => {
     ;(https.request as unknown as Mock).mockReset()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
   afterEach(() => {
     vi.restoreAllMocks()
@@ -173,6 +200,18 @@ describe('callGraphAPIPaginated', () => {
     expect((r.value ?? []).map((v) => v.id)).toEqual(['1', '2'])
   })
 
+  it('rejects when a page returns an @odata.nextLink pointing at a non-Graph host (SSRF, §13.5)', async () => {
+    // A forged/tampered nextLink must not cause the Bearer token to be sent to
+    // an attacker-controlled origin on the next iteration.
+    mockHttpsOnce({
+      statusCode: 200,
+      body: JSON.stringify({ value: [{ id: '1' }], '@odata.nextLink': 'https://attacker.example.com/steal' })
+    })
+    await expect(callGraphAPIPaginated('tok', 'GET', 'me/messages')).rejects.toThrow(/non-Graph URL/)
+    // Only the first (relative-path) request was made; the malicious nextLink was never fetched.
+    expect((https.request as unknown as Mock).mock.calls).toHaveLength(1)
+  })
+
   it('truncates to maxCount when supplied', async () => {
     mockHttpsOnce({
       statusCode: 200,
@@ -185,7 +224,7 @@ describe('callGraphAPIPaginated', () => {
   it('preserves @odata.count from the last page that included it', async () => {
     mockHttpsOnce({
       statusCode: 200,
-      body: JSON.stringify({ value: [{ id: '1' }], '@odata.count': 17, '@odata.nextLink': 'https://x/y' })
+      body: JSON.stringify({ value: [{ id: '1' }], '@odata.count': 17, '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/messages?$skip=1' })
     })
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ value: [{ id: '2' }] }) })
     const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages')
@@ -201,7 +240,6 @@ describe('callGraphAPIPaginated', () => {
 describe('callGraphAPIDownload', () => {
   beforeEach(() => {
     ;(https.request as unknown as Mock).mockReset()
-    vi.spyOn(console, 'error').mockImplementation(() => {})
   })
   afterEach(() => {
     vi.restoreAllMocks()

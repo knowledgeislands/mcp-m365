@@ -62,24 +62,21 @@ class TokenStorage {
     this.tokens = null
     this._loadPromise = null
     this._refreshPromise = null
-
-    if (!this.config.clientId || !this.config.clientSecret) {
-      console.warn('TokenStorage: MCP_M365_CLIENT_ID or MCP_M365_CLIENT_SECRET is not configured. Token refresh will fail.')
-    }
+    // An unconfigured OAuth client (missing id/secret) is surfaced as a thrown
+    // error from `exchangeCodeForTokens`/`refreshAccessToken` when those flows
+    // run — not as a startup log line. `main/` returns/throws data; printing is
+    // the CLI's / mcp-server's job.
   }
 
   async _loadTokensFromFile(): Promise<StoredTokens | null> {
     try {
       const tokenData = await fs.readFile(this.config.tokenStorePath, 'utf8')
       this.tokens = JSON.parse(tokenData)
-      console.error('Tokens loaded from file.')
       return this.tokens
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
-        console.error('Token file not found. No tokens loaded.')
-      } else {
-        console.error('Error loading token cache:', error)
-      }
+    } catch {
+      // No usable token on disk (missing file or unreadable/corrupt cache).
+      // main/ returns data, not log lines: callers observe the null return and
+      // the tool boundary maps it to the m365_auth_start remediation hint.
       this.tokens = null
       return null
     }
@@ -87,23 +84,17 @@ class TokenStorage {
 
   async _saveTokensToFile(): Promise<boolean> {
     if (!this.tokens) {
-      console.warn('No tokens to save.')
       return false
     }
-    try {
-      // Atomic write: temp file + rename. POSIX guarantees `rename` is atomic
-      // on the same filesystem, so a crash mid-write cannot leave the token
-      // file truncated.
-      const finalPath = this.config.tokenStorePath
-      const tmpPath = `${finalPath}.tmp.${process.pid}.${crypto.randomBytes(6).toString('hex')}`
-      await fs.writeFile(tmpPath, JSON.stringify(this.tokens, null, 2), { mode: 0o600 })
-      await fs.rename(tmpPath, finalPath)
-      console.error('Tokens saved successfully.')
-      return true
-    } catch (error) {
-      console.error('Error saving token cache:', error)
-      throw error
-    }
+    // Atomic write: temp file + rename. POSIX guarantees `rename` is atomic
+    // on the same filesystem, so a crash mid-write cannot leave the token
+    // file truncated. A write/rename failure propagates to the caller (we do
+    // not log it here — main/ surfaces errors by throwing, not printing).
+    const finalPath = this.config.tokenStorePath
+    const tmpPath = `${finalPath}.tmp.${process.pid}.${crypto.randomBytes(6).toString('hex')}`
+    await fs.writeFile(tmpPath, JSON.stringify(this.tokens, null, 2), { mode: 0o600 })
+    await fs.rename(tmpPath, finalPath)
+    return true
   }
 
   async getTokens(): Promise<StoredTokens | null> {
@@ -133,23 +124,21 @@ class TokenStorage {
     await this.getTokens()
 
     if (!this.tokens?.access_token) {
-      console.error('No access token available.')
       return null
     }
 
     if (this.isTokenExpired()) {
-      console.error('Access token expired or nearing expiration. Attempting refresh.')
       if (this.tokens.refresh_token) {
         try {
           return await this.refreshAccessToken()
-        } catch (refreshError) {
-          console.error('Failed to refresh access token:', refreshError)
+        } catch {
+          // Refresh failed — drop the now-useless token set so the next call
+          // reports unauthenticated rather than retrying a dead refresh token.
           this.tokens = null
           await this._saveTokensToFile()
           return null
         }
       } else {
-        console.warn('No refresh token available. Cannot refresh access token.')
         this.tokens = null
         await this._saveTokensToFile()
         return null
@@ -170,11 +159,9 @@ class TokenStorage {
     }
 
     if (this._refreshPromise) {
-      console.error('Refresh already in progress, returning existing promise.')
       return this._refreshPromise.then(accessTokenOrThrow)
     }
 
-    console.error('Attempting to refresh access token...')
     const postData = querystring.stringify({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -209,18 +196,14 @@ class TokenStorage {
               tokens.expires_at = Date.now() + responseBody.expires_in * 1000
               try {
                 await this._saveTokensToFile()
-                console.error('Access token refreshed and saved successfully.')
                 resolve(tokens)
               } catch (saveError: any) {
-                console.error('Failed to save refreshed tokens:', saveError)
                 reject(new Error(`Access token refreshed but failed to save: ${saveError.message}`))
               }
             } else {
-              console.error('Error refreshing token:', responseBody)
               reject(new Error(responseBody.error_description || `Token refresh failed with status ${status}`))
             }
           } catch (e) {
-            console.error('Error processing refresh token response or saving tokens:', e)
             reject(e)
           } finally {
             this._refreshPromise = null
@@ -228,7 +211,6 @@ class TokenStorage {
         })
       })
       req.on('error', (error) => {
-        console.error('HTTP error during token refresh:', error)
         reject(error)
         this._refreshPromise = null
       })
@@ -243,7 +225,6 @@ class TokenStorage {
     if (!this.config.clientId || !this.config.clientSecret) {
       throw new Error('Client ID or Client Secret is not configured. Cannot exchange code for tokens.')
     }
-    console.error('Exchanging authorization code for tokens...')
     const postData = querystring.stringify({
       client_id: this.config.clientId,
       client_secret: this.config.clientSecret,
@@ -281,24 +262,19 @@ class TokenStorage {
               }
               try {
                 await this._saveTokensToFile()
-                console.error('Tokens exchanged and saved successfully.')
                 resolve(this.tokens)
               } catch (saveError: any) {
-                console.error('Failed to save exchanged tokens:', saveError)
                 reject(new Error(`Tokens exchanged but failed to save: ${saveError.message}`))
               }
             } else {
-              console.error('Error exchanging code for tokens:', responseBody)
               reject(new Error(responseBody.error_description || `Token exchange failed with status ${status}`))
             }
           } catch (e: any) {
-            console.error('Error processing token exchange response or saving tokens:', e, 'Raw data:', data)
             reject(new Error(`Error processing token response: ${e.message}. Response data: ${data}`))
           }
         })
       })
       req.on('error', (error) => {
-        console.error('HTTP error during code exchange:', error)
         reject(error)
       })
       req.write(postData)
@@ -310,13 +286,10 @@ class TokenStorage {
     this.tokens = null
     try {
       await fs.unlink(this.config.tokenStorePath)
-      console.error('Token file deleted successfully.')
-    } catch (error: any) {
-      if (error.code === 'ENOENT') {
-        console.error('Token file not found, nothing to delete.')
-      } else {
-        console.error('Error deleting token file:', error)
-      }
+    } catch {
+      // Best-effort: a missing file is the success case (nothing to delete),
+      // and any other unlink failure is swallowed because the in-memory tokens
+      // are already cleared — which is what callers actually depend on.
     }
   }
 }

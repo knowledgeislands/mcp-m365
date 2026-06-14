@@ -23,7 +23,7 @@ This is the canonical layout we roll out across the MCPs:
 - **[src/auth-server/index.ts](./src/auth-server/index.ts)** — the OAuth callback server, a second top-level entry. Also calls `loadConfig()` once at boot and uses `config.auth`.
 - **[src/tools/](./src/tools/)** — MCP tool definitions, one `index.ts` per `<service>` (`auth`, `calendar`, `email`, `folder`, `onedrive`, `rules`). These are **thin**: each `server.registerTool(...)` call declares the zod `inputSchema` (+ `outputSchema` where the tool returns `structuredContent`), the annotation preset, and a handler imported from `main/`. There is **no logic and no non-`index.ts` file** under `src/tools/` — everything else moved to `main/`. All `tools/**/index.ts` are coverage-excluded.
 - **[src/main/](./src/main/)** — the real implementation, grouped by concern, each with an `index.ts` re-export and surfaced via the package `exports` map: `main/email/`, `main/folder/`, `main/calendar/`, `main/onedrive/`, `main/rules/` (the `m365_*` handlers), plus `main/graph-client/index.ts` (the Microsoft Graph HTTP layer), `main/auth/index.ts` (hand-rolled token persistence/refresh, the config-injected `createTokenStorage(cfg)` factory, and `ensureAuthenticated`), and `main/auth/handlers.ts` (`m365_about` / `m365_auth_start` / `m365_auth_status`). `main/` functions take their config slice (or the specific primitive) and contain no `console.*` — they return data; the tool layer maps it to an envelope and only `mcp-server`/stderr prints. Concern modules are unit-tested to 100% on all four coverage metrics.
-- **[src/utils/](./src/utils/)** — cross-MCP reusable helpers; keep in sync with sibling repos. These take the **specific config primitive/slice** they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), not the whole `Config`, so they stay MCP-agnostic.
+- **[src/utils/](./src/utils/)** — cross-MCP reusable helpers; keep in sync with sibling repos. These take the **specific config primitive/slice** they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), not the whole `Config`, so they stay MCP-agnostic. Like `main/`, these return data rather than print — the one sanctioned exception is `audit-log.ts`, which writes a single stderr line if (and only if) writing the audit log itself fails, since a broken log must never abort a tool call.
 
 To use the code from a script: `const cfg = loadConfig(); const ts = createTokenStorage(cfg)`.
 
@@ -36,7 +36,7 @@ Token persistence + refresh is hand-rolled in [src/main/auth/index.ts](./src/mai
 
 ### Naming convention
 
-Tool names follow `<app>_<service>_<resource>_<action>` (snake_case) with `<app>` = `m365` and `<service>` ∈ {`email`, `calendar`, `onedrive`}. Plural resource for collection ops, singular for single-item ops. The auth tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) are server-level metadata and drop service/resource segments.
+Tool names follow the canonical workspace scheme `<app>_<resource>_<action>` (snake_case) with `<app>` = `m365`. In this repo the `<resource>` is compound — a `<service>_<thing>` pair with `<service>` ∈ {`email`, `calendar`, `onedrive`} — so a full name reads as `m365_email_message_get`, `m365_calendar_event_create`, `m365_onedrive_item_upload`. Plural resource for collection ops (`m365_email_messages_list`), singular for single-item ops (`m365_email_message_get`). The auth/metadata tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) drop the resource segment.
 
 ### Access-level gate — driven by annotations, not names
 
@@ -53,7 +53,7 @@ A tool registers when its derived level is at or below `MCP_M365_ACCESS_LEVEL` (
 
 This server holds OAuth refresh tokens that grant Outlook read/write/send, Calendar read/write, and OneDrive read/write across the user's tenant. Token leakage = mailbox + drive compromise. Destructive Graph operations cannot be undone via Graph itself. New tools and changes to existing tools MUST preserve every invariant below.
 
-1. **Tokens are never logged.** [src/main/auth/index.ts](./src/main/auth/index.ts) logs status strings only — never token contents. `m365_auth_status` returns presence + scope + expiry only. If an error must be logged, extract only safe fields (`error.code`, `error.message`).
+1. **Tokens are never logged.** [src/main/auth/index.ts](./src/main/auth/index.ts) does not print at all — as a `main/` layer it returns/throws data rather than logging (a missing/unreadable token cache is reported by a `null` return; an unconfigured OAuth client surfaces as a thrown error from `exchangeCodeForTokens`/`refreshAccessToken`). `m365_auth_status` returns presence + scope + expiry only. Any future error surfacing must carry only safe fields (`error.code`, `error.message`) and never token contents.
 2. **Token persistence is atomic and `0600`.** `_saveTokensToFile()` writes to `<path>.tmp.<pid>.<rand>` then `fs.rename` into place; both temp and final files use `mode: 0o600`. Refresh and exchange flows both go through `_saveTokensToFile` — keep it that way.
 3. **Refresh deduplication.** `_refreshPromise` ensures concurrent `getValidAccessToken()` callers share a single refresh request. New auth code must preserve the dedupe — without it a burst of tool calls would race for token persistence.
 4. **All Zod schemas are `.strict()` with bounded numerics.** Already true; new schemas must continue this — e.g. `count` is `z.number().int().positive().max(50)` for calendar/onedrive listings, `.max(1000)` for email; `sequence` (rule ordering) is `.min(0).max(10000)`.
@@ -63,12 +63,19 @@ This server holds OAuth refresh tokens that grant Outlook read/write/send, Calen
 8. **401 hint surfaces remediation.** `errMessage()` in [src/utils/errors.ts](./src/utils/errors.ts) appends `Run the m365_auth_start tool to refresh the OAuth token.` on 401 (or matching message keywords). New tools must use `errorResult(action, err)` so this contract holds.
 9. **No shell-string interpolation.** This server doesn't shell out. If a future tool needs to, use `execFile` with an argv array.
 10. **If a future tool writes Graph response bytes to disk, add a configurable download root** (e.g. `MCP_M365_DOWNLOAD_PATH`, default `~/Downloads`) and validate `outputPath` via a two-layer (lexical + realpath) helper, mirroring [`assertOutputPathWithinDownloadRoot()`](../mcp-gmail/src/utils/paths.ts) in mcp-gmail. Today, `m365_onedrive_item_download` returns a pre-authenticated URL rather than writing bytes.
+11. **Full URLs are host-pinned before the Bearer token is attached (SSRF — workspace standard §13.5).** `callGraphAPI` only ever receives a full URL via an `@odata.nextLink` echoed back in a prior Graph response; that value is server-controlled and treated as untrusted. `assertGraphUrl()` in [src/main/graph-client/index.ts](./src/main/graph-client/index.ts) asserts the scheme is `https:` and the host is exactly `graph.microsoft.com` (derived from `GRAPH_API_ENDPOINT`) before the token is sent, so a forged/tampered nextLink can never exfiltrate the access token to another origin. Never bypass it when following pagination.
 
-Atomic-write, mode-0600, redacted summary, and refresh-dedup tests live in [src/main/auth/index.test.ts](./src/main/auth/index.test.ts).
+Atomic-write, mode-0600, redacted summary, refresh-dedup, and nextLink host-pin tests live in [src/main/auth/index.test.ts](./src/main/auth/index.test.ts) and [src/main/graph-client/index.test.ts](./src/main/graph-client/index.test.ts).
 
 ## Tool registration call sites
 
 Each `<service>` registers its tools in `src/tools/<service>/index.ts` (`auth`, `calendar`, `email`, `folder`, `onedrive`, `rules`). To survey the surface, `grep "registerTool" src/tools/*/index.ts`. README's [Available Tools](./README.md#available-tools) tabulates them with purposes.
+
+## MCP spec conformance
+
+This server targets MCP spec revision **2025-11-25** (the latest released revision; see the workspace MCP standard §12–13). Tool-execution errors are returned as `isError: true` envelopes via `errorResult` (never thrown), and structured output is paired with an `outputSchema` (below).
+
+**RFC 8707 `resource`/`aud` audience validation is deliberately N/A here.** That requirement (spec §13 item 7, AUTH 2025-11-25) governs a server acting as a *remote HTTP OAuth resource server* — validating that an inbound bearer token's audience is itself. This server is an OAuth **client** of Microsoft Graph, runs over **stdio**, and obtains its own tokens via the loopback consent flow: no caller-supplied bearer ever crosses the client↔server boundary, so there is nothing to audience-validate. The live token-passthrough defence is that we never accept or forward a caller-supplied token (we only use tokens issued to ourselves for Graph). This goes live only if the server is ever deployed as a remote resource server. Likewise, Client ID Metadata Documents (§13 item 8) apply only to an *authorization-server* role we do not occupy.
 
 ## Structured output (spec §12)
 

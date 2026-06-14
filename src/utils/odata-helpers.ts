@@ -45,7 +45,6 @@ export const escapeODataString = (str: string): string => {
   str = str.replace(/'/g, "''")
   str = str.replace(/[(){}[\]:;,/?&=+*%$#@!^]/g, '')
 
-  console.error(`Escaped OData string: '${str}'`)
   return str
 }
 
