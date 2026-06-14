@@ -36,7 +36,7 @@ Token persistence + refresh is hand-rolled in [src/main/auth/index.ts](./src/mai
 
 ### Naming convention
 
-Tool names follow the canonical workspace scheme `<app>_<resource>_<action>` (snake_case) with `<app>` = `m365`. In this repo the `<resource>` is compound — a `<service>_<thing>` pair with `<service>` ∈ {`email`, `calendar`, `onedrive`} — so a full name reads as `m365_email_message_get`, `m365_calendar_event_create`, `m365_onedrive_item_upload`. Plural resource for collection ops (`m365_email_messages_list`), singular for single-item ops (`m365_email_message_get`). The auth/metadata tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) drop the resource segment.
+Tool names follow the canonical workspace scheme `<app>_<resource>_<action>` (snake case) with `<app>` = `m365`. In this repo the `<resource>` is compound — a `<service>_<thing>` pair with `<service>` ∈ {`email`, `calendar`, `onedrive`} — so a full name reads as `m365_email_message_get`, `m365_calendar_event_create`, `m365_onedrive_item_upload`. Plural resource for collection ops (`m365_email_messages_list`), singular for single-item ops (`m365_email_message_get`). The auth/metadata tools (`m365_about`, `m365_auth_start`, `m365_auth_status`) drop the resource segment.
 
 ### Access-level gate — driven by annotations, not names
 
@@ -75,7 +75,7 @@ Each `<service>` registers its tools in `src/tools/<service>/index.ts` (`auth`, 
 
 This server targets MCP spec revision **2025-11-25** (the latest released revision; see the workspace MCP standard §12–13). Tool-execution errors are returned as `isError: true` envelopes via `errorResult` (never thrown), and structured output is paired with an `outputSchema` (below).
 
-**RFC 8707 `resource`/`aud` audience validation is deliberately N/A here.** That requirement (spec §13 item 7, AUTH 2025-11-25) governs a server acting as a *remote HTTP OAuth resource server* — validating that an inbound bearer token's audience is itself. This server is an OAuth **client** of Microsoft Graph, runs over **stdio**, and obtains its own tokens via the loopback consent flow: no caller-supplied bearer ever crosses the client↔server boundary, so there is nothing to audience-validate. The live token-passthrough defence is that we never accept or forward a caller-supplied token (we only use tokens issued to ourselves for Graph). This goes live only if the server is ever deployed as a remote resource server. Likewise, Client ID Metadata Documents (§13 item 8) apply only to an *authorization-server* role we do not occupy.
+**RFC 8707 `resource`/`aud` audience validation is deliberately N/A here.** That requirement (spec §13 item 7, AUTH 2025-11-25) governs a server acting as a _remote HTTP OAuth resource server_ — validating that an inbound bearer token's audience is itself. This server is an OAuth **client** of Microsoft Graph, runs over **stdio**, and obtains its own tokens via the loopback consent flow: no caller-supplied bearer ever crosses the client↔server boundary, so there is nothing to audience-validate. The live token-passthrough defence is that we never accept or forward a caller-supplied token (we only use tokens issued to ourselves for Graph). This goes live only if the server is ever deployed as a remote resource server. Likewise, Client ID Metadata Documents (§13 item 8) apply only to an _authorization-server_ role we do not occupy.
 
 ## Structured output (spec §12)
 
