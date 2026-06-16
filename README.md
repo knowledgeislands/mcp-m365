@@ -1,22 +1,29 @@
 # mcp-m365
 
-[![CI](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml/badge.svg)](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@knowledgeislands/mcp-m365.svg)](https://www.npmjs.com/package/@knowledgeislands/mcp-m365) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml/badge.svg)](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml)
+[![npm version](https://img.shields.io/npm/v/@knowledgeislands/mcp-m365.svg)](https://www.npmjs.com/package/@knowledgeislands/mcp-m365)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 services — Outlook (email, calendar, folders, rules) and OneDrive (files, search, sharing) — through the Microsoft Graph API.
+An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 services — Outlook (email, calendar, folders, rules) and
+OneDrive (files, search, sharing) — through the Microsoft Graph API.
 
 ## Features
 
 - **OAuth 2.0** — standalone auth server handles the user consent flow; tokens are cached locally and refreshed transparently.
 - **Outlook coverage** — read/search/send/delete email, manage folders + rules, create/accept/decline/cancel calendar events.
 - **OneDrive coverage** — list/search/download/upload (with chunked >4 MB upload), create folders, share files.
-- **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool annotations.
-- **Modular structure** — the implementation lives in `src/main/<concern>/` (email, calendar, folder, rules, OneDrive); `src/tools/<service>/index.ts` is a thin registration shell that validates args and maps the result to an MCP envelope.
+- **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool
+  annotations.
+- **Modular structure** — the implementation lives in `src/main/<concern>/` (email, calendar, folder, rules, OneDrive);
+  `src/tools/<service>/index.ts` is a thin registration shell that validates args and maps the result to an MCP envelope.
 
-**Quality:** 100% line / branch / function / statement coverage on the `main/` + `utils/` logic, with all destructive paths covered (the wiring-only `mcp-server` / `tools/**/index.ts` / `auth-server` and pure-data modules are coverage-excluded).
+**Quality:** 100% line / branch / function / statement coverage on the `main/` + `utils/` logic, with all destructive paths covered (the
+wiring-only `mcp-server` / `tools/**/index.ts` / `auth-server` and pure-data modules are coverage-excluded).
 
 ## Available Tools
 
-Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
+Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`,
+`destructiveHint`, `idempotentHint`, `openWorldHint`).
 
 ### Auth & meta
 
@@ -28,29 +35,29 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 
 ### Outlook (Email & Calendar)
 
-| Tool | Description |
-| --- | --- |
-| `m365_email_messages_list` | List recent emails from inbox, folder path, or explicit folder ID. |
-| `m365_email_messages_search` | Search emails by query and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. |
-| `m365_email_message_get` | Read email content. |
-| `m365_email_message_send` | Send a new email. |
-| `m365_email_draft_create` | Save an email draft. |
-| `m365_email_message_mark_read` | Mark email as read/unread. |
-| `m365_email_message_delete` | Move an email to Deleted Items (or hard delete with `permanent: true`). |
-| `m365_calendar_events_list` | List calendar events. |
-| `m365_calendar_event_create` | Create calendar event. |
-| `m365_calendar_event_accept` | Accept event invitation. |
-| `m365_calendar_event_decline` | Decline event invitation. |
-| `m365_calendar_event_cancel` | Cancel a calendar event. |
-| `m365_calendar_event_delete` | Delete calendar event. |
-| `m365_email_folders_list` | List mail folders. |
-| `m365_email_folder_create` | Create mail folder. |
-| `m365_email_folder_rename` | Rename an existing mail folder. |
-| `m365_email_folder_delete` | Delete a mail folder. |
-| `m365_email_messages_move` | Move emails between folders. |
-| `m365_email_rules_list` | List inbox rules. |
-| `m365_email_rule_create` | Create inbox rule. |
-| `m365_email_rules_reorder` | Change the execution order of an existing inbox rule. |
+| Tool                           | Description                                                                                                                |
+| ------------------------------ | -------------------------------------------------------------------------------------------------------------------------- |
+| `m365_email_messages_list`     | List recent emails from inbox, folder path, or explicit folder ID.                                                         |
+| `m365_email_messages_search`   | Search emails by query and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. |
+| `m365_email_message_get`       | Read email content.                                                                                                        |
+| `m365_email_message_send`      | Send a new email.                                                                                                          |
+| `m365_email_draft_create`      | Save an email draft.                                                                                                       |
+| `m365_email_message_mark_read` | Mark email as read/unread.                                                                                                 |
+| `m365_email_message_delete`    | Move an email to Deleted Items (or hard delete with `permanent: true`).                                                    |
+| `m365_calendar_events_list`    | List calendar events.                                                                                                      |
+| `m365_calendar_event_create`   | Create calendar event.                                                                                                     |
+| `m365_calendar_event_accept`   | Accept event invitation.                                                                                                   |
+| `m365_calendar_event_decline`  | Decline event invitation.                                                                                                  |
+| `m365_calendar_event_cancel`   | Cancel a calendar event.                                                                                                   |
+| `m365_calendar_event_delete`   | Delete calendar event.                                                                                                     |
+| `m365_email_folders_list`      | List mail folders.                                                                                                         |
+| `m365_email_folder_create`     | Create mail folder.                                                                                                        |
+| `m365_email_folder_rename`     | Rename an existing mail folder.                                                                                            |
+| `m365_email_folder_delete`     | Delete a mail folder.                                                                                                      |
+| `m365_email_messages_move`     | Move emails between folders.                                                                                               |
+| `m365_email_rules_list`        | List inbox rules.                                                                                                          |
+| `m365_email_rule_create`       | Create inbox rule.                                                                                                         |
+| `m365_email_rules_reorder`     | Change the execution order of an existing inbox rule.                                                                      |
 
 #### Email folder targeting
 
@@ -104,7 +111,8 @@ When both are provided, `folderId` takes precedence and is used directly.
 2. **Register an Azure app** — see [Azure App Registration](#azure-app-registration).
 3. **Configure environment** — copy `.env.example` to `.env.development` and add your Azure credentials.
 4. **Build**: `bun run build`.
-5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
+5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see
+   [Configuration](#configuration)).
 6. **Start the auth server**: `bun run server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
@@ -116,25 +124,32 @@ Concrete asks you might make of Claude with this server connected.
 
 > "Find unread emails from `finance@acme.com` received after 2026-04-01 and read the most recent one."
 
-Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`, `receivedAfter: "2026-04-01T00:00:00Z"`, then `m365_email_message_get` on the top result. Both honour mail-folder scoping (`folder` name or explicit `folderId`).
+Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`,
+`receivedAfter: "2026-04-01T00:00:00Z"`, then `m365_email_message_get` on the top result. Both honour mail-folder scoping (`folder` name or
+explicit `folderId`).
 
 **Draft a reply to a meeting:**
 
 > "Find Alice's invite for tomorrow's planning sync and draft a reply confirming I'll be there."
 
-Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then [`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via [`m365_calendar_event_accept`](#outlook-email--calendar).)
+Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then
+[`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through
+`m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via
+[`m365_calendar_event_accept`](#outlook-email--calendar).)
 
 **Upload a file to OneDrive:**
 
 > "Upload `~/Documents/Q2-report.pdf` to OneDrive under `Projects/2026/Q2`. The folder doesn't exist yet — create it."
 
-Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, then [`m365_onedrive_item_upload`](#onedrive) for the file (or [`m365_onedrive_item_upload_large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
+Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, then [`m365_onedrive_item_upload`](#onedrive) for the file (or
+[`m365_onedrive_item_upload_large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
 
 **Review the week's calendar:**
 
 > "Show me my calendar for next week and accept the marketing review invite if it's still open."
 
-Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
+Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject,
+and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
 
 ## Installation
 
@@ -186,24 +201,26 @@ bun install
 
 ### Environment Variables
 
-| Name | Required | Default | Purpose |
-| --- | --- | --- | --- |
-| `MCP_M365_CLIENT_ID` | yes | — | Azure App Registration "Application (client) ID". |
-| `MCP_M365_CLIENT_SECRET` | yes | — | The client secret **VALUE** from "Certificates & secrets" (not the Secret ID). |
-| `MCP_M365_TENANT_ID` | recommended | `common` | Directory (tenant) ID. Set explicitly for single-tenant apps to avoid `/common` endpoint errors. |
-| `MCP_M365_AUTHORITY_HOST` | no | `https://login.microsoftonline.com` | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.). |
-| `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
-| `MCP_M365_AUTH_PORT` | no | `3333` | Port the auth server listens on. Must match the redirect URI port. |
-| `MCP_M365_SCOPES` | no | † | Space-separated OAuth scopes requested for the access token. |
-| `MCP_M365_TOKEN_ENDPOINT` | no | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path. |
-| `MCP_M365_ACCESS_LEVEL` | no | `read` | Maximum tool access level to register. One of: `read` (default — 11 read-only tools, least privilege), `write` (adds 15 non-destructive mutations such as send-email, create-event, OneDrive upload — 26 tools total), `destructive` (adds 6 delete tools — all 32 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup. |
-| `MCP_M365_AUDIT_LOG` | no | `writes` | Audit-log scope. One of `off`, `writes` (record only non-read tool calls), `all` (record every invocation). |
-| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
-| `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
-| `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
-| `NODE_ENV` | no | — | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config/index.ts`](./src/config/index.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production. |
+| Name                           | Required    | Default                                                              | Purpose                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------------------ | ----------- | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `MCP_M365_CLIENT_ID`           | yes         | —                                                                    | Azure App Registration "Application (client) ID".                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `MCP_M365_CLIENT_SECRET`       | yes         | —                                                                    | The client secret **VALUE** from "Certificates & secrets" (not the Secret ID).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `MCP_M365_TENANT_ID`           | recommended | `common`                                                             | Directory (tenant) ID. Set explicitly for single-tenant apps to avoid `/common` endpoint errors.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `MCP_M365_AUTHORITY_HOST`      | no          | `https://login.microsoftonline.com`                                  | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| `MCP_M365_REDIRECT_URI`        | no          | `http://localhost:3333/auth/callback`                                | OAuth redirect URI. Must match the value registered in Azure.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+| `MCP_M365_AUTH_PORT`           | no          | `3333`                                                               | Port the auth server listens on. Must match the redirect URI port.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MCP_M365_SCOPES`              | no          | †                                                                    | Space-separated OAuth scopes requested for the access token.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `MCP_M365_TOKEN_ENDPOINT`      | no          | `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token` | Full token endpoint URL. Override only if your authority uses a non-standard path.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     |
+| `MCP_M365_ACCESS_LEVEL`        | no          | `read`                                                               | Maximum tool access level to register. One of: `read` (default — 11 read-only tools, least privilege), `write` (adds 15 non-destructive mutations such as send-email, create-event, OneDrive upload — 26 tools total), `destructive` (adds 6 delete tools — all 32 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup. |
+| `MCP_M365_AUDIT_LOG`           | no          | `writes`                                                             | Audit-log scope. One of `off`, `writes` (record only non-read tool calls), `all` (record every invocation).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| `MCP_M365_AUDIT_LOG_PATH`      | no          | `~/.local/state/mcp-m365/audit.jsonl`                                | Path to the JSONL audit log.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `MCP_M365_AUDIT_LOG_MAX_BYTES` | no          | `10485760` (10 MiB)                                                  | Size-based rotation threshold in bytes. Set to `0` to disable rotation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
+| `MCP_M365_AUDIT_LOG_KEEP`      | no          | `5`                                                                  | Number of rotated audit-log files to retain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| `NODE_ENV`                     | no          | —                                                                    | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`, which makes [`src/config/index.ts`](./src/config/index.ts) load `.env.development` from the CWD. Unset under Claude Desktop, so `.env*` files are ignored in production.                                                                                                                                                                                                                                                                                                                                                                            |
 
-† Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
+† Default scopes:
+`offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical
+`M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
 
 **Notes:**
 
@@ -241,7 +258,10 @@ bun run server:mcp:dev    # MCP server
 bun run server:auth:dev   # OAuth server on :3333
 ```
 
-The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`, and `loadConfig()` in [`src/config/index.ts`](./src/config/index.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up `.env.development` from the CWD automatically (Bun also auto-loads `.env.development` natively). Claude Desktop does not set `NODE_ENV`, so the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
+The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`, and `loadConfig()` in
+[`src/config/index.ts`](./src/config/index.ts) calls `process.loadEnvFile('./.env.${NODE_ENV}')` at startup — so it picks up
+`.env.development` from the CWD automatically (Bun also auto-loads `.env.development` natively). Claude Desktop does not set `NODE_ENV`, so
+the file is ignored in production; env vars must come from the Claude Desktop config `env` block.
 
 ## Authentication
 
@@ -272,11 +292,16 @@ bun run lint:md            # prettier + markdownlint for *.md
 
 ## Security Model
 
-- Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
-- OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
-- The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
-- Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
-- Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
+- Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example`
+  templates.
+- OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never
+  logs token values.
+- The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10
+  minutes.
+- Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`,
+  `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
+- Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401
+  → token-refresh handling.
 
 ## Directory Structure
 
@@ -310,7 +335,10 @@ bun run lint:md            # prettier + markdownlint for *.md
 └── dist/                            # Build output (gitignored, created by `bun run build`)
 ```
 
-`src/auth-server/` is the standalone OAuth callback server and its tests; `src/main/auth/` is the reusable token storage/refresh layer (the config-injected `createTokenStorage(cfg)` factory) consumed by both entry points. They're deliberately decoupled so the auth server can run independently of the MCP server. Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate, token storage, and tool registration — nothing reads `process.env` at import time.
+`src/auth-server/` is the standalone OAuth callback server and its tests; `src/main/auth/` is the reusable token storage/refresh layer (the
+config-injected `createTokenStorage(cfg)` factory) consumed by both entry points. They're deliberately decoupled so the auth server can run
+independently of the MCP server. Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate,
+token storage, and tool registration — nothing reads `process.env` at import time.
 
 ## Troubleshooting
 
@@ -343,4 +371,5 @@ Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `m365_auth_start` t
 4. Re-export it from [`src/tools/index.ts`](./src/tools/index.ts).
 5. Wire it into [`src/mcp-server/index.ts`](./src/mcp-server/index.ts) alongside the existing `register*Tools(...)` calls.
 
-Route every Graph API call through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts) so token refresh and error handling stay consistent.
+Route every Graph API call through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts) so token refresh and error handling
+stay consistent.

@@ -2,7 +2,8 @@
 
 ## Reporting a Vulnerability
 
-If you find a security issue in `@knowledgeislands/mcp-m365`, **please do not file a public GitHub issue.** Instead, email the maintainer directly:
+If you find a security issue in `@knowledgeislands/mcp-m365`, **please do not file a public GitHub issue.** Instead, email the maintainer
+directly:
 
 - **<kris@kris.me.uk>** — subject: `mcp-m365 security`
 
@@ -19,7 +20,8 @@ You should expect an acknowledgement within 72 hours. We aim to triage, investig
 In scope:
 
 - Authentication and token handling (`src/auth-server/`, `src/tools/auth/`, `src/main/auth/`).
-- The Microsoft Graph HTTP client (`src/main/graph-client/`) and the tools that call it (`src/tools/calendar/`, `src/tools/email/`, `src/tools/folder/`, `src/tools/onedrive/`, `src/tools/rules/`).
+- The Microsoft Graph HTTP client (`src/main/graph-client/`) and the tools that call it (`src/tools/calendar/`, `src/tools/email/`,
+  `src/tools/folder/`, `src/tools/onedrive/`, `src/tools/rules/`).
 - HTML sanitization in `src/utils/html-sanitizer.ts` (used to render email bodies).
 
 Out of scope:
@@ -30,7 +32,8 @@ Out of scope:
 
 ## Token Storage
 
-OAuth tokens are stored at `~/.mcp-m365-tokens.json` with `0600` permissions (owner read/write only). Tokens are refreshed transparently; if you suspect your tokens have leaked, **delete that file immediately** and re-authenticate.
+OAuth tokens are stored at `~/.mcp-m365-tokens.json` with `0600` permissions (owner read/write only). Tokens are refreshed transparently; if
+you suspect your tokens have leaked, **delete that file immediately** and re-authenticate.
 
 You can also revoke the app's access from <https://myaccount.microsoft.com/apps>.
 
