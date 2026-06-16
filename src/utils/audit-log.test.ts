@@ -57,6 +57,26 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(event.args.to).toBe('a@x')
   })
 
+  it('redacts scheme://user:pass@host credentials in strings, arrays, nested objects (primitives pass through)', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg({ mode: 'all' }), 'm365_email_messages_list', 'read', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    await wrapped({
+      url: 'https://user:tok3n@example.com/x',
+      urls: ['https://user:tok3n@example.com/a', 'https://example.com/safe'],
+      nested: { inner: 'https://user:tok3n@example.com/y' },
+      count: 42
+    })
+    await flushAsync()
+    const line = (await fs.readFile(logPath, 'utf-8')).trim()
+    expect(line).not.toContain('tok3n')
+    expect(line).toContain('<redacted>')
+    const event = JSON.parse(line)
+    expect(event.args.url).toBe('https://<redacted>@example.com/x')
+    expect(event.args.urls).toEqual(['https://<redacted>@example.com/a', 'https://example.com/safe'])
+    expect(event.args.nested.inner).toBe('https://<redacted>@example.com/y')
+    expect(event.args.count).toBe(42)
+  })
+
   it('records ok:false + error text when isError:true', async () => {
     const { withAuditLog } = await import('./audit-log.js')
     const wrapped = withAuditLog(auditCfg(), 'm365_email_message_delete', 'destructive', async () => ({ isError: true, content: [{ type: 'text', text: 'gone' }] }))
