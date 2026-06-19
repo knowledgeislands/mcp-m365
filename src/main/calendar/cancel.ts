@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleCancelEvent = async (args: any): Promise<any> => {
+export const handleCancelEvent = async (ctx: GraphContext, args: any): Promise<any> => {
   const { eventId, comment, dry_run = true } = args
 
   if (!eventId) {
@@ -14,12 +13,12 @@ export const handleCancelEvent = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
     const endpoint = `me/events/${eventId}/cancel`
     const body = { comment: comment || 'Cancelled via API' }
 
     if (dry_run) {
-      const event = await callGraphAPI(accessToken, 'GET', `me/events/${eventId}?$select=id,subject,start`)
+      const event = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/events/${eventId}?$select=id,subject,start`)
       return {
         content: [
           {
@@ -30,7 +29,7 @@ export const handleCancelEvent = async (args: any): Promise<any> => {
       }
     }
 
-    await callGraphAPI(accessToken, 'POST', endpoint, body)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', endpoint, body)
 
     return {
       content: [{ type: 'text', text: `Event with ID ${eventId} has been successfully cancelled.` }]

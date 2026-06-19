@@ -1,5 +1,5 @@
 import type { Mock, MockInstance } from 'vitest'
-import { ensureAuthenticated } from '../auth/index.js'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPIPaginated } from '../graph-client/index.js'
 import { resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 import { formatSearchResults, handleSearchEmails } from './search.js'
@@ -7,11 +7,14 @@ import { formatSearchResults, handleSearchEmails } from './search.js'
 vi.mock('../graph-client/index.js', () => ({
   callGraphAPIPaginated: vi.fn()
 }))
-vi.mock('../auth')
 vi.mock('./folder-utils')
 
 const mockCallGraphAPIPaginated = callGraphAPIPaginated as Mock
-const mockEnsureAuthenticated = ensureAuthenticated as Mock
+const mockEnsureAuthenticated = vi.fn()
+// Injected GraphContext: handlers receive the Graph endpoint + the auth gate as
+// their first argument (standard §1/§2), so tests pass a ctx instead of mocking
+// a module-level singleton.
+const ctx = { graphApiEndpoint: GRAPH_API_ENDPOINT, ensureAuthenticated: mockEnsureAuthenticated }
 const mockResolveFolderPath = resolveFolderPath as Mock
 
 describe('handleSearchEmails', () => {
@@ -49,9 +52,10 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ unreadOnly: true, count: 10 })
+    await handleSearchEmails(ctx, { unreadOnly: true, count: 10 })
 
     expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
       mockAccessToken,
       'GET',
       WELL_KNOWN_FOLDERS.inbox,
@@ -67,9 +71,10 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ query: 'release', unreadOnly: true, count: 10 })
+    await handleSearchEmails(ctx, { query: 'release', unreadOnly: true, count: 10 })
 
     expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
       mockAccessToken,
       'GET',
       WELL_KNOWN_FOLDERS.inbox,
@@ -84,10 +89,10 @@ describe('handleSearchEmails', () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ query: 'release', folderId: testFolderId, count: 10 })
+    await handleSearchEmails(ctx, { query: 'release', folderId: testFolderId, count: 10 })
 
     expect(mockResolveFolderPath).not.toHaveBeenCalled()
-    expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
+    expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
   })
 
   test('applies date range filters when searching without text terms', async () => {
@@ -95,13 +100,14 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({
+    await handleSearchEmails(ctx, {
       receivedAfter: '2024-01-01T00:00:00Z',
       receivedBefore: '2024-01-31T23:59:59Z',
       count: 10
     })
 
     expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
       mockAccessToken,
       'GET',
       WELL_KNOWN_FOLDERS.inbox,
@@ -117,14 +123,14 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({
+    await handleSearchEmails(ctx, {
       query: 'release',
       receivedAfter: '2024-01-01T00:00:00Z',
       receivedBefore: '2024-01-31T23:59:59Z',
       count: 10
     })
 
-    const firstCallParams = mockCallGraphAPIPaginated.mock.calls[0][3]
+    const firstCallParams = mockCallGraphAPIPaginated.mock.calls[0][4]
     expect(firstCallParams.$search).toContain('release')
     expect(firstCallParams.$search).not.toContain('received>=')
     expect(firstCallParams.$search).not.toContain('received<=')
@@ -135,7 +141,7 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockRejectedValue(new Error('API call failed with status 400: {"error":{"code":"BadRequest"}}'))
 
-    const result = await handleSearchEmails({ query: 'release', count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'release', count: 10 })
 
     expect(result.content[0].text).toContain('Error searching emails:')
     expect(result.content[0].text).toContain('Source: Microsoft Graph API (400).')
@@ -143,7 +149,7 @@ describe('handleSearchEmails', () => {
   })
 
   test('returns an isError envelope for an invalid date filter without calling Graph', async () => {
-    const result = await handleSearchEmails({ receivedAfter: 'not-a-date' })
+    const result = await handleSearchEmails(ctx, { receivedAfter: 'not-a-date' })
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toMatch(/Invalid date value "not-a-date"/)
@@ -155,9 +161,9 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ subject: 'a" OR from:"evil', count: 10 })
+    await handleSearchEmails(ctx, { subject: 'a" OR from:"evil', count: 10 })
 
-    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[3] as { $search?: string }
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string }
     expect(params.$search).not.toContain('a"')
     expect(params.$search).toContain('subject:"a OR from:evil"')
   })
@@ -167,7 +173,7 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: [] })
 
-    const result = await handleSearchEmails({ query: 'nothingmatches', count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'nothingmatches', count: 10 })
 
     expect(result.content[0].text).toContain('No emails found matching your search criteria.')
     expect(result.isError).toBeUndefined()
@@ -179,7 +185,7 @@ describe('handleSearchEmails', () => {
     // First (combined-search) call returns matches → early return path.
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    const result = await handleSearchEmails({ query: 'release', count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'release', count: 10 })
 
     expect(result.content[0].text).toContain('Found 1 emails matching your search criteria:')
     expect(result.content[0].text).toContain('(Search used combined-search strategy)')
@@ -195,7 +201,7 @@ describe('handleSearchEmails', () => {
       .mockResolvedValueOnce({ value: [] }) // combined-search: empty
       .mockResolvedValueOnce({ value: mockEmails }) // single-term-subject: hit
 
-    const result = await handleSearchEmails({ subject: 'Flagged', count: 10 })
+    const result = await handleSearchEmails(ctx, { subject: 'Flagged', count: 10 })
 
     expect(result.content[0].text).toContain('(Search used single-term-subject strategy)')
     expect(result.structuredContent.attempts).toEqual(['combined-search', 'single-term-subject'])
@@ -209,7 +215,7 @@ describe('handleSearchEmails', () => {
       .mockRejectedValueOnce(new Error('single subject boom')) // single-term-subject: error
       .mockResolvedValueOnce({ value: mockEmails }) // single-term-from: hit
 
-    const result = await handleSearchEmails({ subject: 'X', from: 'a@b.com', count: 10 })
+    const result = await handleSearchEmails(ctx, { subject: 'X', from: 'a@b.com', count: 10 })
 
     expect(result.structuredContent.attempts).toContain('single-term-from')
   })
@@ -222,7 +228,7 @@ describe('handleSearchEmails', () => {
       .mockResolvedValueOnce({ value: [] }) // single-term-query: empty
       .mockResolvedValueOnce({ value: mockEmails }) // boolean-filters-only: hit
 
-    const result = await handleSearchEmails({ query: 'q', hasAttachments: true, count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'q', hasAttachments: true, count: 10 })
 
     expect(result.structuredContent.attempts).toContain('boolean-filters-only')
   })
@@ -236,7 +242,7 @@ describe('handleSearchEmails', () => {
       .mockRejectedValueOnce(new Error('filter boom')) // boolean-filters-only: error
       .mockResolvedValueOnce({ value: mockEmails }) // recent-emails: hit
 
-    const result = await handleSearchEmails({ query: 'q', unreadOnly: true, count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'q', unreadOnly: true, count: 10 })
 
     expect(result.structuredContent.attempts).toContain('recent-emails')
   })
@@ -249,7 +255,7 @@ describe('handleSearchEmails', () => {
       .mockResolvedValueOnce({ value: [] }) // single-term-query: empty
       .mockRejectedValueOnce(new Error('recent boom')) // recent-emails: error
 
-    const result = await handleSearchEmails({ query: 'q', count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'q', count: 10 })
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('All search strategies failed')
@@ -260,9 +266,9 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ to: 'boss@x.com', count: 10 })
+    await handleSearchEmails(ctx, { to: 'boss@x.com', count: 10 })
 
-    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[3] as { $search?: string }
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string }
     expect(params.$search).toContain('to:"boss@x.com"')
   })
 
@@ -271,9 +277,9 @@ describe('handleSearchEmails', () => {
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails({ count: 10 })
+    await handleSearchEmails(ctx, { count: 10 })
 
-    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[3] as { $orderby?: string; $filter?: string; $search?: string }
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $orderby?: string; $filter?: string; $search?: string }
     expect(params.$orderby).toBe('receivedDateTime desc')
     expect(params.$filter).toBeUndefined()
     expect(params.$search).toBeUndefined()
@@ -285,7 +291,7 @@ describe('handleSearchEmails', () => {
     // hits the `error.message || 'Unknown error'` fallback.
     mockResolveFolderPath.mockRejectedValue({ code: 'NO_MSG' })
 
-    const result = await handleSearchEmails({ count: 10 })
+    const result = await handleSearchEmails(ctx, { count: 10 })
 
     expect(result.isError).toBe(true)
     expect(result.structuredContent.error).toBe('Unknown error')
@@ -294,7 +300,7 @@ describe('handleSearchEmails', () => {
   test('returns the structured auth envelope when ensureAuthenticated rejects', async () => {
     mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
 
-    const result = await handleSearchEmails({ query: 'q', count: 10 })
+    const result = await handleSearchEmails(ctx, { query: 'q', count: 10 })
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("'m365_auth_start'")

@@ -314,56 +314,28 @@ export const createTokenStorage = (cfg: Config): TokenStorage =>
   })
 
 /**
- * Process-lifetime shared `TokenStorage` instance.
- *
- * Both `ensureAuthenticated` and `handleCheckAuthStatus` need to read the
- * persisted token; sharing one instance avoids duplicate caches and keeps
- * refresh deduplication working across callers. The instance is created lazily
- * from the injected `Config` on first use (NOT at import) via
- * `initTokenStorage(cfg)`, called once by each server entry point at boot.
- * `_resetTokenStorage()` clears the cache for test isolation.
+ * The auth gate every Graph-calling `main/` function awaits first, bound to an
+ * **injected** `TokenStorage` (no module-level singleton — standard §1/§2). A
+ * server entry point creates the storage from the loaded `Config`
+ * (`createTokenStorage(cfg)`), wraps it here once at boot, and threads the
+ * resulting gate into the `GraphContext` each handler receives. The returned
+ * function yields a valid access token (refreshing if needed), or throws
+ * `Error('Authentication required')` when no usable token is available — which
+ * the thin tool boundary maps to the `m365_auth_start` remediation hint.
  */
-let sharedTokenStorage: TokenStorage | null = null
+export const makeEnsureAuthenticated =
+  (storage: TokenStorage) =>
+  async (forceNew = false): Promise<string> => {
+    if (forceNew) {
+      throw new Error('Authentication required')
+    }
 
-/** Initialise (or replace) the shared instance from a loaded Config. Returns it. */
-export const initTokenStorage = (cfg: Config): TokenStorage => {
-  sharedTokenStorage = createTokenStorage(cfg)
-  return sharedTokenStorage
-}
+    const accessToken = await storage.getValidAccessToken()
+    if (!accessToken) {
+      throw new Error('Authentication required')
+    }
 
-/**
- * The shared instance. Throws if accessed before `initTokenStorage(cfg)` — a
- * server entry point must initialise it at boot.
- */
-export const getTokenStorage = (): TokenStorage => {
-  if (!sharedTokenStorage) {
-    throw new Error('TokenStorage not initialised — call initTokenStorage(loadConfig()) at startup.')
+    return accessToken
   }
-  return sharedTokenStorage
-}
-
-/** Test hook: drop the cached shared instance so the next init starts clean. */
-export const _resetTokenStorage = (): void => {
-  sharedTokenStorage = null
-}
-
-/**
- * The auth gate every Graph-calling `main/` function awaits first. Returns a
- * valid access token (refreshing if needed) from the shared `TokenStorage`, or
- * throws `Error('Authentication required')` when no usable token is available —
- * which the thin tool boundary maps to the `m365_auth_start` remediation hint.
- */
-export const ensureAuthenticated = async (forceNew = false): Promise<string> => {
-  if (forceNew) {
-    throw new Error('Authentication required')
-  }
-
-  const accessToken = await getTokenStorage().getValidAccessToken()
-  if (!accessToken) {
-    throw new Error('Authentication required')
-  }
-
-  return accessToken
-}
 
 export { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './handlers.js'

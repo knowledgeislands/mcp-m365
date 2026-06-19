@@ -4,10 +4,9 @@
 
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleShare = async (args: any): Promise<any> => {
+export const handleShare = async (ctx: GraphContext, args: any): Promise<any> => {
   const itemId = args.itemId
   const path = args.path
   const type = args.type || 'view'
@@ -18,14 +17,14 @@ export const handleShare = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     let resolvedItemId = itemId
     let itemName = ''
 
     if (!resolvedItemId && path) {
       const itemEndpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}`
-      const itemResponse = await callGraphAPI(accessToken, 'GET', itemEndpoint)
+      const itemResponse = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', itemEndpoint)
 
       if (!itemResponse?.id) {
         return errorText(`File not found at path: ${path}`)
@@ -41,7 +40,7 @@ export const handleShare = async (args: any): Promise<any> => {
       scope: scope
     }
 
-    const response = await callGraphAPI(accessToken, 'POST', endpoint, body)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', endpoint, body)
 
     if (!response?.link) {
       return errorText('Failed to create sharing link.')

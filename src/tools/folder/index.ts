@@ -4,9 +4,10 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { folderListResultSchema, handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder } from '../../main/folder/index.js'
+import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 
-export const registerFolderTools = (server: McpServer): void => {
+export const registerFolderTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
     'm365_email_folders_list',
     {
@@ -20,7 +21,7 @@ export const registerFolderTools = (server: McpServer): void => {
       outputSchema: folderListResultSchema,
       annotations: READ_ONLY_REMOTE
     },
-    handleListFolders
+    (args) => handleListFolders(ctx, args)
   )
 
   server.registerTool(
@@ -35,7 +36,7 @@ export const registerFolderTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleCreateFolder
+    (args) => handleCreateFolder(ctx, args)
   )
 
   server.registerTool(
@@ -50,7 +51,7 @@ export const registerFolderTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleRenameFolder
+    (args) => handleRenameFolder(ctx, args)
   )
 
   server.registerTool(
@@ -65,7 +66,7 @@ export const registerFolderTools = (server: McpServer): void => {
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
-    handleDeleteFolder
+    (args) => handleDeleteFolder(ctx, args)
   )
 
   server.registerTool(
@@ -81,7 +82,7 @@ export const registerFolderTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleMoveEmails
+    (args) => handleMoveEmails(ctx, args)
   )
 }
 

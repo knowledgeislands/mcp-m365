@@ -1,16 +1,19 @@
 import type { Mock } from 'vitest'
-import { ensureAuthenticated } from '../auth/index.js'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import { handleDeleteFolder } from './delete.js'
 import { getFolderIdByName } from './folder-utils.js'
 import { handleRenameFolder } from './rename.js'
 
 vi.mock('../graph-client/index.js')
-vi.mock('../auth')
 vi.mock('./folder-utils')
 
 const mockCallGraphAPI = callGraphAPI as Mock
-const mockEnsureAuthenticated = ensureAuthenticated as Mock
+const mockEnsureAuthenticated = vi.fn()
+// Injected GraphContext: handlers receive the Graph endpoint + the auth gate as
+// their first argument (standard §1/§2), so tests pass a ctx instead of mocking
+// a module-level singleton.
+const ctx = { graphApiEndpoint: GRAPH_API_ENDPOINT, ensureAuthenticated: mockEnsureAuthenticated }
 const mockGetFolderIdByName = getFolderIdByName as Mock
 
 describe('folder management handlers', () => {
@@ -28,10 +31,10 @@ describe('folder management handlers', () => {
     mockCallGraphAPI.mockResolvedValue({})
     const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
 
-    const result = await handleRenameFolder({ folder: 'Projects/2024', newName: '2025' })
+    const result = await handleRenameFolder(ctx, { folder: 'Projects/2024', newName: '2025' })
 
     consoleErrorSpy.mockRestore()
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(mockAccessToken, 'PATCH', 'me/mailFolders/folder-123', { displayName: '2025' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'PATCH', 'me/mailFolders/folder-123', { displayName: '2025' })
     expect(result.content[0].text).toContain('Successfully renamed folder')
   })
 
@@ -40,9 +43,9 @@ describe('folder management handlers', () => {
     mockGetFolderIdByName.mockResolvedValue('folder-456')
     mockCallGraphAPI.mockResolvedValue({})
 
-    const result = await handleDeleteFolder({ folder: 'Projects/2024', dry_run: false })
+    const result = await handleDeleteFolder(ctx, { folder: 'Projects/2024', dry_run: false })
 
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(mockAccessToken, 'DELETE', 'me/mailFolders/folder-456')
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'DELETE', 'me/mailFolders/folder-456')
     expect(result.content[0].text).toContain('Successfully deleted folder')
   })
 
@@ -50,7 +53,7 @@ describe('folder management handlers', () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockGetFolderIdByName.mockResolvedValue('folder-456')
 
-    const result = await handleDeleteFolder({ folder: 'Projects/2024' })
+    const result = await handleDeleteFolder(ctx, { folder: 'Projects/2024' })
 
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
     expect(result.content[0].text).toMatch(/^\[dry_run\] would delete mail folder "Projects\/2024"/)
@@ -60,7 +63,7 @@ describe('folder management handlers', () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockGetFolderIdByName.mockResolvedValue(null)
 
-    const result = await handleRenameFolder({ folder: 'Missing/Folder', newName: 'NewName' })
+    const result = await handleRenameFolder(ctx, { folder: 'Missing/Folder', newName: 'NewName' })
 
     expect(result.content[0].text).toContain('not found')
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
@@ -70,7 +73,7 @@ describe('folder management handlers', () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockGetFolderIdByName.mockResolvedValue(null)
 
-    const result = await handleDeleteFolder({ folder: 'Missing/Folder' })
+    const result = await handleDeleteFolder(ctx, { folder: 'Missing/Folder' })
 
     expect(result.content[0].text).toContain('not found')
     expect(mockCallGraphAPI).not.toHaveBeenCalled()

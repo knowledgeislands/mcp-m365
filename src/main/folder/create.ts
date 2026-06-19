@@ -3,11 +3,10 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
-export const handleCreateFolder = async (args: any): Promise<any> => {
+export const handleCreateFolder = async (ctx: GraphContext, args: any): Promise<any> => {
   const folderName = args.name
   const parentFolder = args.parentFolder || ''
   const createContext = {
@@ -20,8 +19,8 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const result = await createMailFolder(accessToken, folderName, parentFolder)
+    const accessToken = await ctx.ensureAuthenticated()
+    const result = await createMailFolder(ctx.graphApiEndpoint, accessToken, folderName, parentFolder)
 
     return {
       content: [{ type: 'text', text: result.message }]
@@ -49,8 +48,8 @@ const formatFolderError = (error: any, context: any): string => {
   return lines.join('\n')
 }
 
-const createMailFolder = async (accessToken: string, folderName: string, parentFolderName: string): Promise<{ success: boolean; message: string; folderId?: string }> => {
-  const existingFolder = await getFolderIdByName(accessToken, folderName)
+const createMailFolder = async (graphApiEndpoint: string, accessToken: string, folderName: string, parentFolderName: string): Promise<{ success: boolean; message: string; folderId?: string }> => {
+  const existingFolder = await getFolderIdByName(graphApiEndpoint, accessToken, folderName)
   if (existingFolder) {
     return {
       success: false,
@@ -60,7 +59,7 @@ const createMailFolder = async (accessToken: string, folderName: string, parentF
 
   let endpoint = 'me/mailFolders'
   if (parentFolderName) {
-    const parentId = await getFolderIdByName(accessToken, parentFolderName)
+    const parentId = await getFolderIdByName(graphApiEndpoint, accessToken, parentFolderName)
     if (!parentId) {
       return {
         success: false,
@@ -75,7 +74,7 @@ const createMailFolder = async (accessToken: string, folderName: string, parentF
     displayName: folderName
   }
 
-  const response = await callGraphAPI(accessToken, 'POST', endpoint, folderData)
+  const response = await callGraphAPI(graphApiEndpoint, accessToken, 'POST', endpoint, folderData)
 
   if (response?.id) {
     const locationInfo = parentFolderName ? `inside "${parentFolderName}"` : 'at the root level'

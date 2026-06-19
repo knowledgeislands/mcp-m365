@@ -2,6 +2,7 @@ import { EventEmitter } from 'node:events'
 import https from 'node:https'
 import type { Mock } from 'vitest'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { assertGraphUrl, callGraphAPI, callGraphAPIDownload, callGraphAPIPaginated } from './index.js'
 
 vi.mock('node:https', () => ({
@@ -46,19 +47,19 @@ const mockHttpsOnce = (opts: { statusCode: number; body?: string; headers?: Reco
 
 describe('assertGraphUrl', () => {
   it('accepts an https Graph URL', () => {
-    expect(() => assertGraphUrl('https://graph.microsoft.com/v1.0/me/messages?$skip=1')).not.toThrow()
+    expect(() => assertGraphUrl(GRAPH_API_ENDPOINT, 'https://graph.microsoft.com/v1.0/me/messages?$skip=1')).not.toThrow()
   })
 
   it('rejects a non-Graph host', () => {
-    expect(() => assertGraphUrl('https://evil.example.com/v1.0/me')).toThrow(/non-Graph URL/)
+    expect(() => assertGraphUrl(GRAPH_API_ENDPOINT, 'https://evil.example.com/v1.0/me')).toThrow(/non-Graph URL/)
   })
 
   it('rejects a non-https scheme', () => {
-    expect(() => assertGraphUrl('http://graph.microsoft.com/v1.0/me')).toThrow(/non-Graph URL/)
+    expect(() => assertGraphUrl(GRAPH_API_ENDPOINT, 'http://graph.microsoft.com/v1.0/me')).toThrow(/non-Graph URL/)
   })
 
   it('rejects a malformed URL', () => {
-    expect(() => assertGraphUrl('not a url')).toThrow(/malformed URL/)
+    expect(() => assertGraphUrl(GRAPH_API_ENDPOINT, 'not a url')).toThrow(/malformed URL/)
   })
 })
 
@@ -72,50 +73,50 @@ describe('callGraphAPI', () => {
 
   it('resolves with parsed JSON on 2xx', async () => {
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ ok: true }) })
-    await expect(callGraphAPI('tok', 'GET', 'me/messages')).resolves.toEqual({ ok: true })
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).resolves.toEqual({ ok: true })
   })
 
   it('treats an empty 2xx body as {}', async () => {
     mockHttpsOnce({ statusCode: 204, body: '' })
-    await expect(callGraphAPI('tok', 'POST', 'me/messages', {})).resolves.toEqual({})
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages', {})).resolves.toEqual({})
   })
 
   it('rejects with UNAUTHORIZED on 401', async () => {
     mockHttpsOnce({ statusCode: 401, body: '' })
-    await expect(callGraphAPI('tok', 'GET', 'me/messages')).rejects.toThrow('UNAUTHORIZED')
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow('UNAUTHORIZED')
   })
 
   it('rejects with status + body on other errors', async () => {
     mockHttpsOnce({ statusCode: 500, body: 'server boom' })
-    await expect(callGraphAPI('tok', 'GET', 'me/messages')).rejects.toThrow(/500.*server boom/)
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow(/500.*server boom/)
   })
 
   it('rejects with a parse error on malformed 2xx JSON', async () => {
     mockHttpsOnce({ statusCode: 200, body: 'not-json' })
-    await expect(callGraphAPI('tok', 'GET', 'me/messages')).rejects.toThrow(/Error parsing API response/)
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow(/Error parsing API response/)
   })
 
   it('uses a full URL directly when path starts with https:// and is host-pinned to Graph', async () => {
     mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'GET', 'https://graph.microsoft.com/v1.0/me/messages?$skip=10')
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'https://graph.microsoft.com/v1.0/me/messages?$skip=10')
     const url = (https.request as unknown as Mock).mock.calls[0][0] as string
     expect(url).toBe('https://graph.microsoft.com/v1.0/me/messages?$skip=10')
   })
 
   it('rejects a full URL pointing at a non-Graph host before attaching the Bearer token (SSRF, §13.5)', async () => {
-    await expect(callGraphAPI('tok', 'GET', 'https://evil.example.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'https://evil.example.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
     // The token must never have been sent: no request should have been made.
     expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('rejects a full http:// (non-TLS) Graph URL before sending the token', async () => {
-    await expect(callGraphAPI('tok', 'GET', 'http://graph.microsoft.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'http://graph.microsoft.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
     expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('builds query string from queryParams (with $filter encoded last)', async () => {
     mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'GET', 'me/messages', null, { $top: 5, $filter: 'isRead eq false' })
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages', null, { $top: 5, $filter: 'isRead eq false' })
     const url = (https.request as unknown as Mock).mock.calls[0][0] as string
     // Standard params go through URLSearchParams (so `$` is %-encoded), but
     // $filter is appended raw with the value URI-encoded — that's the
@@ -126,7 +127,7 @@ describe('callGraphAPI', () => {
 
   it('builds a query string from non-filter params only', async () => {
     mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'GET', 'me/messages', null, { $top: 5, $orderby: 'receivedDateTime desc' })
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages', null, { $top: 5, $orderby: 'receivedDateTime desc' })
     const url = (https.request as unknown as Mock).mock.calls[0][0] as string
     expect(url).toContain('%24top=5')
     expect(url).not.toContain('$filter')
@@ -134,7 +135,7 @@ describe('callGraphAPI', () => {
 
   it('builds a query string from $filter alone (no other params)', async () => {
     mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'GET', 'me/messages', null, { $filter: 'isRead eq false' })
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages', null, { $filter: 'isRead eq false' })
     const url = (https.request as unknown as Mock).mock.calls[0][0] as string
     expect(url).toContain('?$filter=isRead%20eq%20false')
     expect(url).not.toContain('&')
@@ -142,25 +143,25 @@ describe('callGraphAPI', () => {
 
   it('writes a JSON-stringified body for POST', async () => {
     const handle = mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'POST', 'me/messages', { subject: 'Hi' })
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages', { subject: 'Hi' })
     expect(handle.reqWritten).toEqual([JSON.stringify({ subject: 'Hi' })])
   })
 
   it('writes a raw string body unchanged for POST', async () => {
     const handle = mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'POST', 'me/messages', '{"raw":true}')
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages', '{"raw":true}')
     expect(handle.reqWritten).toEqual(['{"raw":true}'])
   })
 
   it('does not write a body for GET even when data is supplied', async () => {
     const handle = mockHttpsOnce({ statusCode: 200, body: '{}' })
-    await callGraphAPI('tok', 'GET', 'me/messages', { ignored: true })
+    await callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages', { ignored: true })
     expect(handle.reqWritten).toEqual([])
   })
 
   it('rejects on a network error', async () => {
     mockHttpsOnce({ statusCode: 0, emitNetworkError: new Error('connect ECONNREFUSED') })
-    await expect(callGraphAPI('tok', 'GET', 'me/messages')).rejects.toThrow(/Network error.*ECONNREFUSED/)
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow(/Network error.*ECONNREFUSED/)
   })
 })
 
@@ -173,19 +174,19 @@ describe('callGraphAPIPaginated', () => {
   })
 
   it('throws when method is not GET', async () => {
-    await expect(callGraphAPIPaginated('tok', 'POST', 'me/messages')).rejects.toThrow(/only supports GET/)
+    await expect(callGraphAPIPaginated(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages')).rejects.toThrow(/only supports GET/)
   })
 
   it('returns a single page when no nextLink', async () => {
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ value: [{ id: '1' }, { id: '2' }] }) })
-    const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages')
+    const r = await callGraphAPIPaginated<{ id: string }>(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')
     expect((r.value ?? []).map((v) => v.id)).toEqual(['1', '2'])
     expect(r['@odata.count']).toBe(2)
   })
 
   it('tolerates a page that omits the value array', async () => {
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ '@odata.context': 'x' }) })
-    const r = await callGraphAPIPaginated('tok', 'GET', 'me/messages')
+    const r = await callGraphAPIPaginated(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')
     expect(r.value).toEqual([])
     expect(r['@odata.count']).toBe(0)
   })
@@ -196,7 +197,7 @@ describe('callGraphAPIPaginated', () => {
       body: JSON.stringify({ value: [{ id: '1' }], '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/messages?$skip=1' })
     })
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ value: [{ id: '2' }] }) })
-    const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages')
+    const r = await callGraphAPIPaginated<{ id: string }>(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')
     expect((r.value ?? []).map((v) => v.id)).toEqual(['1', '2'])
   })
 
@@ -207,7 +208,7 @@ describe('callGraphAPIPaginated', () => {
       statusCode: 200,
       body: JSON.stringify({ value: [{ id: '1' }], '@odata.nextLink': 'https://attacker.example.com/steal' })
     })
-    await expect(callGraphAPIPaginated('tok', 'GET', 'me/messages')).rejects.toThrow(/non-Graph URL/)
+    await expect(callGraphAPIPaginated(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow(/non-Graph URL/)
     // Only the first (relative-path) request was made; the malicious nextLink was never fetched.
     expect((https.request as unknown as Mock).mock.calls).toHaveLength(1)
   })
@@ -217,7 +218,7 @@ describe('callGraphAPIPaginated', () => {
       statusCode: 200,
       body: JSON.stringify({ value: [{ id: '1' }, { id: '2' }, { id: '3' }] })
     })
-    const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages', {}, 2)
+    const r = await callGraphAPIPaginated<{ id: string }>(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages', {}, 2)
     expect(r.value ?? []).toHaveLength(2)
   })
 
@@ -227,13 +228,13 @@ describe('callGraphAPIPaginated', () => {
       body: JSON.stringify({ value: [{ id: '1' }], '@odata.count': 17, '@odata.nextLink': 'https://graph.microsoft.com/v1.0/me/messages?$skip=1' })
     })
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ value: [{ id: '2' }] }) })
-    const r = await callGraphAPIPaginated<{ id: string }>('tok', 'GET', 'me/messages')
+    const r = await callGraphAPIPaginated<{ id: string }>(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')
     expect(r['@odata.count']).toBe(17)
   })
 
   it('propagates errors thrown by the underlying request', async () => {
     mockHttpsOnce({ statusCode: 500, body: 'fail' })
-    await expect(callGraphAPIPaginated('tok', 'GET', 'me/messages')).rejects.toThrow(/500/)
+    await expect(callGraphAPIPaginated(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages')).rejects.toThrow(/500/)
   })
 })
 
@@ -247,36 +248,36 @@ describe('callGraphAPIDownload', () => {
 
   it('resolves to the Location header on 302', async () => {
     mockHttpsOnce({ statusCode: 302, headers: { location: 'https://blob.example.com/abc' } })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X/content')).resolves.toBe('https://blob.example.com/abc')
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X/content')).resolves.toBe('https://blob.example.com/abc')
   })
 
   it('resolves to @microsoft.graph.downloadUrl on 200 JSON', async () => {
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ '@microsoft.graph.downloadUrl': 'https://blob.example.com/x' }) })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).resolves.toBe('https://blob.example.com/x')
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).resolves.toBe('https://blob.example.com/x')
   })
 
   it('rejects when 200 JSON has no download URL', async () => {
     mockHttpsOnce({ statusCode: 200, body: JSON.stringify({ id: 'X' }) })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).rejects.toThrow(/No download URL/)
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow(/No download URL/)
   })
 
   it('rejects on malformed 2xx JSON', async () => {
     mockHttpsOnce({ statusCode: 200, body: 'not-json' })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).rejects.toThrow(/Error parsing download response/)
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow(/Error parsing download response/)
   })
 
   it('rejects with UNAUTHORIZED on 401', async () => {
     mockHttpsOnce({ statusCode: 401, body: '' })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).rejects.toThrow('UNAUTHORIZED')
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow('UNAUTHORIZED')
   })
 
   it('rejects with status + body on other errors', async () => {
     mockHttpsOnce({ statusCode: 404, body: 'not-found' })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).rejects.toThrow(/404.*not-found/)
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow(/404.*not-found/)
   })
 
   it('rejects on network error', async () => {
     mockHttpsOnce({ statusCode: 0, emitNetworkError: new Error('ETIMEDOUT') })
-    await expect(callGraphAPIDownload('tok', 'me/drive/items/X')).rejects.toThrow(/Network error.*ETIMEDOUT/)
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow(/Network error.*ETIMEDOUT/)
   })
 })

@@ -1,5 +1,5 @@
 import type { Mock, MockInstance } from 'vitest'
-import { ensureAuthenticated } from '../auth/index.js'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPIPaginated } from '../graph-client/index.js'
 import { resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 import { handleListEmails } from './list.js'
@@ -7,11 +7,14 @@ import { handleListEmails } from './list.js'
 vi.mock('../graph-client/index.js', () => ({
   callGraphAPIPaginated: vi.fn()
 }))
-vi.mock('../auth')
 vi.mock('./folder-utils')
 
 const mockCallGraphAPIPaginated = callGraphAPIPaginated as Mock
-const mockEnsureAuthenticated = ensureAuthenticated as Mock
+const mockEnsureAuthenticated = vi.fn()
+// Injected GraphContext: handlers receive the Graph endpoint + the auth gate as
+// their first argument (standard §1/§2), so tests pass a ctx instead of mocking
+// a module-level singleton.
+const ctx = { graphApiEndpoint: GRAPH_API_ENDPOINT, ensureAuthenticated: mockEnsureAuthenticated }
 const mockResolveFolderPath = resolveFolderPath as Mock
 
 describe('handleListEmails', () => {
@@ -62,11 +65,12 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(mockEnsureAuthenticated).toHaveBeenCalledTimes(1)
-      expect(mockResolveFolderPath).toHaveBeenCalledWith(mockAccessToken, 'inbox')
+      expect(mockResolveFolderPath).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'inbox')
       expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
         mockAccessToken,
         'GET',
         WELL_KNOWN_FOLDERS.inbox,
@@ -87,10 +91,10 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.drafts)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-      const result = await handleListEmails({ folder: customFolder })
+      const result = await handleListEmails(ctx, { folder: customFolder })
 
-      expect(mockResolveFolderPath).toHaveBeenCalledWith(mockAccessToken, customFolder)
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(mockAccessToken, 'GET', WELL_KNOWN_FOLDERS.drafts, expect.any(Object), expect.any(Number))
+      expect(mockResolveFolderPath).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, customFolder)
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', WELL_KNOWN_FOLDERS.drafts, expect.any(Object), expect.any(Number))
       expect(result.content[0].text).toContain('Found 2 emails in drafts')
     })
 
@@ -98,10 +102,10 @@ describe('handleListEmails', () => {
       mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-      const result = await handleListEmails({ folderId: testFolderId })
+      const result = await handleListEmails(ctx, { folderId: testFolderId })
 
       expect(mockResolveFolderPath).not.toHaveBeenCalled()
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
       expect(result.content[0].text).toContain(`folderId:${testFolderId}`)
     })
 
@@ -110,9 +114,10 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: [mockEmails[0]] })
 
-      await handleListEmails({ count: 5 })
+      await handleListEmails(ctx, { count: 5 })
 
       expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
         mockAccessToken,
         'GET',
         WELL_KNOWN_FOLDERS.inbox,
@@ -128,9 +133,10 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails, '@odata.count': 250 })
 
-      const result = await handleListEmails({ includeCount: true })
+      const result = await handleListEmails(ctx, { includeCount: true })
 
       expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
         mockAccessToken,
         'GET',
         WELL_KNOWN_FOLDERS.inbox,
@@ -147,9 +153,10 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails, '@odata.count': 250 })
 
-      const result = await handleListEmails({ includeCount: false })
+      const result = await handleListEmails(ctx, { includeCount: false })
 
       expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
         mockAccessToken,
         'GET',
         WELL_KNOWN_FOLDERS.inbox,
@@ -166,7 +173,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toContain('John Doe (john@example.com)')
       expect(result.content[0].text).toContain('Jane Smith (jane@example.com)')
@@ -186,7 +193,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: [emailWithoutSender] })
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toContain('Unknown (unknown)')
     })
@@ -198,7 +205,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: [] })
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toBe('No emails found in inbox.')
     })
@@ -208,7 +215,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.archive)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: [] })
 
-      const result = await handleListEmails({ folder: 'archive' })
+      const result = await handleListEmails(ctx, { folder: 'archive' })
 
       expect(result.content[0].text).toBe('No emails found in archive.')
     })
@@ -218,7 +225,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: [], '@odata.count': 42 })
 
-      const result = await handleListEmails({ includeCount: true })
+      const result = await handleListEmails(ctx, { includeCount: true })
 
       expect(result.structuredContent.totalMatching).toBe(42)
     })
@@ -228,7 +235,7 @@ describe('handleListEmails', () => {
     test('should handle authentication error', async () => {
       mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toBe("Authentication required. Please use the 'm365_auth_start' tool first.")
       expect(mockCallGraphAPIPaginated).not.toHaveBeenCalled()
@@ -239,7 +246,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockRejectedValue(new Error('Graph API Error'))
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toContain('Error listing emails: Graph API Error')
       expect(result.content[0].text).toContain('Source: MCP/server-side validation or processing.')
@@ -251,7 +258,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockRejectedValue(new Error('API call failed with status 503: service unavailable'))
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toContain('Source: Microsoft Graph API (503).')
     })
@@ -261,7 +268,7 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockRejectedValue({ code: 'WEIRD' })
 
-      const result = await handleListEmails({})
+      const result = await handleListEmails(ctx, {})
 
       expect(result.content[0].text).toContain('Unknown error')
       expect(result.structuredContent.error).toBe('Unknown error')
@@ -271,7 +278,7 @@ describe('handleListEmails', () => {
       mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
       mockResolveFolderPath.mockRejectedValue(new Error('Folder resolution failed'))
 
-      const result = await handleListEmails({ folder: 'InvalidFolder' })
+      const result = await handleListEmails(ctx, { folder: 'InvalidFolder' })
 
       expect(result.content[0].text).toContain('Error listing emails: Folder resolution failed')
       expect(result.content[0].text).toContain('Source: MCP/server-side validation or processing.')
@@ -285,10 +292,10 @@ describe('handleListEmails', () => {
       mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
       mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-      await handleListEmails({ folder: 'inbox' })
+      await handleListEmails(ctx, { folder: 'inbox' })
 
-      expect(mockResolveFolderPath).toHaveBeenCalledWith(mockAccessToken, 'inbox')
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(mockAccessToken, 'GET', 'me/mailFolders/inbox/messages', expect.any(Object), expect.any(Number))
+      expect(mockResolveFolderPath).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'inbox')
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', 'me/mailFolders/inbox/messages', expect.any(Object), expect.any(Number))
     })
   })
 })

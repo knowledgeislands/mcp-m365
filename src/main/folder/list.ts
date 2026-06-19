@@ -2,7 +2,7 @@
  * List folders functionality
  */
 import { z } from 'zod'
-import { ensureAuthenticated } from '../auth/index.js'
+import type { GraphContext } from '../graph-client/index.js'
 import { fetchFoldersRecursive } from './folder-utils.js'
 
 /**
@@ -24,14 +24,14 @@ export const folderListResultSchema = z
 
 export type FolderListResult = z.infer<typeof folderListResultSchema>
 
-export const handleListFolders = async (args: any): Promise<any> => {
+export const handleListFolders = async (ctx: GraphContext, args: any): Promise<any> => {
   const includeItemCounts = args.includeItemCounts === true
   const includeChildren = args.includeChildren === true
   const listContext = { includeItemCounts, includeChildren }
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const folders = await getAllFoldersHierarchy(accessToken, includeItemCounts)
+    const accessToken = await ctx.ensureAuthenticated()
+    const folders = await getAllFoldersHierarchy(ctx.graphApiEndpoint, accessToken, includeItemCounts)
 
     if (includeChildren) {
       return createFolderListResponse(formatFolderHierarchy(folders, includeItemCounts), {
@@ -94,10 +94,10 @@ const formatFolderListError = (error: any, context: any): string => {
   return lines.join('\n')
 }
 
-const getAllFoldersHierarchy = async (accessToken: string, includeItemCounts: boolean): Promise<any[]> => {
+const getAllFoldersHierarchy = async (graphApiEndpoint: string, accessToken: string, includeItemCounts: boolean): Promise<any[]> => {
   const selectFields = includeItemCounts ? 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount' : 'id,displayName,parentFolderId,childFolderCount'
 
-  const allFolders = await fetchFoldersRecursive(accessToken, 'me/mailFolders', selectFields)
+  const allFolders = await fetchFoldersRecursive(graphApiEndpoint, accessToken, 'me/mailFolders', selectFields)
 
   const idToName = new Map(allFolders.map((f: any) => [f.id, f.displayName]))
   return allFolders.map((folder: any) => ({

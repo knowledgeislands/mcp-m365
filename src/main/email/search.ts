@@ -5,8 +5,7 @@ import { z } from 'zod'
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
 import { escapeKqlValue } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPIPaginated } from '../graph-client/index.js'
+import { callGraphAPIPaginated, type GraphContext } from '../graph-client/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
 /**
@@ -30,7 +29,7 @@ export const emailSearchResultSchema = z
 
 export type EmailSearchResult = z.infer<typeof emailSearchResultSchema>
 
-export const handleSearchEmails = async (args: any): Promise<any> => {
+export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<any> => {
   const folder = args.folder || 'inbox'
   const folderId = args.folderId || ''
   const requestedCount = Math.max(1, Math.min(args.count || DEFAULT_LIST_SIZE, MAX_RESULT_COUNT))
@@ -63,13 +62,13 @@ export const handleSearchEmails = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(accessToken, folder)
+    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
-    const response = await progressiveSearch(endpoint, accessToken, { query, from, to, subject }, { hasAttachments, unreadOnly, receivedAfter, receivedBefore }, requestedCount)
+    const response = await progressiveSearch(ctx.graphApiEndpoint, endpoint, accessToken, { query, from, to, subject }, { hasAttachments, unreadOnly, receivedAfter, receivedBefore }, requestedCount)
 
     // progressiveSearch always resolves to a Graph response object (or throws),
     // and always populates `_searchInfo.strategies` — so the formatter can read
@@ -145,7 +144,7 @@ const normalizeDateFilterValue = (value: any): string => {
   return value
 }
 
-const progressiveSearch = async (endpoint: string, accessToken: string, searchTerms: any, filterTerms: any, maxCount: number): Promise<any> => {
+const progressiveSearch = async (graphApiEndpoint: string, endpoint: string, accessToken: string, searchTerms: any, filterTerms: any, maxCount: number): Promise<any> => {
   const searchAttempts: string[] = []
   const searchErrors: string[] = []
 
@@ -153,7 +152,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
     const params = buildSearchParams(searchTerms, filterTerms, Math.min(DEFAULT_PAGE_SIZE, maxCount))
     searchAttempts.push('combined-search')
 
-    const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, params, maxCount)
+    const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, params, maxCount)
     if (response.value && response.value.length > 0) {
       // Early-return path: populate _searchInfo.strategies so downstream
       // formatting (which reads `strategies`) is robust for a non-empty
@@ -195,7 +194,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
 
         simplifiedParams.$search = `"${kqlParts.join(' ')}"`
 
-        const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, simplifiedParams, maxCount)
+        const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, simplifiedParams, maxCount)
         if (response.value && response.value.length > 0) {
           response._searchInfo = {
             attemptsCount: searchAttempts.length,
@@ -224,7 +223,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
 
       addBooleanFilters(filterOnlyParams, filterTerms)
 
-      const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, filterOnlyParams, maxCount)
+      const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, filterOnlyParams, maxCount)
       response._searchInfo = {
         attemptsCount: searchAttempts.length,
         strategies: [...searchAttempts],
@@ -248,7 +247,7 @@ const progressiveSearch = async (endpoint: string, accessToken: string, searchTe
 
   let response: any
   try {
-    response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, basicParams, maxCount)
+    response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, basicParams, maxCount)
   } catch (error: any) {
     searchErrors.push(`recent-emails: ${error.message}`)
     throw new Error(`All search strategies failed. ${searchErrors.join(' | ')}`)

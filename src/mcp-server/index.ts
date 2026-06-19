@@ -16,7 +16,8 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from '../config/index.js'
-import { initTokenStorage } from '../main/auth/index.js'
+import { createTokenStorage, makeEnsureAuthenticated } from '../main/auth/index.js'
+import type { GraphContext } from '../main/graph-client/index.js'
 import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
 import { makeAccessGatedRegister } from '../utils/access-level.js'
 
@@ -27,7 +28,14 @@ console.error(`  SERVER_NAME=${config.serverName}`)
 console.error(`  MCP_M365_ACCESS_LEVEL=${config.accessLevel}`)
 console.error(`  MCP_M365_AUDIT_LOG=${config.auditLogMode}${config.auditLogMode === 'off' ? '' : ` (path: ${config.auditLogPath})`}`)
 
-initTokenStorage(config)
+// Construct the token storage once here from the loaded config, then derive the
+// auth gate and the GraphContext threaded into every Graph-calling tool group.
+// No module reaches a shared singleton — config and its derivations are injected.
+const tokenStorage = createTokenStorage(config)
+const ctx: GraphContext = {
+  graphApiEndpoint: config.graphApiEndpoint,
+  ensureAuthenticated: makeEnsureAuthenticated(tokenStorage)
+}
 
 const server = new McpServer({
   name: config.serverName,
@@ -40,12 +48,12 @@ server.registerTool = makeAccessGatedRegister(server, config.accessLevel, {
   keep: config.auditLogKeep
 })
 
-registerAuthTools(server, config)
-registerCalendarTools(server)
-registerEmailTools(server)
-registerFolderTools(server)
-registerOnedriveTools(server)
-registerRulesTools(server)
+registerAuthTools(server, config, tokenStorage)
+registerCalendarTools(server, ctx)
+registerEmailTools(server, ctx)
+registerFolderTools(server, ctx)
+registerOnedriveTools(server, ctx)
+registerRulesTools(server, ctx)
 
 process.on('SIGTERM', () => {
   console.error('SIGTERM received but staying alive')

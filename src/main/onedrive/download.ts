@@ -4,10 +4,9 @@
 
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleDownload = async (args: any): Promise<any> => {
+export const handleDownload = async (ctx: GraphContext, args: any): Promise<any> => {
   const itemId = args.itemId
   const path = args.path
 
@@ -16,7 +15,7 @@ export const handleDownload = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     let endpoint: string
     if (itemId) {
@@ -29,7 +28,7 @@ export const handleDownload = async (args: any): Promise<any> => {
       $select: 'id,name,size,@microsoft.graph.downloadUrl'
     }
 
-    const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, null, queryParams)
 
     if (!response) {
       return errorText('File not found.')

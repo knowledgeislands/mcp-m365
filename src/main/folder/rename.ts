@@ -3,11 +3,10 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
-export const handleRenameFolder = async (args: any): Promise<any> => {
+export const handleRenameFolder = async (ctx: GraphContext, args: any): Promise<any> => {
   const folder = args.folder || ''
   const newName = args.newName || ''
   const renameContext = { folder, newName }
@@ -21,14 +20,14 @@ export const handleRenameFolder = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const folderId = await getFolderIdByName(accessToken, folder)
+    const accessToken = await ctx.ensureAuthenticated()
+    const folderId = await getFolderIdByName(ctx.graphApiEndpoint, accessToken, folder)
 
     if (!folderId) {
       return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
     }
 
-    await callGraphAPI(accessToken, 'PATCH', `me/mailFolders/${folderId}`, {
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', `me/mailFolders/${folderId}`, {
       displayName: newName
     })
 

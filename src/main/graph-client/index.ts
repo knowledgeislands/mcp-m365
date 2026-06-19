@@ -1,10 +1,27 @@
 /**
- * Microsoft Graph API helper functions
+ * Microsoft Graph API helper functions.
+ *
+ * Config injection (standard §1/§2): nothing here reads `process.env` or imports
+ * a module-level Graph endpoint. Every entry point takes the Graph endpoint as
+ * its FIRST argument — the value is threaded down from the loaded `Config` via
+ * the {@link GraphContext} a `main/` handler receives. The SSRF host-pin is
+ * derived from that injected endpoint per call.
  */
 import https from 'node:https'
-import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import type { GraphResponse, GraphValue } from '../../types.js'
 import { errMessage } from '../../utils/errors.js'
+
+/**
+ * The injected slice every Graph-calling `main/` handler receives as its first
+ * argument. Carries the Graph base endpoint (for URL building + the SSRF
+ * host-pin) and the auth gate (a token provider bound to an injected
+ * `TokenStorage`). A server entry point constructs one at boot and threads it
+ * into each tool registration; handlers never reach a module global.
+ */
+export interface GraphContext {
+  graphApiEndpoint: string
+  ensureAuthenticated: (forceNew?: boolean) => Promise<string>
+}
 
 /**
  * Host-pin a full URL before we attach the Bearer token to it (SSRF defence,
@@ -13,26 +30,33 @@ import { errMessage } from '../../utils/errors.js'
  * server-controlled output we must treat as untrusted, so we assert the scheme
  * is `https:` and the host is exactly the Graph host before sending the token.
  * A forged/tampered nextLink pointing at another origin is rejected here, so it
- * can never exfiltrate the access token.
+ * can never exfiltrate the access token. The expected host is derived from the
+ * injected `graphApiEndpoint`, not a module-level constant.
  */
-const GRAPH_HOST = new URL(GRAPH_API_ENDPOINT).hostname
-
-export const assertGraphUrl = (url: string): void => {
+export const assertGraphUrl = (graphApiEndpoint: string, url: string): void => {
+  const graphHost = new URL(graphApiEndpoint).hostname
   let parsed: URL
   try {
     parsed = new URL(url)
   } catch {
     throw new Error(`Refusing to call a malformed URL: ${url}`)
   }
-  if (parsed.protocol !== 'https:' || parsed.hostname !== GRAPH_HOST) {
-    throw new Error(`Refusing to send credentials to a non-Graph URL: ${url} (expected https://${GRAPH_HOST})`)
+  if (parsed.protocol !== 'https:' || parsed.hostname !== graphHost) {
+    throw new Error(`Refusing to send credentials to a non-Graph URL: ${url} (expected https://${graphHost})`)
   }
 }
 
-export const callGraphAPI = async <T = GraphResponse>(accessToken: string, method: string, path: string, data: unknown = null, queryParams: Record<string, unknown> = {}): Promise<T> => {
+export const callGraphAPI = async <T = GraphResponse>(
+  graphApiEndpoint: string,
+  accessToken: string,
+  method: string,
+  path: string,
+  data: unknown = null,
+  queryParams: Record<string, unknown> = {}
+): Promise<T> => {
   let finalUrl: string
   if (path.startsWith('http://') || path.startsWith('https://')) {
-    assertGraphUrl(path)
+    assertGraphUrl(graphApiEndpoint, path)
     finalUrl = path
   } else {
     const encodedPath = path
@@ -65,7 +89,7 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
       }
     }
 
-    finalUrl = `${GRAPH_API_ENDPOINT}${encodedPath}${queryString}`
+    finalUrl = `${graphApiEndpoint}${encodedPath}${queryString}`
   }
 
   return new Promise<T>((resolve, reject) => {
@@ -116,6 +140,7 @@ export const callGraphAPI = async <T = GraphResponse>(accessToken: string, metho
 }
 
 export const callGraphAPIPaginated = async <T = GraphValue>(
+  graphApiEndpoint: string,
   accessToken: string,
   method: string,
   path: string,
@@ -133,7 +158,7 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
   let currentParams = queryParams
 
   do {
-    const response = await callGraphAPI<GraphResponse<T>>(accessToken, method, currentUrl, null, currentParams)
+    const response = await callGraphAPI<GraphResponse<T>>(graphApiEndpoint, accessToken, method, currentUrl, null, currentParams)
 
     if (response.value && Array.isArray(response.value)) {
       allItems.push(...response.value)
@@ -164,9 +189,9 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
   }
 }
 
-export const callGraphAPIDownload = async (accessToken: string, path: string): Promise<string> => {
+export const callGraphAPIDownload = async (graphApiEndpoint: string, accessToken: string, path: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const fullUrl = `${GRAPH_API_ENDPOINT}${path}`
+    const fullUrl = `${graphApiEndpoint}${path}`
 
     const options: https.RequestOptions = {
       method: 'GET',

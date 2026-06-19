@@ -3,10 +3,9 @@
  */
 import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleSearchFiles = async (args: any): Promise<any> => {
+export const handleSearchFiles = async (ctx: GraphContext, args: any): Promise<any> => {
   const query = args.query
   const count = args.count || 25
 
@@ -15,7 +14,7 @@ export const handleSearchFiles = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const endpoint = `me/drive/search(q='${encodeURIComponent(query)}')`
 
@@ -24,7 +23,7 @@ export const handleSearchFiles = async (args: any): Promise<any> => {
       $select: ONEDRIVE_SELECT_FIELDS
     }
 
-    const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, null, queryParams)
 
     if (!response.value || response.value.length === 0) {
       return {

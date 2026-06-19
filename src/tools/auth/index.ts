@@ -7,10 +7,11 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { Config } from '../../config/index.js'
+import type TokenStorage from '../../main/auth/index.js'
 import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from '../../main/auth/index.js'
 import { READ_ONLY, WRITE_REMOTE } from '../../utils/annotations.js'
 
-export const registerAuthTools = (server: McpServer, cfg: Config): void => {
+export const registerAuthTools = (server: McpServer, cfg: Config, storage: TokenStorage): void => {
   server.registerTool(
     'm365_about',
     {
@@ -43,6 +44,6 @@ export const registerAuthTools = (server: McpServer, cfg: Config): void => {
       inputSchema: z.object({}).strict(),
       annotations: READ_ONLY
     },
-    handleCheckAuthStatus
+    () => handleCheckAuthStatus(storage)
   )
 }

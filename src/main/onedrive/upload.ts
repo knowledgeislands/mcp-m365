@@ -4,10 +4,9 @@
 import { ONEDRIVE_UPLOAD_THRESHOLD } from '../../config/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleUpload = async (args: any): Promise<any> => {
+export const handleUpload = async (ctx: GraphContext, args: any): Promise<any> => {
   const path = args.path
   const content = args.content
   const conflictBehavior = args.conflictBehavior || 'rename'
@@ -26,7 +25,7 @@ export const handleUpload = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const endpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}:/content`
 
@@ -34,7 +33,7 @@ export const handleUpload = async (args: any): Promise<any> => {
       '@microsoft.graph.conflictBehavior': conflictBehavior
     }
 
-    const response = await callGraphAPI(accessToken, 'PUT', endpoint, content, queryParams)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PUT', endpoint, content, queryParams)
 
     if (!response?.id) {
       return errorText('Upload failed - no response from server.')

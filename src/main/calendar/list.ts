@@ -3,14 +3,13 @@
  */
 import { CALENDAR_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleListEvents = async (args: any): Promise<any> => {
+export const handleListEvents = async (ctx: GraphContext, args: any): Promise<any> => {
   const count = Math.min(args.count || 10, MAX_RESULT_COUNT)
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const startDate = args.startDateTime ? new Date(args.startDateTime) : new Date()
     const endDate = args.endDateTime ? new Date(args.endDateTime) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
@@ -29,7 +28,7 @@ export const handleListEvents = async (args: any): Promise<any> => {
       $select: CALENDAR_SELECT_FIELDS
     }
 
-    const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, null, queryParams)
 
     if (!response.value || response.value.length === 0) {
       return {

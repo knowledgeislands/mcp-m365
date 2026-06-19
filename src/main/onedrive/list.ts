@@ -4,15 +4,14 @@
 import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleListFiles = async (args: any): Promise<any> => {
+export const handleListFiles = async (ctx: GraphContext, args: any): Promise<any> => {
   const path = args.path || ''
   const count = args.count || 25
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     let endpoint: string
     if (!path || path === '/' || path === 'root') {
@@ -28,7 +27,7 @@ export const handleListFiles = async (args: any): Promise<any> => {
       $orderby: 'name'
     }
 
-    const response = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, null, queryParams)
 
     if (!response.value || response.value.length === 0) {
       return {

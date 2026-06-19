@@ -1,13 +1,18 @@
 /**
  * Calendar module for MCP M365 server.
+ *
+ * Thin seam (standard §2): each registration zod-validates its args and calls
+ * the matching pure `main/` handler, passing the injected `GraphContext` as the
+ * first argument. The handler holds the logic; this layer only wires.
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
+import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
-export const registerCalendarTools = (server: McpServer): void => {
+export const registerCalendarTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
     'm365_calendar_events_list',
     {
@@ -21,7 +26,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleListEvents
+    (args) => handleListEvents(ctx, args)
   )
 
   server.registerTool(
@@ -36,7 +41,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleAcceptEvent
+    (args) => handleAcceptEvent(ctx, args)
   )
 
   server.registerTool(
@@ -54,7 +59,7 @@ export const registerCalendarTools = (server: McpServer): void => {
       // declined), same risk class as accept — not a destructive mutation.
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleDeclineEvent
+    (args) => handleDeclineEvent(ctx, args)
   )
 
   server.registerTool(
@@ -72,7 +77,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleCreateEvent
+    (args) => handleCreateEvent(ctx, args)
   )
 
   server.registerTool(
@@ -88,7 +93,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
-    handleCancelEvent
+    (args) => handleCancelEvent(ctx, args)
   )
 
   server.registerTool(
@@ -103,7 +108,7 @@ export const registerCalendarTools = (server: McpServer): void => {
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
-    handleDeleteEvent
+    (args) => handleDeleteEvent(ctx, args)
   )
 }
 

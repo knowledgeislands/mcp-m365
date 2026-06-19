@@ -14,10 +14,11 @@ import {
   handleSearchEmails,
   handleSendEmail
 } from '../../main/email/index.js'
+import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
-export const registerEmailTools = (server: McpServer): void => {
+export const registerEmailTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
     'm365_email_messages_list',
     {
@@ -33,7 +34,7 @@ export const registerEmailTools = (server: McpServer): void => {
       outputSchema: emailListResultSchema,
       annotations: READ_ONLY_REMOTE
     },
-    handleListEmails
+    (args) => handleListEmails(ctx, args)
   )
 
   server.registerTool(
@@ -58,7 +59,7 @@ export const registerEmailTools = (server: McpServer): void => {
       outputSchema: emailSearchResultSchema,
       annotations: READ_ONLY_REMOTE
     },
-    handleSearchEmails
+    (args) => handleSearchEmails(ctx, args)
   )
 
   server.registerTool(
@@ -73,7 +74,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleReadEmail
+    (args) => handleReadEmail(ctx, args)
   )
 
   server.registerTool(
@@ -94,7 +95,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleSendEmail
+    (args) => handleSendEmail(ctx, args)
   )
 
   server.registerTool(
@@ -113,7 +114,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleDraftEmail
+    (args) => handleDraftEmail(ctx, args)
   )
 
   server.registerTool(
@@ -128,7 +129,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleMarkAsRead
+    (args) => handleMarkAsRead(ctx, args)
   )
 
   server.registerTool(
@@ -145,7 +146,7 @@ export const registerEmailTools = (server: McpServer): void => {
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
-    handleDeleteEmail
+    (args) => handleDeleteEmail(ctx, args)
   )
 }
 

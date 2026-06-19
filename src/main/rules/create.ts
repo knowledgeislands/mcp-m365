@@ -3,12 +3,11 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
 import { getFolderIdByName } from '../folder/folder-utils.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getInboxRules } from './list.js'
 
-export const handleCreateRule = async (args: any): Promise<any> => {
+export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<any> => {
   const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled = true, sequence } = args
 
   if (sequence !== undefined && (Number.isNaN(sequence) || sequence < 1)) {
@@ -31,9 +30,9 @@ export const handleCreateRule = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
-    const result = await createInboxRule(accessToken, {
+    const result = await createInboxRule(ctx.graphApiEndpoint, accessToken, {
       name,
       fromAddresses,
       containsSubject,
@@ -69,7 +68,7 @@ interface CreateRuleResult {
   error?: boolean
 }
 
-const createInboxRule = async (accessToken: string, ruleOptions: any): Promise<CreateRuleResult> => {
+const createInboxRule = async (graphApiEndpoint: string, accessToken: string, ruleOptions: any): Promise<CreateRuleResult> => {
   const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled, sequence } = ruleOptions
 
   let ruleSequence = sequence
@@ -77,7 +76,7 @@ const createInboxRule = async (accessToken: string, ruleOptions: any): Promise<C
     try {
       ruleSequence = 100
 
-      const existingRules = await getInboxRules(accessToken)
+      const existingRules = await getInboxRules(graphApiEndpoint, accessToken)
       if (existingRules && existingRules.length > 0) {
         const highestSequence = Math.max(...existingRules.map((r: any) => r.sequence || 0))
         ruleSequence = Math.max(highestSequence + 1, 100)
@@ -121,7 +120,7 @@ const createInboxRule = async (accessToken: string, ruleOptions: any): Promise<C
 
   if (moveToFolder) {
     try {
-      const folderId = await getFolderIdByName(accessToken, moveToFolder)
+      const folderId = await getFolderIdByName(graphApiEndpoint, accessToken, moveToFolder)
       if (!folderId) {
         return {
           success: false,
@@ -142,7 +141,7 @@ const createInboxRule = async (accessToken: string, ruleOptions: any): Promise<C
     rule.actions.markAsRead = true
   }
 
-  const response = await callGraphAPI(accessToken, 'POST', 'me/mailFolders/inbox/messageRules', rule)
+  const response = await callGraphAPI(graphApiEndpoint, accessToken, 'POST', 'me/mailFolders/inbox/messageRules', rule)
 
   if (response?.id) {
     return {

@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleMarkAsRead = async (args: any): Promise<any> => {
+export const handleMarkAsRead = async (ctx: GraphContext, args: any): Promise<any> => {
   const emailId = args.id
   const isRead = args.isRead !== undefined ? args.isRead : true
 
@@ -15,13 +14,13 @@ export const handleMarkAsRead = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const endpoint = `me/messages/${encodeURIComponent(emailId)}`
     const updateData = { isRead }
 
     try {
-      await callGraphAPI(accessToken, 'PATCH', endpoint, updateData)
+      await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', endpoint, updateData)
 
       const status = isRead ? 'read' : 'unread'
 

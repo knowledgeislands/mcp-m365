@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
+export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Promise<any> => {
   const emailId = args.id
   const permanent = args.permanent === true
   const dry_run = args.dry_run !== false
@@ -16,10 +15,10 @@ export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     if (dry_run) {
-      const msg = await callGraphAPI(accessToken, 'GET', `me/messages/${encodeURIComponent(emailId)}?$select=id,subject,from,receivedDateTime`)
+      const msg = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/messages/${encodeURIComponent(emailId)}?$select=id,subject,from,receivedDateTime`)
       const verb = permanent ? 'permanently delete' : 'move to Deleted Items'
       return {
         content: [
@@ -32,12 +31,12 @@ export const handleDeleteEmail = async (args: any = {}): Promise<any> => {
     }
 
     if (permanent) {
-      await callGraphAPI(accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/permanentDelete`)
+      await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/permanentDelete`)
       return {
         content: [{ type: 'text', text: 'Email permanently deleted.' }]
       }
     } else {
-      const result = await callGraphAPI(accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, {
+      const result = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, {
         destinationId: 'deleteditems'
       })
       return {

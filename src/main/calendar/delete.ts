@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleDeleteEvent = async (args: any): Promise<any> => {
+export const handleDeleteEvent = async (ctx: GraphContext, args: any): Promise<any> => {
   const { eventId, dry_run = true } = args
 
   if (!eventId) {
@@ -14,11 +13,11 @@ export const handleDeleteEvent = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
     const endpoint = `me/events/${eventId}`
 
     if (dry_run) {
-      const event = await callGraphAPI(accessToken, 'GET', `${endpoint}?$select=id,subject,start,end`)
+      const event = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `${endpoint}?$select=id,subject,start,end`)
       return {
         content: [
           {
@@ -29,7 +28,7 @@ export const handleDeleteEvent = async (args: any): Promise<any> => {
       }
     }
 
-    await callGraphAPI(accessToken, 'DELETE', endpoint)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'DELETE', endpoint)
 
     return {
       content: [{ type: 'text', text: `Event with ID ${eventId} has been successfully deleted.` }]

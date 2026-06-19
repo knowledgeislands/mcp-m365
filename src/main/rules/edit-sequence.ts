@@ -3,11 +3,10 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getInboxRules } from './list.js'
 
-export const handleEditRuleSequence = async (args: any): Promise<any> => {
+export const handleEditRuleSequence = async (ctx: GraphContext, args: any): Promise<any> => {
   const { ruleName, sequence } = args
 
   if (!ruleName) {
@@ -19,15 +18,15 @@ export const handleEditRuleSequence = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const rules = await getInboxRules(accessToken)
+    const accessToken = await ctx.ensureAuthenticated()
+    const rules = await getInboxRules(ctx.graphApiEndpoint, accessToken)
 
     const rule = rules.find((r: any) => r.displayName === ruleName)
     if (!rule) {
       return errorText(`Rule with name "${ruleName}" not found.`)
     }
 
-    await callGraphAPI(accessToken, 'PATCH', `me/mailFolders/inbox/messageRules/${encodeURIComponent(rule.id)}`, { sequence })
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', `me/mailFolders/inbox/messageRules/${encodeURIComponent(rule.id)}`, { sequence })
 
     return {
       content: [

@@ -1,14 +1,16 @@
 import type { Mock } from 'vitest'
-import { DEFAULT_TIMEZONE } from '../../config/index.js'
-import { ensureAuthenticated } from '../auth/index.js'
+import { DEFAULT_TIMEZONE, GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import { handleCreateEvent } from './create.js'
 
 vi.mock('../graph-client/index.js')
-vi.mock('../auth')
 
 const mockCallGraphAPI = callGraphAPI as Mock
-const mockEnsureAuthenticated = ensureAuthenticated as Mock
+const mockEnsureAuthenticated = vi.fn()
+// Injected GraphContext: handlers receive the Graph endpoint + the auth gate as
+// their first argument (standard §1/§2), so tests pass a ctx instead of mocking
+// a module-level singleton.
+const ctx = { graphApiEndpoint: GRAPH_API_ENDPOINT, ensureAuthenticated: mockEnsureAuthenticated }
 
 describe('handleCreateEvent', () => {
   beforeEach(() => {
@@ -26,11 +28,11 @@ describe('handleCreateEvent', () => {
       end: '2024-03-10T11:00:00'
     }
 
-    await handleCreateEvent(args)
+    await handleCreateEvent(ctx, args)
 
     expect(mockEnsureAuthenticated).toHaveBeenCalledTimes(1)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][3]
+    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][4]
     expect(callGraphAPIArgs.start.timeZone).toBe(DEFAULT_TIMEZONE)
     expect(callGraphAPIArgs.end.timeZone).toBe(DEFAULT_TIMEZONE)
   })
@@ -46,11 +48,11 @@ describe('handleCreateEvent', () => {
       end: { dateTime: '2024-03-10T11:00:00', timeZone: specifiedTimeZone }
     }
 
-    await handleCreateEvent(args)
+    await handleCreateEvent(ctx, args)
 
     expect(mockEnsureAuthenticated).toHaveBeenCalledTimes(1)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][3]
+    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][4]
     expect(callGraphAPIArgs.start.timeZone).toBe(specifiedTimeZone)
     expect(callGraphAPIArgs.end.timeZone).toBe(specifiedTimeZone)
   })
@@ -66,11 +68,11 @@ describe('handleCreateEvent', () => {
       end: { dateTime: '2024-03-10T11:00:00' }
     }
 
-    await handleCreateEvent(args)
+    await handleCreateEvent(ctx, args)
 
     expect(mockEnsureAuthenticated).toHaveBeenCalledTimes(1)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][3]
+    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][4]
     expect(callGraphAPIArgs.start.timeZone).toBe(specifiedTimeZone)
     expect(callGraphAPIArgs.end.timeZone).toBe(DEFAULT_TIMEZONE)
   })
@@ -86,11 +88,11 @@ describe('handleCreateEvent', () => {
       end: { dateTime: '2024-03-10T11:00:00', timeZone: specifiedTimeZone }
     }
 
-    await handleCreateEvent(args)
+    await handleCreateEvent(ctx, args)
 
     expect(mockEnsureAuthenticated).toHaveBeenCalledTimes(1)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][3]
+    const callGraphAPIArgs = mockCallGraphAPI.mock.calls[0][4]
     expect(callGraphAPIArgs.start.timeZone).toBe(DEFAULT_TIMEZONE)
     expect(callGraphAPIArgs.end.timeZone).toBe(specifiedTimeZone)
   })
@@ -101,7 +103,7 @@ describe('handleCreateEvent', () => {
       end: '2024-03-10T11:00:00'
     }
 
-    const result = await handleCreateEvent(args)
+    const result = await handleCreateEvent(ctx, args)
     expect(result.content[0].text).toBe('Subject, start, and end times are required to create an event.')
     expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
@@ -113,7 +115,7 @@ describe('handleCreateEvent', () => {
       end: '2024-03-10T11:00:00'
     }
 
-    const result = await handleCreateEvent(args)
+    const result = await handleCreateEvent(ctx, args)
     expect(result.content[0].text).toBe('Subject, start, and end times are required to create an event.')
     expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
@@ -125,7 +127,7 @@ describe('handleCreateEvent', () => {
       start: '2024-03-10T10:00:00'
     }
 
-    const result = await handleCreateEvent(args)
+    const result = await handleCreateEvent(ctx, args)
     expect(result.content[0].text).toBe('Subject, start, and end times are required to create an event.')
     expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
@@ -139,7 +141,7 @@ describe('handleCreateEvent', () => {
       end: '2024-03-10T11:00:00'
     }
 
-    const result = await handleCreateEvent(args)
+    const result = await handleCreateEvent(ctx, args)
     expect(result.content[0].text).toBe("Authentication required. Please use the 'm365_auth_start' tool first.")
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
   })
@@ -153,7 +155,7 @@ describe('handleCreateEvent', () => {
       end: '2024-03-10T11:00:00'
     }
 
-    const result = await handleCreateEvent(args)
+    const result = await handleCreateEvent(ctx, args)
     expect(result.content[0].text).toBe('Error creating event: Graph API Error')
   })
 
@@ -161,7 +163,7 @@ describe('handleCreateEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('dummy_access_token')
     mockCallGraphAPI.mockResolvedValue({ id: 'test_event_id' })
 
-    await handleCreateEvent({
+    await handleCreateEvent(ctx, {
       subject: 'Test Event',
       start: '2024-03-10T10:00:00',
       end: '2024-03-10T11:00:00',
@@ -169,7 +171,7 @@ describe('handleCreateEvent', () => {
       body: '<p>agenda</p>'
     })
 
-    const sent = mockCallGraphAPI.mock.calls[0][3]
+    const sent = mockCallGraphAPI.mock.calls[0][4]
     expect(sent.attendees).toEqual([
       { emailAddress: { address: 'a@example.com' }, type: 'required' },
       { emailAddress: { address: 'b@example.com' }, type: 'required' }

@@ -4,7 +4,7 @@ import path from 'node:path'
 import querystring from 'node:querystring'
 import type { Mock } from 'vitest'
 import { loadConfig } from '../../config/index.js'
-import TokenStorage, { _resetTokenStorage, createTokenStorage, ensureAuthenticated, getTokenStorage, initTokenStorage } from './index.js'
+import TokenStorage, { createTokenStorage, makeEnsureAuthenticated } from './index.js'
 
 vi.mock('fs', () => ({
   promises: {
@@ -645,11 +645,7 @@ describe('TokenStorage', () => {
     })
   })
 
-  describe('config-injected factory + shared instance', () => {
-    afterEach(() => {
-      _resetTokenStorage()
-    })
-
+  describe('config-injected factory', () => {
     it('createTokenStorage maps the Config auth slice onto TokenStorage config', () => {
       const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
       const ts = createTokenStorage(cfg)
@@ -659,42 +655,27 @@ describe('TokenStorage', () => {
       expect(ts.config.scopes).toEqual(cfg.auth.scopes)
       expect(ts.config.tokenEndpoint).toBe(cfg.auth.tokenEndpoint)
     })
-
-    it('getTokenStorage throws before initTokenStorage is called', () => {
-      _resetTokenStorage()
-      expect(() => getTokenStorage()).toThrow(/TokenStorage not initialised/)
-    })
-
-    it('initTokenStorage caches a shared instance returned by getTokenStorage', () => {
-      const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
-      const created = initTokenStorage(cfg)
-      expect(getTokenStorage()).toBe(created)
-    })
   })
 
-  describe('ensureAuthenticated', () => {
+  describe('makeEnsureAuthenticated (injected gate)', () => {
     const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
 
-    afterEach(() => {
-      _resetTokenStorage()
-    })
-
-    it('returns the access token from the shared storage when one is available', async () => {
-      const ts = initTokenStorage(cfg)
+    it('returns the access token from the injected storage when one is available', async () => {
+      const ts = createTokenStorage(cfg)
       vi.spyOn(ts, 'getValidAccessToken').mockResolvedValue('tok-abc')
-      await expect(ensureAuthenticated()).resolves.toBe('tok-abc')
+      await expect(makeEnsureAuthenticated(ts)()).resolves.toBe('tok-abc')
     })
 
     it('throws "Authentication required" when no token is available', async () => {
-      const ts = initTokenStorage(cfg)
+      const ts = createTokenStorage(cfg)
       vi.spyOn(ts, 'getValidAccessToken').mockResolvedValue(null)
-      await expect(ensureAuthenticated()).rejects.toThrow('Authentication required')
+      await expect(makeEnsureAuthenticated(ts)()).rejects.toThrow('Authentication required')
     })
 
     it('throws "Authentication required" when forceNew is requested, without touching storage', async () => {
-      const ts = initTokenStorage(cfg)
+      const ts = createTokenStorage(cfg)
       const spy = vi.spyOn(ts, 'getValidAccessToken')
-      await expect(ensureAuthenticated(true)).rejects.toThrow('Authentication required')
+      await expect(makeEnsureAuthenticated(ts)(true)).rejects.toThrow('Authentication required')
       expect(spy).not.toHaveBeenCalled()
     })
   })

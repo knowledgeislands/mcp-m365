@@ -1,4 +1,5 @@
 import type { Mock, MockInstance } from 'vitest'
+import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import { fetchFoldersRecursive, getAllFolders, getFolderIdByName, resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 
@@ -10,7 +11,7 @@ const mockCallGraphAPI = callGraphAPI as Mock
 
 const mockGraphWithFolders = (folders: any[], { pageSize = 100 }: { pageSize?: number } = {}): void => {
   const rootParentId = 'mailbox-root'
-  mockCallGraphAPI.mockImplementation(async (_token: any, _method: any, endpoint: string, _body: any, params: any) => {
+  mockCallGraphAPI.mockImplementation(async (_endpoint: any, _token: any, _method: any, endpoint: string, _body: any, params: any) => {
     let pool: any[]
     const childMatch = endpoint.match(/^me\/mailFolders\/([^/]+)\/childFolders$/)
     if (endpoint === 'me/mailFolders') {
@@ -53,33 +54,33 @@ describe('resolveFolderPath', () => {
 
   describe('well-known folders', () => {
     test('returns inbox endpoint when no folder name is provided', async () => {
-      const result = await resolveFolderPath(mockAccessToken, null)
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, null)
       expect(result).toBe(WELL_KNOWN_FOLDERS.inbox)
       expect(mockCallGraphAPI).not.toHaveBeenCalled()
     })
 
     test('returns inbox endpoint for undefined folder name', async () => {
-      const result = await resolveFolderPath(mockAccessToken, undefined)
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, undefined)
       expect(result).toBe(WELL_KNOWN_FOLDERS.inbox)
       expect(mockCallGraphAPI).not.toHaveBeenCalled()
     })
 
     test('returns inbox endpoint for empty string', async () => {
-      const result = await resolveFolderPath(mockAccessToken, '')
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, '')
       expect(result).toBe(WELL_KNOWN_FOLDERS.inbox)
       expect(mockCallGraphAPI).not.toHaveBeenCalled()
     })
 
     test('returns correct endpoint for well-known folders without hitting Graph', async () => {
-      const result = await resolveFolderPath(mockAccessToken, 'drafts')
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'drafts')
       expect(result).toBe(WELL_KNOWN_FOLDERS.drafts)
       expect(mockCallGraphAPI).not.toHaveBeenCalled()
     })
 
     test('handles case-insensitive well-known folder names', async () => {
-      const result1 = await resolveFolderPath(mockAccessToken, 'INBOX')
-      const result2 = await resolveFolderPath(mockAccessToken, 'Drafts')
-      const result3 = await resolveFolderPath(mockAccessToken, 'SENT')
+      const result1 = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'INBOX')
+      const result2 = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Drafts')
+      const result3 = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'SENT')
 
       expect(result1).toBe(WELL_KNOWN_FOLDERS.inbox)
       expect(result2).toBe(WELL_KNOWN_FOLDERS.drafts)
@@ -92,7 +93,7 @@ describe('resolveFolderPath', () => {
     test('resolves a top-level custom folder by walking the tree', async () => {
       mockGraphWithFolders([{ id: 'id-projects', displayName: 'Projects', childFolderCount: 0 }])
 
-      const result = await resolveFolderPath(mockAccessToken, 'Projects')
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Projects')
       expect(result).toBe('me/mailFolders/id-projects/messages')
     })
 
@@ -104,21 +105,21 @@ describe('resolveFolderPath', () => {
         { id: 'id-walmart', displayName: 'Walmart', parentFolderId: 'id-orders', childFolderCount: 0 }
       ])
 
-      const result = await resolveFolderPath(mockAccessToken, 'Inbox/Shopping/Orders/Walmart')
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Inbox/Shopping/Orders/Walmart')
       expect(result).toBe('me/mailFolders/id-walmart/messages')
     })
 
     test('matches folder names case-insensitively', async () => {
       mockGraphWithFolders([{ id: 'id-alpha', displayName: 'projectalpha', childFolderCount: 0 }])
 
-      const result = await resolveFolderPath(mockAccessToken, 'ProjectAlpha')
+      const result = await resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'ProjectAlpha')
       expect(result).toBe('me/mailFolders/id-alpha/messages')
     })
 
     test('throws when folder is not found', async () => {
       mockGraphWithFolders([{ id: 'id-other', displayName: 'SomethingElse', childFolderCount: 0 }])
 
-      await expect(resolveFolderPath(mockAccessToken, 'NonExistent')).rejects.toThrow('was not found or is ambiguous')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'NonExistent')).rejects.toThrow('was not found or is ambiguous')
     })
 
     test('throws when ambiguous (multiple matches)', async () => {
@@ -127,13 +128,13 @@ describe('resolveFolderPath', () => {
         { id: 'id-b', displayName: 'Orders', parentFolderId: 'mailbox-root', childFolderCount: 0 }
       ])
 
-      await expect(resolveFolderPath(mockAccessToken, 'Orders')).rejects.toThrow('was not found or is ambiguous')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Orders')).rejects.toThrow('was not found or is ambiguous')
     })
 
     test('throws when the Graph call fails', async () => {
       mockCallGraphAPI.mockRejectedValue(new Error('API Error'))
 
-      await expect(resolveFolderPath(mockAccessToken, 'CustomFolder')).rejects.toThrow('Error resolving folder "CustomFolder": API Error')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'CustomFolder')).rejects.toThrow('Error resolving folder "CustomFolder": API Error')
     })
   })
 })
@@ -153,14 +154,14 @@ describe('getFolderIdByName', () => {
   test('returns folder ID for a top-level match', async () => {
     mockGraphWithFolders([{ id: 'id-test', displayName: 'TestFolder', childFolderCount: 0 }])
 
-    const result = await getFolderIdByName(mockAccessToken, 'TestFolder')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'TestFolder')
     expect(result).toBe('id-test')
   })
 
   test('returns folder ID for a case-insensitive match', async () => {
     mockGraphWithFolders([{ id: 'id-test', displayName: 'testfolder', childFolderCount: 0 }])
 
-    const result = await getFolderIdByName(mockAccessToken, 'TestFolder')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'TestFolder')
     expect(result).toBe('id-test')
   })
 
@@ -170,7 +171,7 @@ describe('getFolderIdByName', () => {
       { id: 'id-child', displayName: 'Child', parentFolderId: 'id-parent', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, 'Parent/Child')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Parent/Child')
     expect(result).toBe('id-child')
   })
 
@@ -180,14 +181,14 @@ describe('getFolderIdByName', () => {
       { id: 'id-child', displayName: 'Child', parentFolderId: 'id-parent', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, 'Child')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Child')
     expect(result).toBeNull()
   })
 
   test('returns null when folder is not found', async () => {
     mockGraphWithFolders([{ id: 'id-other', displayName: 'OtherFolder', childFolderCount: 0 }])
 
-    const result = await getFolderIdByName(mockAccessToken, 'NonExistent')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'NonExistent')
     expect(result).toBeNull()
   })
 
@@ -198,7 +199,7 @@ describe('getFolderIdByName', () => {
       { id: 'id-wellknown-junk', displayName: 'Junk', parentFolderId: 'mailbox-root', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, '_TRIAGE_IN/Junk')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, '_TRIAGE_IN/Junk')
     expect(result).toBe('id-nested-junk')
   })
 
@@ -209,7 +210,7 @@ describe('getFolderIdByName', () => {
       { id: 'id-orders', displayName: 'Orders', parentFolderId: 'id-shopping', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, 'Inbox/Shopping/Orders')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Inbox/Shopping/Orders')
     expect(result).toBe('id-orders')
   })
 
@@ -219,7 +220,7 @@ describe('getFolderIdByName', () => {
       { id: 'id-b', displayName: 'B', parentFolderId: 'mailbox-root', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, 'A/B')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'A/B')
     expect(result).toBeNull()
   })
 
@@ -231,26 +232,26 @@ describe('getFolderIdByName', () => {
       { id: 'id-b', displayName: 'Orders', parentFolderId: 'id-parent-b', childFolderCount: 0 }
     ])
 
-    const result = await getFolderIdByName(mockAccessToken, 'Orders')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Orders')
     expect(result).toBeNull()
   })
 
   test('throws when the Graph call fails', async () => {
     mockCallGraphAPI.mockRejectedValue(new Error('API Error'))
 
-    await expect(getFolderIdByName(mockAccessToken, 'TestFolder')).rejects.toThrow('API Error')
+    await expect(getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'TestFolder')).rejects.toThrow('API Error')
   })
 
   test('returns null when the mailbox has no folders at all', async () => {
     mockGraphWithFolders([])
 
-    const result = await getFolderIdByName(mockAccessToken, 'Anything')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Anything')
     expect(result).toBeNull()
   })
 
   test('returns null when the name collapses to no path segments', async () => {
     mockGraphWithFolders([{ id: 'id-x', displayName: 'X', childFolderCount: 0 }])
-    const result = await getFolderIdByName(mockAccessToken, '///')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, '///')
     expect(result).toBeNull()
   })
 
@@ -259,13 +260,13 @@ describe('getFolderIdByName', () => {
       { id: 'id-noname', parentFolderId: 'mailbox-root', childFolderCount: 0 },
       { id: 'id-real', displayName: 'Real', parentFolderId: 'mailbox-root', childFolderCount: 0 }
     ])
-    const result = await getFolderIdByName(mockAccessToken, 'Real')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Real')
     expect(result).toBe('id-real')
   })
 
   test('returns null when an intermediate path segment matches nothing', async () => {
     mockGraphWithFolders([{ id: 'id-top', displayName: 'Top', parentFolderId: 'mailbox-root', childFolderCount: 0 }])
-    const result = await getFolderIdByName(mockAccessToken, 'Top/Missing')
+    const result = await getFolderIdByName(GRAPH_API_ENDPOINT, mockAccessToken, 'Top/Missing')
     expect(result).toBeNull()
   })
 })
@@ -290,7 +291,7 @@ describe('fetchFoldersRecursive', () => {
       { id: 'B', displayName: 'B', parentFolderId: 'mailbox-root', childFolderCount: 0 }
     ])
 
-    const result = await fetchFoldersRecursive(mockAccessToken, 'me/mailFolders')
+    const result = await fetchFoldersRecursive(GRAPH_API_ENDPOINT, mockAccessToken, 'me/mailFolders')
     const ids = result.map((f) => f.id).sort()
     expect(ids).toEqual(['A', 'A1', 'A1a', 'B'])
   })
@@ -299,7 +300,7 @@ describe('fetchFoldersRecursive', () => {
     // First call (the top-level listing) returns an object with no `value`
     // array — fetchAllPages must skip it without throwing and stop paging.
     mockCallGraphAPI.mockResolvedValueOnce({ '@odata.context': 'x' })
-    const result = await fetchFoldersRecursive(mockAccessToken, 'me/mailFolders')
+    const result = await fetchFoldersRecursive(GRAPH_API_ENDPOINT, mockAccessToken, 'me/mailFolders')
     expect(result).toEqual([])
   })
 
@@ -313,7 +314,7 @@ describe('fetchFoldersRecursive', () => {
       { pageSize: 2 }
     )
 
-    const result = await fetchFoldersRecursive(mockAccessToken, 'me/mailFolders')
+    const result = await fetchFoldersRecursive(GRAPH_API_ENDPOINT, mockAccessToken, 'me/mailFolders')
     expect(result.map((f) => f.id).sort()).toEqual(['F1', 'F2', 'F3'])
   })
 })
@@ -336,7 +337,7 @@ describe('getAllFolders', () => {
       { id: 'id-sub', displayName: 'Sub', parentFolderId: 'id-inbox', childFolderCount: 0 }
     ])
 
-    const result = await getAllFolders(mockAccessToken)
+    const result = await getAllFolders(GRAPH_API_ENDPOINT, mockAccessToken)
     expect(result.map((f) => f.displayName).sort()).toEqual(['Inbox', 'Sub'])
   })
 })

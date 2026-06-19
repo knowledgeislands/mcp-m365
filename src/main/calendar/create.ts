@@ -4,10 +4,9 @@
 
 import { DEFAULT_TIMEZONE } from '../../config/index.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleCreateEvent = async (args: any): Promise<any> => {
+export const handleCreateEvent = async (ctx: GraphContext, args: any): Promise<any> => {
   const { subject, start, end, attendees, body } = args
 
   if (!subject || !start || !end) {
@@ -15,7 +14,7 @@ export const handleCreateEvent = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const endpoint = 'me/events'
 
@@ -27,7 +26,7 @@ export const handleCreateEvent = async (args: any): Promise<any> => {
       body: { contentType: 'HTML', content: body || '' }
     }
 
-    await callGraphAPI(accessToken, 'POST', endpoint, bodyContent)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', endpoint, bodyContent)
 
     return {
       content: [{ type: 'text', text: `Event '${subject}' has been successfully created.` }]

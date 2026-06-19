@@ -3,8 +3,7 @@
  */
 import { z } from 'zod'
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPIPaginated } from '../graph-client/index.js'
+import { callGraphAPIPaginated, type GraphContext } from '../graph-client/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
 /**
@@ -29,7 +28,7 @@ export const emailListResultSchema = z
 
 export type EmailListResult = z.infer<typeof emailListResultSchema>
 
-export const handleListEmails = async (args: any): Promise<any> => {
+export const handleListEmails = async (ctx: GraphContext, args: any): Promise<any> => {
   const folder = args.folder || 'inbox'
   const folderId = args.folderId || ''
   const folderRef = folderId ? `folderId:${folderId}` : folder
@@ -43,11 +42,11 @@ export const handleListEmails = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(accessToken, folder)
+    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
     const queryParams: Record<string, any> = {
       $top: Math.min(DEFAULT_PAGE_SIZE, requestedCount),
@@ -59,7 +58,7 @@ export const handleListEmails = async (args: any): Promise<any> => {
       queryParams.$count = true
     }
 
-    const response = await callGraphAPIPaginated(accessToken, 'GET', endpoint, queryParams, requestedCount)
+    const response = await callGraphAPIPaginated(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, queryParams, requestedCount)
 
     if (!response.value || response.value.length === 0) {
       return createResponse(`No emails found in ${folderRef}.`, {

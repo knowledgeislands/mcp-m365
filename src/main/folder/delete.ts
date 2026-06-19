@@ -3,11 +3,10 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
-export const handleDeleteFolder = async (args: any): Promise<any> => {
+export const handleDeleteFolder = async (ctx: GraphContext, args: any): Promise<any> => {
   const folder = args.folder || ''
   const dry_run = args.dry_run !== false
   const deleteContext = { folder }
@@ -17,8 +16,8 @@ export const handleDeleteFolder = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const folderId = await getFolderIdByName(accessToken, folder)
+    const accessToken = await ctx.ensureAuthenticated()
+    const folderId = await getFolderIdByName(ctx.graphApiEndpoint, accessToken, folder)
 
     if (!folderId) {
       return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
@@ -35,7 +34,7 @@ export const handleDeleteFolder = async (args: any): Promise<any> => {
       }
     }
 
-    await callGraphAPI(accessToken, 'DELETE', `me/mailFolders/${folderId}`)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'DELETE', `me/mailFolders/${folderId}`)
 
     return {
       content: [{ type: 'text', text: `Successfully deleted folder "${folder}".` }]

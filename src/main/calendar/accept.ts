@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleAcceptEvent = async (args: any): Promise<any> => {
+export const handleAcceptEvent = async (ctx: GraphContext, args: any): Promise<any> => {
   const { eventId, comment } = args
 
   if (!eventId) {
@@ -14,11 +13,11 @@ export const handleAcceptEvent = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
     const endpoint = `me/events/${eventId}/accept`
     const body = { comment: comment || 'Accepted via API' }
 
-    await callGraphAPI(accessToken, 'POST', endpoint, body)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', endpoint, body)
 
     return {
       content: [{ type: 'text', text: `Event with ID ${eventId} has been successfully accepted.` }]

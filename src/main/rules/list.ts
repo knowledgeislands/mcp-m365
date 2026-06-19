@@ -3,15 +3,14 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleListRules = async (args: any): Promise<any> => {
+export const handleListRules = async (ctx: GraphContext, args: any): Promise<any> => {
   const includeDetails = args.includeDetails === true
 
   try {
-    const accessToken = await ensureAuthenticated()
-    const rules = await getInboxRules(accessToken)
+    const accessToken = await ctx.ensureAuthenticated()
+    const rules = await getInboxRules(ctx.graphApiEndpoint, accessToken)
     const formattedRules = formatRulesList(rules, includeDetails)
 
     return {
@@ -26,8 +25,8 @@ export const handleListRules = async (args: any): Promise<any> => {
   }
 }
 
-export const getInboxRules = async (accessToken: string): Promise<any[]> => {
-  const response = await callGraphAPI(accessToken, 'GET', 'me/mailFolders/inbox/messageRules', null)
+export const getInboxRules = async (graphApiEndpoint: string, accessToken: string): Promise<any[]> => {
+  const response = await callGraphAPI(graphApiEndpoint, accessToken, 'GET', 'me/mailFolders/inbox/messageRules', null)
 
   return response.value || []
 }

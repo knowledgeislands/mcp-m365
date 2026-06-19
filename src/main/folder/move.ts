@@ -3,11 +3,10 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
-export const handleMoveEmails = async (args: any): Promise<any> => {
+export const handleMoveEmails = async (ctx: GraphContext, args: any): Promise<any> => {
   const emailIds = args.emailIds || ''
   const targetFolder = args.targetFolder || ''
   const sourceFolder = args.sourceFolder || ''
@@ -22,7 +21,7 @@ export const handleMoveEmails = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const ids = emailIds
       .split(',')
@@ -33,7 +32,7 @@ export const handleMoveEmails = async (args: any): Promise<any> => {
       return errorText('No valid email IDs provided.')
     }
 
-    const result = await moveEmailsToFolder(accessToken, ids, targetFolder, sourceFolder)
+    const result = await moveEmailsToFolder(ctx.graphApiEndpoint, accessToken, ids, targetFolder, sourceFolder)
 
     if (!result.success) {
       return errorText(result.message)
@@ -71,8 +70,8 @@ interface MoveResult {
   results?: { successful: string[]; failed: { id: string; error: string }[] }
 }
 
-const moveEmailsToFolder = async (accessToken: string, emailIds: string[], targetFolderName: string, _sourceFolderName: string): Promise<MoveResult> => {
-  const targetFolderId = await getFolderIdByName(accessToken, targetFolderName)
+const moveEmailsToFolder = async (graphApiEndpoint: string, accessToken: string, emailIds: string[], targetFolderName: string, _sourceFolderName: string): Promise<MoveResult> => {
+  const targetFolderId = await getFolderIdByName(graphApiEndpoint, accessToken, targetFolderName)
   if (!targetFolderId) {
     return {
       success: false,
@@ -81,7 +80,7 @@ const moveEmailsToFolder = async (accessToken: string, emailIds: string[], targe
   }
 
   try {
-    await callGraphAPI(accessToken, 'GET', `me/mailFolders/${targetFolderId}`)
+    await callGraphAPI(graphApiEndpoint, accessToken, 'GET', `me/mailFolders/${targetFolderId}`)
   } catch (error: any) {
     return {
       success: false,
@@ -96,7 +95,7 @@ const moveEmailsToFolder = async (accessToken: string, emailIds: string[], targe
 
   for (const emailId of emailIds) {
     try {
-      await callGraphAPI(accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, { destinationId: targetFolderId })
+      await callGraphAPI(graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, { destinationId: targetFolderId })
 
       results.successful.push(emailId)
     } catch (error: any) {

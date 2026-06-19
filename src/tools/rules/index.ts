@@ -3,10 +3,11 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { GraphContext } from '../../main/graph-client/index.js'
 import { handleCreateRule, handleEditRuleSequence, handleListRules } from '../../main/rules/index.js'
 import { READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 
-export const registerRulesTools = (server: McpServer): void => {
+export const registerRulesTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
     'm365_email_rules_list',
     {
@@ -18,7 +19,7 @@ export const registerRulesTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleListRules
+    (args) => handleListRules(ctx, args)
   )
 
   server.registerTool(
@@ -39,7 +40,7 @@ export const registerRulesTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleCreateRule
+    (args) => handleCreateRule(ctx, args)
   )
 
   server.registerTool(
@@ -54,7 +55,7 @@ export const registerRulesTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
-    handleEditRuleSequence
+    (args) => handleEditRuleSequence(ctx, args)
   )
 }
 

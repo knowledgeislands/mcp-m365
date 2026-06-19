@@ -3,10 +3,9 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleSendEmail = async (args: any): Promise<any> => {
+export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any> => {
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, isHtml } = args
 
   if (!to) {
@@ -22,7 +21,7 @@ export const handleSendEmail = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const toRecipients = to.split(',').map((email: string) => {
       email = email.trim()
@@ -60,7 +59,7 @@ export const handleSendEmail = async (args: any): Promise<any> => {
       saveToSentItems
     }
 
-    await callGraphAPI(accessToken, 'POST', 'me/sendMail', emailObject)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', 'me/sendMail', emailObject)
 
     return {
       content: [

@@ -4,10 +4,9 @@
 
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleCreateFolder = async (args: any): Promise<any> => {
+export const handleCreateFolder = async (ctx: GraphContext, args: any): Promise<any> => {
   const path = args.path
   const name = args.name
 
@@ -16,7 +15,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     let endpoint: string
     if (!path || path === '/' || path === 'root') {
@@ -31,7 +30,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
       '@microsoft.graph.conflictBehavior': 'rename'
     }
 
-    const response = await callGraphAPI(accessToken, 'POST', endpoint, body)
+    const response = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', endpoint, body)
 
     if (!response?.id) {
       return errorText('Failed to create folder.')
@@ -54,7 +53,7 @@ export const handleCreateFolder = async (args: any): Promise<any> => {
   }
 }
 
-export const handleDeleteItem = async (args: any): Promise<any> => {
+export const handleDeleteItem = async (ctx: GraphContext, args: any): Promise<any> => {
   const itemId = args.itemId
   const path = args.path
   const dry_run = args.dry_run !== false
@@ -64,7 +63,7 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     let endpoint: string
     if (itemId) {
@@ -73,7 +72,7 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
       endpoint = `me/drive/root:/${sanitizeOneDrivePath(path)}`
     }
 
-    const itemInfo = await callGraphAPI(accessToken, 'GET', endpoint)
+    const itemInfo = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint)
 
     if (!itemInfo?.id) {
       return errorText('Item not found.')
@@ -94,7 +93,7 @@ export const handleDeleteItem = async (args: any): Promise<any> => {
     }
 
     const deleteEndpoint = `me/drive/items/${itemInfo.id}`
-    await callGraphAPI(accessToken, 'DELETE', deleteEndpoint)
+    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'DELETE', deleteEndpoint)
 
     return {
       content: [

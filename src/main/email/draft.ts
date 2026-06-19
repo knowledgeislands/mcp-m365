@@ -3,14 +3,13 @@
  */
 
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleDraftEmail = async (args: any): Promise<any> => {
+export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<any> => {
   const { to, cc, bcc, subject = '', body = '', importance = 'normal' } = args || {}
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const toRecipients = to
       ? to
@@ -51,7 +50,7 @@ export const handleDraftEmail = async (args: any): Promise<any> => {
       importance
     }
 
-    const draft = await callGraphAPI(accessToken, 'POST', 'me/messages', messageObject)
+    const draft = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', 'me/messages', messageObject)
 
     return {
       content: [

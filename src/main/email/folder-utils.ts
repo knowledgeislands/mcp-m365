@@ -1,5 +1,9 @@
 /**
- * Email folder utilities
+ * Email folder utilities.
+ *
+ * Config injection (standard §1): these traversal helpers take the Graph base
+ * endpoint as their FIRST argument — threaded down from the `GraphContext` a
+ * `main/` handler receives — and pass it into `callGraphAPI`. No module global.
  */
 import { callGraphAPI } from '../graph-client/index.js'
 
@@ -20,7 +24,7 @@ export const FOLDER_SELECT_FIELDS = 'id,displayName,parentFolderId,childFolderCo
 
 const CHILD_FETCH_CONCURRENCY = 5
 
-export const resolveFolderPath = async (accessToken: string, folderName: string | null | undefined): Promise<string> => {
+export const resolveFolderPath = async (graphApiEndpoint: string, accessToken: string, folderName: string | null | undefined): Promise<string> => {
   if (!folderName) {
     return WELL_KNOWN_FOLDERS.inbox
   }
@@ -31,7 +35,7 @@ export const resolveFolderPath = async (accessToken: string, folderName: string 
   }
 
   try {
-    const folderId = await getFolderIdByName(accessToken, folderName)
+    const folderId = await getFolderIdByName(graphApiEndpoint, accessToken, folderName)
     if (folderId) {
       return `me/mailFolders/${folderId}/messages`
     }
@@ -44,8 +48,8 @@ export const resolveFolderPath = async (accessToken: string, folderName: string 
   }
 }
 
-export const getFolderIdByName = async (accessToken: string, folderName: string): Promise<string | null> => {
-  const allFolders = await fetchFoldersRecursive(accessToken, 'me/mailFolders')
+export const getFolderIdByName = async (graphApiEndpoint: string, accessToken: string, folderName: string): Promise<string | null> => {
+  const allFolders = await fetchFoldersRecursive(graphApiEndpoint, accessToken, 'me/mailFolders')
   if (allFolders.length === 0) {
     return null
   }
@@ -86,12 +90,12 @@ const resolvePathSegments = (allFolders: any[], segments: string[]): string | nu
   return candidates.length === 1 ? candidates[0].id : null
 }
 
-export const getAllFolders = async (accessToken: string): Promise<any[]> => {
-  return fetchFoldersRecursive(accessToken, 'me/mailFolders')
+export const getAllFolders = async (graphApiEndpoint: string, accessToken: string): Promise<any[]> => {
+  return fetchFoldersRecursive(graphApiEndpoint, accessToken, 'me/mailFolders')
 }
 
-export const fetchFoldersRecursive = async (accessToken: string, endpoint: string, selectFields: string = FOLDER_SELECT_FIELDS): Promise<any[]> => {
-  const folders = await fetchAllPages(accessToken, endpoint, {
+export const fetchFoldersRecursive = async (graphApiEndpoint: string, accessToken: string, endpoint: string, selectFields: string = FOLDER_SELECT_FIELDS): Promise<any[]> => {
+  const folders = await fetchAllPages(graphApiEndpoint, accessToken, endpoint, {
     $top: 100,
     $select: selectFields
   })
@@ -101,18 +105,20 @@ export const fetchFoldersRecursive = async (accessToken: string, endpoint: strin
   }
 
   const parents = folders.filter((f: any) => f.childFolderCount > 0)
-  const childBatches = await mapWithConcurrency(parents, CHILD_FETCH_CONCURRENCY, (folder: any) => fetchFoldersRecursive(accessToken, `me/mailFolders/${folder.id}/childFolders`, selectFields))
+  const childBatches = await mapWithConcurrency(parents, CHILD_FETCH_CONCURRENCY, (folder: any) =>
+    fetchFoldersRecursive(graphApiEndpoint, accessToken, `me/mailFolders/${folder.id}/childFolders`, selectFields)
+  )
 
   return [...folders, ...childBatches.flat()]
 }
 
-const fetchAllPages = async (accessToken: string, endpoint: string, initialParams: Record<string, any>): Promise<any[]> => {
+const fetchAllPages = async (graphApiEndpoint: string, accessToken: string, endpoint: string, initialParams: Record<string, any>): Promise<any[]> => {
   const all: any[] = []
   let nextEndpoint: string | null = endpoint
   let nextParams = initialParams
 
   while (nextEndpoint) {
-    const response: any = await callGraphAPI(accessToken, 'GET', nextEndpoint, null, nextParams)
+    const response: any = await callGraphAPI(graphApiEndpoint, accessToken, 'GET', nextEndpoint, null, nextParams)
     if (response && Array.isArray(response.value)) {
       all.push(...response.value)
     }

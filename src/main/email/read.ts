@@ -7,10 +7,9 @@
 import { EMAIL_DETAIL_FIELDS } from '../../config/index.js'
 import { processHtmlEmail } from '../../utils/html-sanitizer.js'
 import { errorText } from '../../utils/results.js'
-import { ensureAuthenticated } from '../auth/index.js'
-import { callGraphAPI } from '../graph-client/index.js'
+import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
-export const handleReadEmail = async (args: any): Promise<any> => {
+export const handleReadEmail = async (ctx: GraphContext, args: any): Promise<any> => {
   const emailId = args.id
   const includeRawHtml = args.includeRawHtml === true
 
@@ -19,7 +18,7 @@ export const handleReadEmail = async (args: any): Promise<any> => {
   }
 
   try {
-    const accessToken = await ensureAuthenticated()
+    const accessToken = await ctx.ensureAuthenticated()
 
     const endpoint = `me/messages/${encodeURIComponent(emailId)}`
     const queryParams = {
@@ -27,7 +26,7 @@ export const handleReadEmail = async (args: any): Promise<any> => {
     }
 
     try {
-      const email = await callGraphAPI(accessToken, 'GET', endpoint, null, queryParams)
+      const email = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, null, queryParams)
 
       if (!email) {
         return errorText(`Email with ID ${emailId} not found.`)

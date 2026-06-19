@@ -3,11 +3,12 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
+import type { GraphContext } from '../../main/graph-client/index.js'
 import { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge } from '../../main/onedrive/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
-export const registerOnedriveTools = (server: McpServer): void => {
+export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
     'm365_onedrive_items_list',
     {
@@ -20,7 +21,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleListFiles
+    (args) => handleListFiles(ctx, args)
   )
 
   server.registerTool(
@@ -35,7 +36,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleSearchFiles
+    (args) => handleSearchFiles(ctx, args)
   )
 
   server.registerTool(
@@ -50,7 +51,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: READ_ONLY_REMOTE
     },
-    handleDownload
+    (args) => handleDownload(ctx, args)
   )
 
   server.registerTool(
@@ -66,7 +67,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleUpload
+    (args) => handleUpload(ctx, args)
   )
 
   server.registerTool(
@@ -82,7 +83,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleUploadLarge
+    (args) => handleUploadLarge(ctx, args)
   )
 
   server.registerTool(
@@ -99,7 +100,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleShare
+    (args) => handleShare(ctx, args)
   )
 
   server.registerTool(
@@ -114,7 +115,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: WRITE_REMOTE
     },
-    handleCreateFolder
+    (args) => handleCreateFolder(ctx, args)
   )
 
   server.registerTool(
@@ -130,7 +131,7 @@ export const registerOnedriveTools = (server: McpServer): void => {
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
     },
-    handleDeleteItem
+    (args) => handleDeleteItem(ctx, args)
   )
 }
 
