@@ -107,6 +107,7 @@
     "lint:package": "bunx syncpack format",
     "lint:types": "tsc --noEmit",
     "prepare": "husky",
+    "skills:link:project": "bun $HOME/.claude/skills/knowledgeislands-bootstrap/scripts/link-skills.ts",
     "server:auth:dev": "NODE_ENV=development bun --watch src/auth-server/index.ts",
     "server:auth:start": "bun run build && node dist/auth-server/index.js",
     "server:mcp:dev": "NODE_ENV=development bun --watch src/mcp-server/index.ts",
