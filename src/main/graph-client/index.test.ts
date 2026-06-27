@@ -293,4 +293,17 @@ describe('callGraphAPIDownload', () => {
     mockHttpsOnce({ statusCode: 0, emitNetworkError: new Error('ETIMEDOUT') })
     await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'me/drive/items/X')).rejects.toThrow(/Network error.*ETIMEDOUT/)
   })
+
+  it('accepts a full https Graph URL and uses it directly', async () => {
+    mockHttpsOnce({ statusCode: 302, headers: { location: 'https://blob.example.com/abc' } })
+    const fullUrl = 'https://graph.microsoft.com/v1.0/me/drive/items/X/content'
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', fullUrl)).resolves.toBe('https://blob.example.com/abc')
+    const usedUrl = (https.request as unknown as Mock).mock.calls[0][0] as string
+    expect(usedUrl).toBe(fullUrl)
+  })
+
+  it('rejects a full URL pointing at a non-Graph host before sending the token (SSRF, §13.5)', async () => {
+    await expect(callGraphAPIDownload(GRAPH_API_ENDPOINT, 'tok', 'https://evil.example.com/steal')).rejects.toThrow(/non-Graph URL/)
+    expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
+  })
 })
