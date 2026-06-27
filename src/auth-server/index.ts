@@ -175,7 +175,18 @@ const exchangeCodeForTokens = (code: string, codeVerifier: string): Promise<any>
             reject(new Error(`Error parsing token response: ${error.message}`))
           }
         } else {
-          reject(new Error(`Token exchange failed with status ${status}: ${data}`))
+          // Do not include the raw response body in the error — it may contain
+          // reflected request parameters (e.g. the auth code). Extract only the
+          // safe `error_description` field from the JSON, or use a generic message.
+          let safeDetail = `status ${status}`
+          try {
+            const errBody = JSON.parse(data)
+            if (errBody.error_description) safeDetail = errBody.error_description
+            else if (errBody.error) safeDetail = errBody.error
+          } catch {
+            // body was not JSON — safe detail stays as the status code only
+          }
+          reject(new Error(`Token exchange failed: ${safeDetail}`))
         }
       })
     })
