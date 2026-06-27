@@ -1,4 +1,4 @@
-// Generated on 2026-06-27T20:37:56.815Z by @knowledgeislands/mcp-m365@1.0.0
+// Generated on 2026-06-27T20:39:34.835Z by @knowledgeislands/mcp-m365@1.0.0
 // Server: hnr-mcp-m365
 // Source: /Users/krisbrown/.mcporter/mcporter.json
 // Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
