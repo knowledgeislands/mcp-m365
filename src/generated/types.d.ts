@@ -1,7 +1,7 @@
-// Generated on 2026-06-24T14:59:12.370Z by @knowledgeislands/mcp-m365@1.0.0
+// Generated on 2026-06-27T20:37:56.815Z by @knowledgeislands/mcp-m365@1.0.0
 // Server: hnr-mcp-m365
 // Source: /Users/krisbrown/.mcporter/mcporter.json
-// Transport: STDIO node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
+// Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
 
 import type { CallResult } from 'mcporter'
 
@@ -226,7 +226,12 @@ export interface HnrMcpM365Tools {
    * @param type? Link type: 'view' (default), 'edit', or 'embed'
    * @param scope? Link scope: 'anonymous' (default) or 'organization'
    */
-  m365_onedrive_item_share(itemId?: string, path?: string, type?: 'view' | 'edit' | 'embed', scope?: 'anonymous' | 'organization'): Promise<CallResult>
+  m365_onedrive_item_share(
+    itemId?: string,
+    path?: string,
+    type?: 'view' | 'edit' | 'embed',
+    scope?: 'anonymous' | 'organization'
+  ): Promise<CallResult>
 
   /**
    * Create a new folder in OneDrive
@@ -256,7 +261,13 @@ export interface HnrMcpM365Tools {
    * @param sequence? Order in which the rule is executed (lower numbers run first, default: 100). Graph
    *                  rejects negative values.
    */
-  m365_email_rule_create(name: string, fromAddresses?: string, containsSubject?: string, hasAttachments?: boolean, moveToFolder?: string): Promise<CallResult>
+  m365_email_rule_create(
+    name: string,
+    fromAddresses?: string,
+    containsSubject?: string,
+    hasAttachments?: boolean,
+    moveToFolder?: string
+  ): Promise<CallResult>
   // optional (3): markAsRead, isEnabled, sequence
 
   /**

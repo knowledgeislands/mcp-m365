@@ -1,8 +1,8 @@
 // @ts-nocheck
-// Generated on 2026-06-24T14:59:12.370Z by @knowledgeislands/mcp-m365@1.0.0
+// Generated on 2026-06-27T20:37:56.815Z by @knowledgeislands/mcp-m365@1.0.0
 // Server: hnr-mcp-m365
 // Source: /Users/krisbrown/.mcporter/mcporter.json
-// Transport: STDIO node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
+// Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
 
 import { createRuntime, createServerProxy, wrapCallResult } from 'mcporter'
 import type { HnrMcpM365Tools } from './types.d'
@@ -57,7 +57,9 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
     },
 
     async m365_calendar_event_decline(params: Parameters<HnrMcpM365Tools['m365_calendar_event_decline']>[0]) {
-      const tool = proxy.m365CalendarEventDecline as (args: Parameters<HnrMcpM365Tools['m365_calendar_event_decline']>[0]) => Promise<unknown>
+      const tool = proxy.m365CalendarEventDecline as (
+        args: Parameters<HnrMcpM365Tools['m365_calendar_event_decline']>[0]
+      ) => Promise<unknown>
       const raw = await tool(params)
       return wrapCallResult(raw).callResult
     },
@@ -99,7 +101,9 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
     },
 
     async m365_email_message_mark_read(params: Parameters<HnrMcpM365Tools['m365_email_message_mark_read']>[0]) {
-      const tool = proxy.m365EmailMessageMarkRead as (args: Parameters<HnrMcpM365Tools['m365_email_message_mark_read']>[0]) => Promise<unknown>
+      const tool = proxy.m365EmailMessageMarkRead as (
+        args: Parameters<HnrMcpM365Tools['m365_email_message_mark_read']>[0]
+      ) => Promise<unknown>
       const raw = await tool(params)
       return wrapCallResult(raw).callResult
     },
@@ -141,7 +145,9 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
     },
 
     async m365_onedrive_item_download(params: Parameters<HnrMcpM365Tools['m365_onedrive_item_download']>[0]) {
-      const tool = proxy.m365OnedriveItemDownload as (args: Parameters<HnrMcpM365Tools['m365_onedrive_item_download']>[0]) => Promise<unknown>
+      const tool = proxy.m365OnedriveItemDownload as (
+        args: Parameters<HnrMcpM365Tools['m365_onedrive_item_download']>[0]
+      ) => Promise<unknown>
       const raw = await tool(params)
       return wrapCallResult(raw).callResult
     },
@@ -153,7 +159,9 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
     },
 
     async m365_onedrive_item_upload_large(params: Parameters<HnrMcpM365Tools['m365_onedrive_item_upload_large']>[0]) {
-      const tool = proxy.m365OnedriveItemUploadLarge as (args: Parameters<HnrMcpM365Tools['m365_onedrive_item_upload_large']>[0]) => Promise<unknown>
+      const tool = proxy.m365OnedriveItemUploadLarge as (
+        args: Parameters<HnrMcpM365Tools['m365_onedrive_item_upload_large']>[0]
+      ) => Promise<unknown>
       const raw = await tool(params)
       return wrapCallResult(raw).callResult
     },
@@ -165,7 +173,9 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
     },
 
     async m365_onedrive_folder_create(params: Parameters<HnrMcpM365Tools['m365_onedrive_folder_create']>[0]) {
-      const tool = proxy.m365OnedriveFolderCreate as (args: Parameters<HnrMcpM365Tools['m365_onedrive_folder_create']>[0]) => Promise<unknown>
+      const tool = proxy.m365OnedriveFolderCreate as (
+        args: Parameters<HnrMcpM365Tools['m365_onedrive_folder_create']>[0]
+      ) => Promise<unknown>
       const raw = await tool(params)
       return wrapCallResult(raw).callResult
     },
