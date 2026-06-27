@@ -46,7 +46,8 @@ export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<an
     let responseText = result.message
 
     if (!sequence && !result.error) {
-      responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first."
+      responseText +=
+        "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first."
     }
 
     return {

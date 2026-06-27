@@ -6,7 +6,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig, M365_DEFAULT_SCOPES } from './index.js'
 
-const baseEnv = (over: Record<string, string | undefined> = {}): NodeJS.ProcessEnv => ({ HOME: '/home/alice', ...over }) as NodeJS.ProcessEnv
+const baseEnv = (over: Record<string, string | undefined> = {}): NodeJS.ProcessEnv =>
+  ({ HOME: '/home/alice', ...over }) as NodeJS.ProcessEnv
 
 describe('parseScopes (via auth.scopes)', () => {
   it('defaults to M365_DEFAULT_SCOPES when MCP_M365_SCOPES is unset', () => {

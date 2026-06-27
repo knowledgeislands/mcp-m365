@@ -34,7 +34,9 @@ describe('folder management handlers', () => {
     const result = await handleRenameFolder(ctx, { folder: 'Projects/2024', newName: '2025' })
 
     consoleErrorSpy.mockRestore()
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'PATCH', 'me/mailFolders/folder-123', { displayName: '2025' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'PATCH', 'me/mailFolders/folder-123', {
+      displayName: '2025'
+    })
     expect(result.content[0].text).toContain('Successfully renamed folder')
   })
 

@@ -42,7 +42,8 @@ export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any
         })
       : []
 
-    const contentType = isHtml === true ? 'html' : isHtml === false ? 'text' : body.includes('<html') || body.includes('<HTML') ? 'html' : 'text'
+    const contentType =
+      isHtml === true ? 'html' : isHtml === false ? 'text' : body.includes('<html') || body.includes('<HTML') ? 'html' : 'text'
 
     const emailObject = {
       message: {

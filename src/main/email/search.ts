@@ -66,9 +66,18 @@ export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
+    const endpoint = effectiveFolderId
+      ? `me/mailFolders/${effectiveFolderId}/messages`
+      : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
-    const response = await progressiveSearch(ctx.graphApiEndpoint, endpoint, accessToken, { query, from, to, subject }, { hasAttachments, unreadOnly, receivedAfter, receivedBefore }, requestedCount)
+    const response = await progressiveSearch(
+      ctx.graphApiEndpoint,
+      endpoint,
+      accessToken,
+      { query, from, to, subject },
+      { hasAttachments, unreadOnly, receivedAfter, receivedBefore },
+      requestedCount
+    )
 
     // progressiveSearch always resolves to a Graph response object (or throws),
     // and always populates `_searchInfo.strategies` — so the formatter can read
@@ -144,7 +153,14 @@ const normalizeDateFilterValue = (value: any): string => {
   return value
 }
 
-const progressiveSearch = async (graphApiEndpoint: string, endpoint: string, accessToken: string, searchTerms: any, filterTerms: any, maxCount: number): Promise<any> => {
+const progressiveSearch = async (
+  graphApiEndpoint: string,
+  endpoint: string,
+  accessToken: string,
+  searchTerms: any,
+  filterTerms: any,
+  maxCount: number
+): Promise<any> => {
   const searchAttempts: string[] = []
   const searchErrors: string[] = []
 
@@ -334,7 +350,12 @@ const addBooleanFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
 }
 
 const hasStructuredFilters = (filterTerms: any): boolean => {
-  return filterTerms.hasAttachments === true || filterTerms.unreadOnly === true || Boolean(filterTerms.receivedAfter) || Boolean(filterTerms.receivedBefore)
+  return (
+    filterTerms.hasAttachments === true ||
+    filterTerms.unreadOnly === true ||
+    Boolean(filterTerms.receivedAfter) ||
+    Boolean(filterTerms.receivedBefore)
+  )
 }
 
 /**

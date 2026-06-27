@@ -60,7 +60,14 @@ describe('handleListFiles', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ value: [{ id: 'x', name: 'x.txt', size: 0, lastModifiedDateTime: '2026-01-01T00:00:00Z' }] })
     await handleListFiles(ctx, { path: '/Documents/' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/drive/root:/Documents:/children', null, expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      'me/drive/root:/Documents:/children',
+      null,
+      expect.any(Object)
+    )
   })
 
   it('reports empty when value is empty', async () => {
@@ -93,7 +100,15 @@ describe('handleSearchFiles', () => {
   it('searches and reports matches', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({
-      value: [{ id: 'a', name: 'spec.pdf', size: 4096, lastModifiedDateTime: '2026-01-01T00:00:00Z', parentReference: { path: '/drive/root:/Documents' } }]
+      value: [
+        {
+          id: 'a',
+          name: 'spec.pdf',
+          size: 4096,
+          lastModifiedDateTime: '2026-01-01T00:00:00Z',
+          parentReference: { path: '/drive/root:/Documents' }
+        }
+      ]
     })
     const r = await handleSearchFiles(ctx, { query: 'spec' })
     expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', "me/drive/search(q='spec')", null, expect.any(Object))
@@ -213,7 +228,9 @@ describe('handleUpload', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'i', name: 'a.txt', size: 5, webUrl: 'https://x' })
     const r = await handleUpload(ctx, { path: '/a.txt', content: 'hello' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PUT', 'me/drive/root:/a.txt:/content', 'hello', { '@microsoft.graph.conflictBehavior': 'rename' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PUT', 'me/drive/root:/a.txt:/content', 'hello', {
+      '@microsoft.graph.conflictBehavior': 'rename'
+    })
     expect(r.content[0].text).toMatch(/Successfully uploaded/)
   })
 
@@ -255,7 +272,10 @@ describe('handleShare', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ link: { webUrl: 'https://share/x' } })
     const r = await handleShare(ctx, { itemId: 'a' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/items/a/createLink', { type: 'view', scope: 'anonymous' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/items/a/createLink', {
+      type: 'view',
+      scope: 'anonymous'
+    })
     expect(r.content[0].text).toContain('https://share/x')
   })
 
@@ -307,7 +327,13 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     const r = await handleCreateFolder(ctx, { name: 'New' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root/children', expect.objectContaining({ name: 'New' }))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'POST',
+      'me/drive/root/children',
+      expect.objectContaining({ name: 'New' })
+    )
     expect(r.content[0].text).toMatch(/Successfully created folder/)
   })
 
@@ -315,7 +341,13 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     await handleCreateFolder(ctx, { name: 'New', path: '/Documents' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root:/Documents:/children', expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'POST',
+      'me/drive/root:/Documents:/children',
+      expect.any(Object)
+    )
   })
 
   it('reports failure when no id is returned', async () => {

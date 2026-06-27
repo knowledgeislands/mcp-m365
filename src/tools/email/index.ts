@@ -25,8 +25,13 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       description: 'Lists recent emails from your inbox',
       inputSchema: z
         .object({
-          folder: z.string().optional().describe("Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+          folder: z
+            .string()
+            .optional()
+            .describe("Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
+          folderId: graphIdSchema
+            .optional()
+            .describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           count: z.number().int().positive().max(1000).optional().describe('Number of emails to retrieve (default: 10, max: 1000)'),
           includeCount: z.boolean().optional().describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
         })
@@ -44,8 +49,15 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           query: z.string().optional().describe('Search query text to find in emails'),
-          folder: z.string().optional().describe("Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+          folder: z
+            .string()
+            .optional()
+            .describe(
+              "Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"
+            ),
+          folderId: graphIdSchema
+            .optional()
+            .describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           from: z.string().optional().describe('Filter by sender email address or name'),
           to: z.string().optional().describe('Filter by recipient email address or name'),
           subject: z.string().optional().describe('Filter by email subject'),
@@ -65,11 +77,15 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
   server.registerTool(
     'm365_email_message_get',
     {
-      description: 'Reads the content of a specific email. HTML emails are securely sanitized to extract only visible text, preventing prompt injection attacks via hidden content.',
+      description:
+        'Reads the content of a specific email. HTML emails are securely sanitized to extract only visible text, preventing prompt injection attacks via hidden content.',
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to read'),
-          includeRawHtml: z.boolean().optional().describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
+          includeRawHtml: z
+            .boolean()
+            .optional()
+            .describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
         })
         .strict(),
       annotations: READ_ONLY_REMOTE
@@ -88,7 +104,10 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           bcc: z.string().optional().describe('Comma-separated list of BCC recipient email addresses'),
           subject: z.string().describe('Email subject'),
           body: z.string().describe('Email body content (plain text or HTML)'),
-          isHtml: z.boolean().optional().describe('Set to true to send as HTML, false for plain text. If not specified, auto-detects based on <html> tag presence.'),
+          isHtml: z
+            .boolean()
+            .optional()
+            .describe('Set to true to send as HTML, false for plain text. If not specified, auto-detects based on <html> tag presence.'),
           importance: z.enum(['normal', 'high', 'low']).optional().describe('Email importance (normal, high, low)'),
           saveToSentItems: z.boolean().optional().describe('Whether to save the email to sent items')
         })
@@ -140,7 +159,10 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to delete'),
-          permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
+          permanent: z
+            .boolean()
+            .optional()
+            .describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
           dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
@@ -150,4 +172,12 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
   )
 }
 
-export { handleDeleteEmail, handleDraftEmail, handleListEmails, handleMarkAsRead, handleReadEmail, handleSearchEmails, handleSendEmail } from '../../main/email/index.js'
+export {
+  handleDeleteEmail,
+  handleDraftEmail,
+  handleListEmails,
+  handleMarkAsRead,
+  handleReadEmail,
+  handleSearchEmails,
+  handleSendEmail
+} from '../../main/email/index.js'

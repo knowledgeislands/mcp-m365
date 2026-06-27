@@ -334,7 +334,9 @@ describe('TokenStorage', () => {
 
     it('should reject if client ID or secret is missing', async () => {
       tokenStorage.config.clientId = ''
-      await expect(tokenStorage.exchangeCodeForTokens(mockAuthCode)).rejects.toThrow('Client ID or Client Secret is not configured. Cannot exchange code for tokens.')
+      await expect(tokenStorage.exchangeCodeForTokens(mockAuthCode)).rejects.toThrow(
+        'Client ID or Client Secret is not configured. Cannot exchange code for tokens.'
+      )
     })
   })
 
@@ -427,7 +429,8 @@ describe('TokenStorage', () => {
       const mockRes = {
         statusCode: 200,
         on: (event: string, cb: any) => {
-          if (event === 'data') cb(Buffer.from(JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: 'new_returned_refresh_token' })))
+          if (event === 'data')
+            cb(Buffer.from(JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: 'new_returned_refresh_token' })))
           if (event === 'end') cb()
         }
       }

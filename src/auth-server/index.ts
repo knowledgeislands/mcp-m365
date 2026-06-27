@@ -165,7 +165,9 @@ const exchangeCodeForTokens = (code: string, codeVerifier: string): Promise<any>
             const expiresAt = Date.now() + tokenResponse.expires_in * 1000
             tokenResponse.expires_at = expiresAt
 
-            fs.writeFileSync(AUTH_CONFIG.tokenStorePath, JSON.stringify(tokenResponse, null, 2), { encoding: 'utf8', mode: 0o600 })
+            const tmpPath = `${AUTH_CONFIG.tokenStorePath}.tmp.${process.pid}.${Math.random().toString(36).slice(2)}`
+            fs.writeFileSync(tmpPath, JSON.stringify(tokenResponse, null, 2), { encoding: 'utf8', mode: 0o600 })
+            fs.renameSync(tmpPath, AUTH_CONFIG.tokenStorePath)
             console.log(`Tokens saved to ${AUTH_CONFIG.tokenStorePath}`)
 
             resolve(tokenResponse)

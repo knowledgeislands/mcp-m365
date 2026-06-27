@@ -18,7 +18,14 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from '../config/index.js'
 import { createTokenStorage, makeEnsureAuthenticated } from '../main/auth/index.js'
 import type { GraphContext } from '../main/graph-client/index.js'
-import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
+import {
+  registerAuthTools,
+  registerCalendarTools,
+  registerEmailTools,
+  registerFolderTools,
+  registerOnedriveTools,
+  registerRulesTools
+} from '../tools/index.js'
 import { makeAccessGatedRegister } from '../utils/access-level.js'
 
 const config = loadConfig()

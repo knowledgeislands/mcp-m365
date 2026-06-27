@@ -70,7 +70,13 @@ interface MoveResult {
   results?: { successful: string[]; failed: { id: string; error: string }[] }
 }
 
-const moveEmailsToFolder = async (graphApiEndpoint: string, accessToken: string, emailIds: string[], targetFolderName: string, _sourceFolderName: string): Promise<MoveResult> => {
+const moveEmailsToFolder = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  emailIds: string[],
+  targetFolderName: string,
+  _sourceFolderName: string
+): Promise<MoveResult> => {
   const targetFolderId = await getFolderIdByName(graphApiEndpoint, accessToken, targetFolderName)
   if (!targetFolderId) {
     return {
@@ -95,7 +101,9 @@ const moveEmailsToFolder = async (graphApiEndpoint: string, accessToken: string,
 
   for (const emailId of emailIds) {
     try {
-      await callGraphAPI(graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, { destinationId: targetFolderId })
+      await callGraphAPI(graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, {
+        destinationId: targetFolderId
+      })
 
       results.successful.push(emailId)
     } catch (error: any) {

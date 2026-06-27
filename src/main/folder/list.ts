@@ -95,7 +95,9 @@ const formatFolderListError = (error: any, context: any): string => {
 }
 
 const getAllFoldersHierarchy = async (graphApiEndpoint: string, accessToken: string, includeItemCounts: boolean): Promise<any[]> => {
-  const selectFields = includeItemCounts ? 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount' : 'id,displayName,parentFolderId,childFolderCount'
+  const selectFields = includeItemCounts
+    ? 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount'
+    : 'id,displayName,parentFolderId,childFolderCount'
 
   const allFolders = await fetchFoldersRecursive(graphApiEndpoint, accessToken, 'me/mailFolders', selectFields)
 

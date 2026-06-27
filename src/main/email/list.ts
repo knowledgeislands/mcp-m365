@@ -46,7 +46,9 @@ export const handleListEmails = async (ctx: GraphContext, args: any): Promise<an
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
+    const endpoint = effectiveFolderId
+      ? `me/mailFolders/${effectiveFolderId}/messages`
+      : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
     const queryParams: Record<string, any> = {
       $top: Math.min(DEFAULT_PAGE_SIZE, requestedCount),

@@ -7,7 +7,14 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
+import {
+  handleAcceptEvent,
+  handleCancelEvent,
+  handleCreateEvent,
+  handleDeclineEvent,
+  handleDeleteEvent,
+  handleListEvents
+} from '../../main/calendar/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
@@ -47,7 +54,8 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   server.registerTool(
     'm365_calendar_event_decline',
     {
-      description: 'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
+      description:
+        'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
         .object({
           eventId: graphIdSchema.describe('The ID of the event to decline'),
@@ -99,7 +107,8 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   server.registerTool(
     'm365_calendar_event_delete',
     {
-      description: 'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
+      description:
+        'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
         .object({
           eventId: graphIdSchema.describe('The ID of the event to delete'),
@@ -112,4 +121,11 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   )
 }
 
-export { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
+export {
+  handleAcceptEvent,
+  handleCancelEvent,
+  handleCreateEvent,
+  handleDeclineEvent,
+  handleDeleteEvent,
+  handleListEvents
+} from '../../main/calendar/index.js'

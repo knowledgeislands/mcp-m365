@@ -134,7 +134,9 @@ describe('resolveFolderPath', () => {
     test('throws when the Graph call fails', async () => {
       mockCallGraphAPI.mockRejectedValue(new Error('API Error'))
 
-      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'CustomFolder')).rejects.toThrow('Error resolving folder "CustomFolder": API Error')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'CustomFolder')).rejects.toThrow(
+        'Error resolving folder "CustomFolder": API Error'
+      )
     })
   })
 })

@@ -34,9 +34,17 @@ export const handleReadEmail = async (ctx: GraphContext, args: any): Promise<any
 
       const sender = email.from ? `${email.from.emailAddress.name} (${email.from.emailAddress.address})` : 'Unknown'
       const senderAddress = email.from?.emailAddress?.address || 'unknown'
-      const to = email.toRecipients ? email.toRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ') : 'None'
-      const cc = email.ccRecipients && email.ccRecipients.length > 0 ? email.ccRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ') : 'None'
-      const bcc = email.bccRecipients && email.bccRecipients.length > 0 ? email.bccRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ') : 'None'
+      const to = email.toRecipients
+        ? email.toRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ')
+        : 'None'
+      const cc =
+        email.ccRecipients && email.ccRecipients.length > 0
+          ? email.ccRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ')
+          : 'None'
+      const bcc =
+        email.bccRecipients && email.bccRecipients.length > 0
+          ? email.bccRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ')
+          : 'None'
       const date = new Date(email.receivedDateTime).toLocaleString()
 
       let body = ''

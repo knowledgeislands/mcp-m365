@@ -4,7 +4,16 @@
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import type { GraphContext } from '../../main/graph-client/index.js'
-import { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge } from '../../main/onedrive/index.js'
+import {
+  handleCreateFolder,
+  handleDeleteItem,
+  handleDownload,
+  handleListFiles,
+  handleSearchFiles,
+  handleShare,
+  handleUpload,
+  handleUploadLarge
+} from '../../main/onedrive/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
@@ -62,7 +71,10 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/myfile.txt')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z
+            .enum(['rename', 'replace', 'fail'])
+            .optional()
+            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -78,7 +90,10 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/largefile.zip')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z
+            .enum(['rename', 'replace', 'fail'])
+            .optional()
+            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -121,7 +136,8 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
   server.registerTool(
     'm365_onedrive_item_delete',
     {
-      description: 'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
+      description:
+        'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
       inputSchema: z
         .object({
           itemId: graphIdSchema.optional().describe('ID of the item to delete'),
@@ -135,4 +151,13 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
   )
 }
 
-export { handleCreateFolder, handleDeleteItem, handleDownload, handleListFiles, handleSearchFiles, handleShare, handleUpload, handleUploadLarge } from '../../main/onedrive/index.js'
+export {
+  handleCreateFolder,
+  handleDeleteItem,
+  handleDownload,
+  handleListFiles,
+  handleSearchFiles,
+  handleShare,
+  handleUpload,
+  handleUploadLarge
+} from '../../main/onedrive/index.js'

@@ -191,7 +191,18 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
 
 export const callGraphAPIDownload = async (graphApiEndpoint: string, accessToken: string, path: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    const fullUrl = `${graphApiEndpoint}${path}`
+    let fullUrl: string
+    if (path.startsWith('http://') || path.startsWith('https://')) {
+      try {
+        assertGraphUrl(graphApiEndpoint, path)
+      } catch (e) {
+        reject(e)
+        return
+      }
+      fullUrl = path
+    } else {
+      fullUrl = `${graphApiEndpoint}${path}`
+    }
 
     const options: https.RequestOptions = {
       method: 'GET',

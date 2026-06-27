@@ -63,7 +63,9 @@ describe('handleListFolders', () => {
 
   it('formats item counts when includeItemCounts=true', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockFetchFoldersRecursive.mockResolvedValue([{ id: 'i1', displayName: 'Inbox', parentFolderId: null, childFolderCount: 0, totalItemCount: 12, unreadItemCount: 3 }])
+    mockFetchFoldersRecursive.mockResolvedValue([
+      { id: 'i1', displayName: 'Inbox', parentFolderId: null, childFolderCount: 0, totalItemCount: 12, unreadItemCount: 3 }
+    ])
     const r = await handleListFolders(ctx, { includeItemCounts: true })
     expect(r.content[0].text).toContain('12 items')
     expect(r.content[0].text).toContain('3 unread')
@@ -197,7 +199,9 @@ describe('handleCreateFolder', () => {
     mockGetFolderIdByName.mockResolvedValueOnce('parent-id')
     mockCallGraphAPI.mockResolvedValue({ id: 'new-id' })
     const r = await handleCreateFolder(ctx, { name: 'Sub', parentFolder: 'Parent' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/mailFolders/parent-id/childFolders', { displayName: 'Sub' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/mailFolders/parent-id/childFolders', {
+      displayName: 'Sub'
+    })
     expect(r.content[0].text).toMatch(/inside "Parent"/)
   })
 

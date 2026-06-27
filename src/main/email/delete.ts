@@ -18,7 +18,12 @@ export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Prom
     const accessToken = await ctx.ensureAuthenticated()
 
     if (dry_run) {
-      const msg = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/messages/${encodeURIComponent(emailId)}?$select=id,subject,from,receivedDateTime`)
+      const msg = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'GET',
+        `me/messages/${encodeURIComponent(emailId)}?$select=id,subject,from,receivedDateTime`
+      )
       const verb = permanent ? 'permanently delete' : 'move to Deleted Items'
       return {
         content: [

@@ -62,7 +62,12 @@ describe('handleCheckAuthStatus', () => {
 
   it('reports authenticated with redacted summary when access_token is present', async () => {
     const expiresAt = Date.now() + 60_000
-    getTokensSpy.mockResolvedValue({ access_token: 'SECRET_ACCESS', refresh_token: 'SECRET_REFRESH', scope: 'User.Read Mail.Read', expires_at: expiresAt })
+    getTokensSpy.mockResolvedValue({
+      access_token: 'SECRET_ACCESS',
+      refresh_token: 'SECRET_REFRESH',
+      scope: 'User.Read Mail.Read',
+      expires_at: expiresAt
+    })
     isExpiredSpy.mockReturnValue(false)
     const r = await handleCheckAuthStatus(tokenStorage)
     const payload = JSON.parse(r.content[0].text)
@@ -76,7 +81,12 @@ describe('handleCheckAuthStatus', () => {
   })
 
   it('never leaks access_token or refresh_token values', async () => {
-    getTokensSpy.mockResolvedValue({ access_token: 'SECRET_ACCESS_VALUE', refresh_token: 'SECRET_REFRESH_VALUE', scope: 'User.Read', expires_at: Date.now() })
+    getTokensSpy.mockResolvedValue({
+      access_token: 'SECRET_ACCESS_VALUE',
+      refresh_token: 'SECRET_REFRESH_VALUE',
+      scope: 'User.Read',
+      expires_at: Date.now()
+    })
     isExpiredSpy.mockReturnValue(false)
     const r = await handleCheckAuthStatus(tokenStorage)
     expect(r.content[0].text).not.toContain('SECRET_ACCESS_VALUE')

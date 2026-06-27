@@ -3,7 +3,14 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { folderListResultSchema, handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder } from '../../main/folder/index.js'
+import {
+  folderListResultSchema,
+  handleCreateFolder,
+  handleDeleteFolder,
+  handleListFolders,
+  handleMoveEmails,
+  handleRenameFolder
+} from '../../main/folder/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 

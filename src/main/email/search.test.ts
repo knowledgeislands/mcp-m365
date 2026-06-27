@@ -92,7 +92,14 @@ describe('handleSearchEmails', () => {
     await handleSearchEmails(ctx, { query: 'release', folderId: testFolderId, count: 10 })
 
     expect(mockResolveFolderPath).not.toHaveBeenCalled()
-    expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
+    expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      mockAccessToken,
+      'GET',
+      `me/mailFolders/${testFolderId}/messages`,
+      expect.any(Object),
+      10
+    )
   })
 
   test('applies date range filters when searching without text terms', async () => {
@@ -310,7 +317,10 @@ describe('handleSearchEmails', () => {
 
 describe('formatSearchResults (robustness guards)', () => {
   test('does not throw on a non-empty result whose _searchInfo lacks strategies', () => {
-    const r = formatSearchResults({ value: [{ id: 'e1', subject: 'S', isRead: true, receivedDateTime: '2026-01-01T00:00:00Z' }], _searchInfo: { folder: 'inbox' } })
+    const r = formatSearchResults({
+      value: [{ id: 'e1', subject: 'S', isRead: true, receivedDateTime: '2026-01-01T00:00:00Z' }],
+      _searchInfo: { folder: 'inbox' }
+    })
     expect(r.content[0].text).toContain('Found 1 emails matching your search criteria:')
     // No strategies → no "(Search used …)" suffix.
     expect(r.content[0].text).not.toContain('Search used')

@@ -6,7 +6,19 @@
  */
 
 export const INVISIBLE_CHARS_REGEX = new RegExp(
-  '[' + '\u200B-\u200D' + '\u2060' + '\u2061-\u2064' + '\u206A-\u206F' + '\uFEFF' + '\u00AD' + '\u034F' + '\u061C' + '\u180E' + '\u2028\u2029' + '\u202A-\u202E' + ']',
+  '[' +
+    '\u200B-\u200D' +
+    '\u2060' +
+    '\u2061-\u2064' +
+    '\u206A-\u206F' +
+    '\uFEFF' +
+    '\u00AD' +
+    '\u034F' +
+    '\u061C' +
+    '\u180E' +
+    '\u2028\u2029' +
+    '\u202A-\u202E' +
+    ']',
   'g'
 )
 
@@ -167,7 +179,10 @@ export const sanitizeHtmlToText = (html: string | null | undefined): string => {
   result = removeHiddenElements(result, `color\\s*:\\s*white[^"']*background[^"']*:\\s*white`)
   result = removeHiddenElements(result, `background[^"']*:\\s*white[^"']*color\\s*:\\s*white`)
 
-  result = result.replace(/<[^>]+style\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b)[^"']*["'][^>]*\/?>/gi, '')
+  result = result.replace(
+    /<[^>]+style\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b)[^"']*["'][^>]*\/?>/gi,
+    ''
+  )
 
   result = result.replace(/<[^>]+\bhidden\b[^>]*>[\s\S]*?<\/[^>]+>/gi, '')
   result = result.replace(/<[^>]+aria-hidden\s*=\s*["']true["'][^>]*>[\s\S]*?<\/[^>]+>/gi, '')

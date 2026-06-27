@@ -286,7 +286,9 @@ describe('handleDeleteEmail', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'd-id' })
     const r = await handleDeleteEmail(ctx, { id: 'm1', dry_run: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages/m1/move', { destinationId: 'deleteditems' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/messages/m1/move', {
+      destinationId: 'deleteditems'
+    })
     expect(r.content[0].text).toContain('Email moved to Deleted Items. ID: d-id')
   })
 
@@ -300,7 +302,12 @@ describe('handleDeleteEmail', () => {
 
   it('returns a [dry_run] preview without deleting by default', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValueOnce({ id: 'm1', subject: 'Receipt', from: { emailAddress: { address: 'biller@x' } }, receivedDateTime: '2026-01-04T00:00Z' })
+    mockCallGraphAPI.mockResolvedValueOnce({
+      id: 'm1',
+      subject: 'Receipt',
+      from: { emailAddress: { address: 'biller@x' } },
+      receivedDateTime: '2026-01-04T00:00Z'
+    })
     const r = await handleDeleteEmail(ctx, { id: 'm1' })
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
     expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', expect.stringContaining('me/messages/m1?'))

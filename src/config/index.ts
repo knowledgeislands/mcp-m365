@@ -59,12 +59,23 @@ export const SERVER_VERSION = '1.0.0'
  *
  * Override at runtime via `MCP_M365_SCOPES` (space-separated).
  */
-export const M365_DEFAULT_SCOPES = ['offline_access', 'User.Read', 'Mail.Read', 'Mail.ReadWrite', 'Mail.Send', 'Calendars.Read', 'Calendars.ReadWrite', 'Files.Read', 'Files.ReadWrite']
+export const M365_DEFAULT_SCOPES = [
+  'offline_access',
+  'User.Read',
+  'Mail.Read',
+  'Mail.ReadWrite',
+  'Mail.Send',
+  'Calendars.Read',
+  'Calendars.ReadWrite',
+  'Files.Read',
+  'Files.ReadWrite'
+]
 
 export const GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0/'
 
 export const EMAIL_SELECT_FIELDS = 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead'
-export const EMAIL_DETAIL_FIELDS = 'id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders'
+export const EMAIL_DETAIL_FIELDS =
+  'id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders'
 
 export const CALENDAR_SELECT_FIELDS = 'id,subject,bodyPreview,start,end,location,organizer,attendees,isAllDay,isCancelled'
 
@@ -193,7 +204,9 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     accessLevel: parseAccessLevel(env.MCP_M365_ACCESS_LEVEL),
     auth,
     auditLogMode: parseAuditLogMode(env.MCP_M365_AUDIT_LOG),
-    auditLogPath: env.MCP_M365_AUDIT_LOG_PATH?.trim() ? path.resolve(env.MCP_M365_AUDIT_LOG_PATH.trim()) : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
+    auditLogPath: env.MCP_M365_AUDIT_LOG_PATH?.trim()
+      ? path.resolve(env.MCP_M365_AUDIT_LOG_PATH.trim())
+      : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
     auditLogMaxBytes: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_MAX_BYTES, 10 * 1024 * 1024, 'MCP_M365_AUDIT_LOG_MAX_BYTES'),
     auditLogKeep: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP')
   }

@@ -270,7 +270,7 @@ class TokenStorage {
               reject(new Error(responseBody.error_description || `Token exchange failed with status ${status}`))
             }
           } catch (e: any) {
-            reject(new Error(`Error processing token response: ${e.message}. Response data: ${data}`))
+            reject(new Error(`Error processing token response: ${e.message}. (response body redacted)`))
           }
         })
       })

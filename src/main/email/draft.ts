@@ -66,7 +66,9 @@ export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<an
     }
 
     if (error.message?.includes('status 403')) {
-      return errorText('Draft creation was denied by Microsoft Graph (403). The token likely lacks Mail.ReadWrite scope. Re-authenticate with force=true to refresh consent, then try again.')
+      return errorText(
+        'Draft creation was denied by Microsoft Graph (403). The token likely lacks Mail.ReadWrite scope. Re-authenticate with force=true to refresh consent, then try again.'
+      )
     }
 
     return errorText(`Error creating draft email: ${error.message}`)

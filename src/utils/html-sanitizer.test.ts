@@ -3,7 +3,14 @@
  *
  * These tests verify that prompt injection attacks via HTML emails are blocked.
  */
-import { hasHidingAttributes, hasHidingCSS, processHtmlEmail, removeInvisibleChars, sanitizeHtmlToText, wrapEmailContent } from './html-sanitizer.js'
+import {
+  hasHidingAttributes,
+  hasHidingCSS,
+  processHtmlEmail,
+  removeInvisibleChars,
+  sanitizeHtmlToText,
+  wrapEmailContent
+} from './html-sanitizer.js'
 
 describe('HTML Sanitizer Security Tests', () => {
   describe('Hidden CSS Text Attacks', () => {

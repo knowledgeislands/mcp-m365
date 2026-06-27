@@ -94,7 +94,14 @@ describe('handleListEmails', () => {
       const result = await handleListEmails(ctx, { folder: customFolder })
 
       expect(mockResolveFolderPath).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, customFolder)
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', WELL_KNOWN_FOLDERS.drafts, expect.any(Object), expect.any(Number))
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
+        mockAccessToken,
+        'GET',
+        WELL_KNOWN_FOLDERS.drafts,
+        expect.any(Object),
+        expect.any(Number)
+      )
       expect(result.content[0].text).toContain('Found 2 emails in drafts')
     })
 
@@ -105,7 +112,14 @@ describe('handleListEmails', () => {
       const result = await handleListEmails(ctx, { folderId: testFolderId })
 
       expect(mockResolveFolderPath).not.toHaveBeenCalled()
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', `me/mailFolders/${testFolderId}/messages`, expect.any(Object), 10)
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
+        mockAccessToken,
+        'GET',
+        `me/mailFolders/${testFolderId}/messages`,
+        expect.any(Object),
+        10
+      )
       expect(result.content[0].text).toContain(`folderId:${testFolderId}`)
     })
 
@@ -295,7 +309,14 @@ describe('handleListEmails', () => {
       await handleListEmails(ctx, { folder: 'inbox' })
 
       expect(mockResolveFolderPath).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'inbox')
-      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'GET', 'me/mailFolders/inbox/messages', expect.any(Object), expect.any(Number))
+      expect(mockCallGraphAPIPaginated).toHaveBeenCalledWith(
+        GRAPH_API_ENDPOINT,
+        mockAccessToken,
+        'GET',
+        'me/mailFolders/inbox/messages',
+        expect.any(Object),
+        expect.any(Number)
+      )
     })
   })
 })

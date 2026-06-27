@@ -278,7 +278,9 @@ describe('handleEditRuleSequence', () => {
     mockCallGraphAPI.mockResolvedValueOnce({ value: [{ id: 'r1', displayName: 'Triage', sequence: 100 }] })
     mockCallGraphAPI.mockResolvedValueOnce({})
     const r = await handleEditRuleSequence(ctx, { ruleName: 'Triage', sequence: 50 })
-    expect(mockCallGraphAPI).toHaveBeenLastCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/mailFolders/inbox/messageRules/r1', { sequence: 50 })
+    expect(mockCallGraphAPI).toHaveBeenLastCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/mailFolders/inbox/messageRules/r1', {
+      sequence: 50
+    })
     expect(r.content[0].text).toMatch(/Successfully updated/)
   })
 

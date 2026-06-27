@@ -50,7 +50,14 @@ describe('handleListEvents', () => {
     })
 
     const result = await handleListEvents(ctx, {})
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/calendarView', null, expect.objectContaining({ $top: 10, $orderby: 'start/dateTime' }))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      'me/calendarView',
+      null,
+      expect.objectContaining({ $top: 10, $orderby: 'start/dateTime' })
+    )
     expect(result.content[0].text).toMatch(/Found 1 events/)
     expect(result.content[0].text).toContain('Standup')
     expect(result.content[0].text).toContain('Room 1')
@@ -101,7 +108,13 @@ describe('handleListEvents', () => {
         { id: 'a', subject: 'NoStart', start: undefined, end: {}, bodyPreview: '' },
         { id: 'b', subject: 'BadDate', start: 'not-a-date', end: 'also-bad', bodyPreview: '' },
         // UTC zone with no trailing Z / offset → the `${dateTime}Z` branch.
-        { id: 'c', subject: 'UTCnoZ', start: { dateTime: '2026-05-09T09:00:00', timeZone: 'UTC' }, end: { dateTime: '2026-05-09T10:00:00', timeZone: 'UTC' }, bodyPreview: '' }
+        {
+          id: 'c',
+          subject: 'UTCnoZ',
+          start: { dateTime: '2026-05-09T09:00:00', timeZone: 'UTC' },
+          end: { dateTime: '2026-05-09T10:00:00', timeZone: 'UTC' },
+          bodyPreview: ''
+        }
       ]
     })
     const r = await handleListEvents(ctx, {})
@@ -167,7 +180,9 @@ describe('handleCancelEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleCancelEvent(ctx, { eventId: 'e1', dry_run: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/cancel', { comment: 'Cancelled via API' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/cancel', {
+      comment: 'Cancelled via API'
+    })
     expect(r.content[0].text).toMatch(/successfully cancelled/)
   })
 
@@ -212,7 +227,9 @@ describe('handleDeclineEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleDeclineEvent(ctx, { eventId: 'e2', dry_run: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e2/decline', { comment: 'Declined via API' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e2/decline', {
+      comment: 'Declined via API'
+    })
     expect(r.content[0].text).toMatch(/successfully declined/)
   })
 
@@ -261,7 +278,12 @@ describe('handleDeleteEvent', () => {
 
   it('returns a [dry_run] preview without deleting by default', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValueOnce({ id: 'e3', subject: 'Old', start: { dateTime: '2026-01-03T11:00' }, end: { dateTime: '2026-01-03T12:00' } })
+    mockCallGraphAPI.mockResolvedValueOnce({
+      id: 'e3',
+      subject: 'Old',
+      start: { dateTime: '2026-01-03T11:00' },
+      end: { dateTime: '2026-01-03T12:00' }
+    })
     const r = await handleDeleteEvent(ctx, { eventId: 'e3' })
     expect(r.content[0].text).toMatch(/^\[dry_run\] would delete event e3: "Old"/)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)

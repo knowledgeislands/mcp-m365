@@ -48,7 +48,12 @@ const formatFolderError = (error: any, context: any): string => {
   return lines.join('\n')
 }
 
-const createMailFolder = async (graphApiEndpoint: string, accessToken: string, folderName: string, parentFolderName: string): Promise<{ success: boolean; message: string; folderId?: string }> => {
+const createMailFolder = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  folderName: string,
+  parentFolderName: string
+): Promise<{ success: boolean; message: string; folderId?: string }> => {
   const existingFolder = await getFolderIdByName(graphApiEndpoint, accessToken, folderName)
   if (existingFolder) {
     return {

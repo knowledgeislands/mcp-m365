@@ -35,7 +35,13 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
           moveToFolder: z.string().optional().describe('Name of the folder to move matching emails to'),
           markAsRead: z.boolean().optional().describe('Whether to mark matching emails as read'),
           isEnabled: z.boolean().optional().describe('Whether the rule should be enabled after creation (default: true)'),
-          sequence: z.number().int().min(0).max(10000).optional().describe('Order in which the rule is executed (lower numbers run first, default: 100). Graph rejects negative values.')
+          sequence: z
+            .number()
+            .int()
+            .min(0)
+            .max(10000)
+            .optional()
+            .describe('Order in which the rule is executed (lower numbers run first, default: 100). Graph rejects negative values.')
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -50,7 +56,12 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           ruleName: z.string().describe('Name of the rule to modify'),
-          sequence: z.number().int().min(0).max(10000).describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
+          sequence: z
+            .number()
+            .int()
+            .min(0)
+            .max(10000)
+            .describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
         })
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE
