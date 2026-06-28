@@ -113,7 +113,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 4. **Build**: `bun run build`.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see
    [Configuration](#configuration)).
-6. **Start the auth server**: `bun run server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
+6. **Start the auth server**: `bun run ki:server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
 ## Example Conversations
@@ -216,7 +216,7 @@ bun install
 | `MCP_M365_AUDIT_LOG_PATH`      | no          | `~/.local/state/mcp-m365/audit.jsonl`                                | Path to the JSONL audit log.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no          | `10485760` (10 MiB)                                                  | Size-based rotation threshold in bytes. Set to `0` to disable rotation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                |
 | `MCP_M365_AUDIT_LOG_KEEP`      | no          | `5`                                                                  | Number of rotated audit-log files to retain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
-| `NODE_ENV`                     | no          | —                                                                    | Dev convention. `server:mcp:dev`/`server:auth:dev`/`server:mcp:inspect` set this to `development`. At startup [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set), then `.env`. A var already in the environment (e.g. the Claude Desktop `env` block) always wins.                                                                                                                                                                                                                                                  |
+| `NODE_ENV`                     | no          | —                                                                    | Dev convention. `ki:server:mcp:dev`/`ki:server:auth:dev`/`ki:server:mcp:inspect` set this to `development`. At startup [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set), then `.env`. A var already in the environment (e.g. the Claude Desktop `env` block) always wins.                                                                                                                                                                                                                                         |
 
 † Default scopes:
 `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical
@@ -254,21 +254,21 @@ A starter is in [`claude-config-sample.json`](./claude-config-sample.json).
 ```bash
 cp .env.example .env.development
 # edit .env.development with your Azure credentials, then:
-bun run server:mcp:dev    # MCP server
-bun run server:auth:dev   # OAuth server on :3333
+bun run ki:server:mcp:dev    # MCP server
+bun run ki:server:auth:dev   # OAuth server on :3333
 ```
 
-The `server:mcp:dev`, `server:auth:dev`, and `server:mcp:inspect` scripts run with `NODE_ENV=development`. At startup `loadConfig()` in
-[`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then
-`.env.${NODE_ENV}` (when `NODE_ENV` is set — so `.env.development` here), then `.env` — so it picks up `.env.development` automatically (Bun
-also auto-loads these natively). A var already in the environment always wins, so under Claude Desktop (which does not set `NODE_ENV`) the
-`env` block in the config takes precedence over any `.env*` file.
+The `ki:server:mcp:dev`, `ki:server:auth:dev`, and `ki:server:mcp:inspect` scripts run with `NODE_ENV=development`. At startup
+`loadConfig()` in [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first:
+`.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set — so `.env.development` here), then `.env` — so it picks up `.env.development`
+automatically (Bun also auto-loads these natively). A var already in the environment always wins, so under Claude Desktop (which does not
+set `NODE_ENV`) the `env` block in the config takes precedence over any `.env*` file.
 
 ## Authentication
 
 The OAuth flow runs out-of-band via the standalone auth server:
 
-1. Start the auth server: `bun run server:auth:dev` (listens on `http://localhost:3333`).
+1. Start the auth server: `bun run ki:server:auth:dev` (listens on `http://localhost:3333`).
 2. In Claude, call the `m365_auth_start` tool — it returns a sign-in URL.
 3. Open the URL, sign in, and grant the requested scopes.
 4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.mcp-m365-tokens.json`.
@@ -279,16 +279,16 @@ To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `m36
 ## Development
 
 ```bash
-bun run server:mcp:dev     # bun --watch, MCP server (NODE_ENV=development)
-bun run server:auth:dev    # bun --watch, OAuth server (NODE_ENV=development)
-bun run server:mcp:start   # build then run MCP server from dist/ under node
-bun run server:auth:start  # build then run auth server from dist/ under node
-bun run server:mcp:inspect # MCP Inspector against TS source (NODE_ENV=development)
+bun run ki:server:mcp:dev     # bun --watch, MCP server (NODE_ENV=development)
+bun run ki:server:auth:dev    # bun --watch, OAuth server (NODE_ENV=development)
+bun run ki:server:mcp:start   # build then run MCP server from dist/ under node
+bun run ki:server:auth:start  # build then run auth server from dist/ under node
+bun run ki:server:mcp:inspect # MCP Inspector against TS source (NODE_ENV=development)
 bun run test               # vitest (use `bun run test`, not `bun test`)
-bun run lint:types         # tsc --noEmit
-bun run lint:check         # Biome lint + format check
-bun run lint:fix           # Biome auto-fix (uses --unsafe)
-bun run lint:md            # prettier + markdownlint for *.md
+bun run ki:lint:types         # tsc --noEmit
+bun run ki:lint:check         # Biome lint + format check
+bun run ki:lint:fix           # Biome auto-fix (uses --unsafe)
+bun run ki:lint:md            # prettier + markdownlint for *.md
 ```
 
 ## Security Model
@@ -353,7 +353,7 @@ bun install
 
 ```bash
 bunx kill-port 3333
-bun run server:auth:dev
+bun run ki:server:auth:dev
 ```
 
 **`AADSTS7000215: Invalid client secret`**
