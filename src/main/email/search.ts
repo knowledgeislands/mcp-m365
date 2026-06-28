@@ -407,5 +407,3 @@ export const formatSearchResults = (response: any): any => {
     items: response.value
   })
 }
-
-export default handleSearchEmails

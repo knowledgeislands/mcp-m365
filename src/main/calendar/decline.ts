@@ -42,5 +42,3 @@ export const handleDeclineEvent = async (ctx: GraphContext, args: any): Promise<
     return errorText(`Error declining event: ${error.message}`)
   }
 }
-
-export default handleDeclineEvent

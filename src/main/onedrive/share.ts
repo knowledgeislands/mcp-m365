@@ -65,5 +65,3 @@ export const handleShare = async (ctx: GraphContext, args: any): Promise<any> =>
     return errorText(`Error creating sharing link: ${error.message}`)
   }
 }
-
-export default handleShare

@@ -61,5 +61,3 @@ const formatFolderDeleteError = (error: any, context: any): string => {
   lines.push(`Context: ${JSON.stringify(context)}`)
   return lines.join('\n')
 }
-
-export default handleDeleteFolder

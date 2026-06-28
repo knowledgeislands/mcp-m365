@@ -30,5 +30,3 @@ export const handleAcceptEvent = async (ctx: GraphContext, args: any): Promise<a
     return errorText(`Error accepting event: ${error.message}`)
   }
 }
-
-export default handleAcceptEvent

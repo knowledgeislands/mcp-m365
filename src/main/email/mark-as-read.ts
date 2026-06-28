@@ -44,5 +44,3 @@ export const handleMarkAsRead = async (ctx: GraphContext, args: any): Promise<an
     return errorText(`Error accessing email: ${error.message}`)
   }
 }
-
-export default handleMarkAsRead

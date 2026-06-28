@@ -55,5 +55,3 @@ export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Prom
     return errorText(`Failed to delete email: ${error.message}`)
   }
 }
-
-export default handleDeleteEmail

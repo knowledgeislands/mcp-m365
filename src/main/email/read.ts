@@ -107,5 +107,3 @@ ${body}`
     return errorText(`Error accessing email: ${error.message}`)
   }
 }
-
-export default handleReadEmail

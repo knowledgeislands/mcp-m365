@@ -140,5 +140,3 @@ const moveEmailsToFolder = async (
     results
   }
 }
-
-export default handleMoveEmails

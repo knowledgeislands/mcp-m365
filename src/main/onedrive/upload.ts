@@ -63,5 +63,3 @@ const formatSize = (bytes: number): string => {
   const i = Math.floor(Math.log(bytes) / Math.log(k))
   return `${parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 }
-
-export default handleUpload

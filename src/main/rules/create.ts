@@ -157,5 +157,3 @@ const createInboxRule = async (graphApiEndpoint: string, accessToken: string, ru
     }
   }
 }
-
-export default handleCreateRule

@@ -39,5 +39,3 @@ export const handleCreateEvent = async (ctx: GraphContext, args: any): Promise<a
     return errorText(`Error creating event: ${error.message}`)
   }
 }
-
-export default handleCreateEvent

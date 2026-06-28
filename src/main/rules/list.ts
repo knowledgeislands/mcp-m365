@@ -124,5 +124,3 @@ const formatRuleActions = (rule: any): string => {
 
   return actions.join('; ')
 }
-
-export default handleListRules

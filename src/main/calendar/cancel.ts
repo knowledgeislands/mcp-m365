@@ -42,5 +42,3 @@ export const handleCancelEvent = async (ctx: GraphContext, args: any): Promise<a
     return errorText(`Error cancelling event: ${error.message}`)
   }
 }
-
-export default handleCancelEvent

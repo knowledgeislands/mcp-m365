@@ -41,5 +41,3 @@ export const handleDeleteEvent = async (ctx: GraphContext, args: any): Promise<a
     return errorText(`Error deleting event: ${error.message}`)
   }
 }
-
-export default handleDeleteEvent

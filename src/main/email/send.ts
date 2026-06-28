@@ -78,5 +78,3 @@ export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any
     return errorText(`Error sending email: ${error.message}`)
   }
 }
-
-export default handleSendEmail

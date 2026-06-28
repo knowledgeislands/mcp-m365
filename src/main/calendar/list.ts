@@ -90,5 +90,3 @@ export const handleListEvents = async (ctx: GraphContext, args: any): Promise<an
     return errorText(`Error listing events: ${error.message}`)
   }
 }
-
-export default handleListEvents

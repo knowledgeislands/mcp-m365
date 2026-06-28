@@ -74,5 +74,3 @@ export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<an
     return errorText(`Error creating draft email: ${error.message}`)
   }
 }
-
-export default handleDraftEmail

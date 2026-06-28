@@ -211,5 +211,3 @@ const formatFolderHierarchy = (folders: any[], includeItemCounts: boolean): stri
 
   return `Folder Hierarchy:\n\n${formattedHierarchy}`
 }
-
-export default handleListFolders

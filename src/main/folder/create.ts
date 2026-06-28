@@ -96,5 +96,3 @@ const createMailFolder = async (
     }
   }
 }
-
-export default handleCreateFolder

@@ -46,5 +46,3 @@ export const handleEditRuleSequence = async (ctx: GraphContext, args: any): Prom
     return errorText(`Error updating rule sequence: ${error.message}`)
   }
 }
-
-export default handleEditRuleSequence
