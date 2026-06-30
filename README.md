@@ -1,29 +1,22 @@
 # mcp-m365
 
-[![CI](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml/badge.svg)](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml)
-[![npm version](https://img.shields.io/npm/v/@knowledgeislands/mcp-m365.svg)](https://www.npmjs.com/package/@knowledgeislands/mcp-m365)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![CI](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml/badge.svg)](https://github.com/knowledgeislands/mcp-m365/actions/workflows/ci.yml) [![npm version](https://img.shields.io/npm/v/@knowledgeislands/mcp-m365.svg)](https://www.npmjs.com/package/@knowledgeislands/mcp-m365) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
 
-An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 services — Outlook (email, calendar, folders, rules) and
-OneDrive (files, search, sharing) — through the Microsoft Graph API.
+An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 services — Outlook (email, calendar, folders, rules) and OneDrive (files, search, sharing) — through the Microsoft Graph API.
 
 ## Features
 
 - **OAuth 2.0** — standalone auth server handles the user consent flow; tokens are cached locally and refreshed transparently.
 - **Outlook coverage** — read/search/send/delete email, manage folders + rules, create/accept/decline/cancel calendar events.
 - **OneDrive coverage** — list/search/download/upload (with chunked >4 MB upload), create folders, share files.
-- **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool
-  annotations.
-- **Modular structure** — the implementation lives in `src/main/<concern>/` (email, calendar, folder, rules, OneDrive);
-  `src/tools/<service>/index.ts` is a thin registration shell that validates args and maps the result to an MCP envelope.
+- **Strict input schemas** — every tool registers a Zod schema with `.strict()`, so `tools/list` reports proper JSON Schema and tool annotations.
+- **Modular structure** — the implementation lives in `src/main/<concern>/` (email, calendar, folder, rules, OneDrive); `src/tools/<service>/index.ts` is a thin registration shell that validates args and maps the result to an MCP envelope.
 
-**Quality:** 100% line / branch / function / statement coverage on the `main/` + `utils/` logic, with all destructive paths covered (the
-wiring-only `mcp-server` / `tools/**/index.ts` / `auth-server` and pure-data modules are coverage-excluded).
+**Quality:** 100% line / branch / function / statement coverage on the `main/` + `utils/` logic, with all destructive paths covered (the wiring-only `mcp-server` / `tools/**/index.ts` / `auth-server` and pure-data modules are coverage-excluded).
 
 ## Available Tools
 
-Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`,
-`destructiveHint`, `idempotentHint`, `openWorldHint`).
+Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`).
 
 ### Auth & meta
 
@@ -111,8 +104,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 2. **Register an Azure app** — see [Azure App Registration](#azure-app-registration).
 3. **Configure environment** — copy `.env.example` to `.env.development` and add your Azure credentials.
 4. **Build**: `bun run build`.
-5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see
-   [Configuration](#configuration)).
+5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `bun run ki:server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
 7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
 
@@ -124,32 +116,25 @@ Concrete asks you might make of Claude with this server connected.
 
 > "Find unread emails from `finance@acme.com` received after 2026-04-01 and read the most recent one."
 
-Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`,
-`receivedAfter: "2026-04-01T00:00:00Z"`, then `m365_email_message_get` on the top result. Both honour mail-folder scoping (`folder` name or
-explicit `folderId`).
+Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `query: "finance@acme.com"`, `unreadOnly: true`, `receivedAfter: "2026-04-01T00:00:00Z"`, then `m365_email_message_get` on the top result. Both honour mail-folder scoping (`folder` name or explicit `folderId`).
 
 **Draft a reply to a meeting:**
 
 > "Find Alice's invite for tomorrow's planning sync and draft a reply confirming I'll be there."
 
-Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then
-[`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through
-`m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via
-[`m365_calendar_event_accept`](#outlook-email--calendar).)
+Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then [`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via [`m365_calendar_event_accept`](#outlook-email--calendar).)
 
 **Upload a file to OneDrive:**
 
 > "Upload `~/Documents/Q2-report.pdf` to OneDrive under `Projects/2026/Q2`. The folder doesn't exist yet — create it."
 
-Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, then [`m365_onedrive_item_upload`](#onedrive) for the file (or
-[`m365_onedrive_item_upload_large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
+Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, then [`m365_onedrive_item_upload`](#onedrive) for the file (or [`m365_onedrive_item_upload_large`](#onedrive) if it's over 4 MB; the chunked upload handles arbitrary sizes).
 
 **Review the week's calendar:**
 
 > "Show me my calendar for next week and accept the marketing review invite if it's still open."
 
-Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject,
-and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
+Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
 
 ## Installation
 
@@ -218,9 +203,7 @@ bun install
 | `MCP_M365_AUDIT_LOG_KEEP`      | no          | `5`                                                                  | Number of rotated audit-log files to retain.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `NODE_ENV`                     | no          | —                                                                    | Dev convention. `ki:server:mcp:dev`/`ki:server:auth:dev`/`ki:server:mcp:inspect` set this to `development`. At startup [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set), then `.env`. A var already in the environment (e.g. the Claude Desktop `env` block) always wins.                                                                                                                                                                                                                                         |
 
-† Default scopes:
-`offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical
-`M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
+† Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
 
 **Notes:**
 
@@ -258,11 +241,7 @@ bun run ki:server:mcp:dev    # MCP server
 bun run ki:server:auth:dev   # OAuth server on :3333
 ```
 
-The `ki:server:mcp:dev`, `ki:server:auth:dev`, and `ki:server:mcp:inspect` scripts run with `NODE_ENV=development`. At startup
-`loadConfig()` in [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first:
-`.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set — so `.env.development` here), then `.env` — so it picks up `.env.development`
-automatically (Bun also auto-loads these natively). A var already in the environment always wins, so under Claude Desktop (which does not
-set `NODE_ENV`) the `env` block in the config takes precedence over any `.env*` file.
+The `ki:server:mcp:dev`, `ki:server:auth:dev`, and `ki:server:mcp:inspect` scripts run with `NODE_ENV=development`. At startup `loadConfig()` in [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set — so `.env.development` here), then `.env` — so it picks up `.env.development` automatically (Bun also auto-loads these natively). A var already in the environment always wins, so under Claude Desktop (which does not set `NODE_ENV`) the `env` block in the config takes precedence over any `.env*` file.
 
 ## Authentication
 
@@ -293,16 +272,11 @@ bun run ki:lint:md            # prettier + markdownlint for *.md
 
 ## Security Model
 
-- Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example`
-  templates.
-- OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never
-  logs token values.
-- The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10
-  minutes.
-- Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`,
-  `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
-- Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401
-  → token-refresh handling.
+- Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
+- OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
+- The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
+- Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
+- Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
 
 ## Directory Structure
 
@@ -336,10 +310,7 @@ bun run ki:lint:md            # prettier + markdownlint for *.md
 └── dist/                            # Build output (gitignored, created by `bun run build`)
 ```
 
-`src/auth-server/` is the standalone OAuth callback server and its tests; `src/main/auth/` is the reusable token storage/refresh layer (the
-config-injected `createTokenStorage(cfg)` factory) consumed by both entry points. They're deliberately decoupled so the auth server can run
-independently of the MCP server. Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate,
-token storage, and tool registration — nothing reads `process.env` at import time.
+`src/auth-server/` is the standalone OAuth callback server and its tests; `src/main/auth/` is the reusable token storage/refresh layer (the config-injected `createTokenStorage(cfg)` factory) consumed by both entry points. They're deliberately decoupled so the auth server can run independently of the MCP server. Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate, token storage, and tool registration — nothing reads `process.env` at import time.
 
 ## Troubleshooting
 
@@ -372,5 +343,4 @@ Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `m365_auth_start` t
 4. Re-export it from [`src/tools/index.ts`](./src/tools/index.ts).
 5. Wire it into [`src/mcp-server/index.ts`](./src/mcp-server/index.ts) alongside the existing `register*Tools(...)` calls.
 
-Route every Graph API call through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts) so token refresh and error handling
-stay consistent.
+Route every Graph API call through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts) so token refresh and error handling stay consistent.

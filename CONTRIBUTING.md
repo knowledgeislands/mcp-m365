@@ -12,8 +12,7 @@ cd mcp-m365
 bun install
 ```
 
-`bun install` triggers `prepare` which configures the husky pre-commit hook — so every commit will auto-run `lint-staged` and format your
-changes.
+`bun install` triggers `prepare` which configures the husky pre-commit hook — so every commit will auto-run `lint-staged` and format your changes.
 
 ## Dev loop
 
@@ -34,24 +33,16 @@ bun run ki:lint:md             # prettier + markdownlint for *.md
 
 ### Code
 
-- **TypeScript ES modules** — `"type": "module"`, internal imports use `.js` extensions (e.g. `from './tools/calendar/list.js'`) so `tsc`
-  emits valid JS.
+- **TypeScript ES modules** — `"type": "module"`, internal imports use `.js` extensions (e.g. `from './tools/calendar/list.js'`) so `tsc` emits valid JS.
 - **Arrow functions** for top-level declarations (`export const foo = () => …`).
-- **Config injection, no env at import**: env is read only inside `loadConfig(env?)` in `src/config/index.ts`. Nothing reads `process.env`
-  at module load. Entry points (`src/mcp-server/index.ts`, `src/auth-server/index.ts`) call `loadConfig()` once and thread the `Config` (or
-  a slice) into the access gate, `initTokenStorage(config)`, and tool registration. `src/utils/*` helpers take the config primitive/slice
-  they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), never the global env.
-- **OneDrive path safety**: any caller-supplied OneDrive path interpolated into a Graph endpoint must go through `sanitizeOneDrivePath()`
-  from `src/utils/odata-helpers.ts` (rejects `:`/`\`/`.`/`..`/empty segments, `encodeURIComponent`s the rest).
-- **Errors**: tools surface Graph errors via `errorResult(action, err)` (so the 401 auth hint is appended by `errMessage()` in
-  `src/utils/errors.ts`).
-- **Annotations**: be honest with `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` on every tool registration — the
-  access gate derives each tool's level from them.
+- **Config injection, no env at import**: env is read only inside `loadConfig(env?)` in `src/config/index.ts`. Nothing reads `process.env` at module load. Entry points (`src/mcp-server/index.ts`, `src/auth-server/index.ts`) call `loadConfig()` once and thread the `Config` (or a slice) into the access gate, `initTokenStorage(config)`, and tool registration. `src/utils/*` helpers take the config primitive/slice they need (`makeAccessGatedRegister(server, accessLevel, audit)`, `withAuditLog(auditConfig, …)`), never the global env.
+- **OneDrive path safety**: any caller-supplied OneDrive path interpolated into a Graph endpoint must go through `sanitizeOneDrivePath()` from `src/utils/odata-helpers.ts` (rejects `:`/`\`/`.`/`..`/empty segments, `encodeURIComponent`s the rest).
+- **Errors**: tools surface Graph errors via `errorResult(action, err)` (so the 401 auth hint is appended by `errMessage()` in `src/utils/errors.ts`).
+- **Annotations**: be honest with `readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint` on every tool registration — the access gate derives each tool's level from them.
 
 ### Commits
 
-This repo uses [Conventional Commits](https://www.conventionalcommits.org/) so version bumps are easy to derive when releasing by hand.
-There is no auto-release pipeline.
+This repo uses [Conventional Commits](https://www.conventionalcommits.org/) so version bumps are easy to derive when releasing by hand. There is no auto-release pipeline.
 
 | Type        | What it means           | Bumps |
 | ----------- | ----------------------- | ----- |
@@ -70,12 +61,8 @@ Add `!` for breaking changes (`feat!:` / `fix!:`) — bumps major.
 
 ### Testing
 
-- New code should ship with tests. Vitest is configured with V8 coverage and has thresholds in `vitest.config.ts` — if your change drops
-  coverage below the threshold, CI fails.
-- File-level isolation: config is injected, so most tests build a `Config`/`AuditConfig` literal (or call `loadConfig(env)` with an explicit
-  env slice) instead of mutating `process.env`. A couple of modules keep process-lifetime caches (the audit-log append queue +
-  `chmodEnsured` flag, the shared `TokenStorage`); their tests `vi.resetModules()` or call the `_resetTokenStorage()` hook. Tests that touch
-  the filesystem clean up after themselves with `beforeEach`/`afterEach`.
+- New code should ship with tests. Vitest is configured with V8 coverage and has thresholds in `vitest.config.ts` — if your change drops coverage below the threshold, CI fails.
+- File-level isolation: config is injected, so most tests build a `Config`/`AuditConfig` literal (or call `loadConfig(env)` with an explicit env slice) instead of mutating `process.env`. A couple of modules keep process-lifetime caches (the audit-log append queue + `chmodEnsured` flag, the shared `TokenStorage`); their tests `vi.resetModules()` or call the `_resetTokenStorage()` hook. Tests that touch the filesystem clean up after themselves with `beforeEach`/`afterEach`.
 
 ## Before opening a PR
 
