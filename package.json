@@ -120,7 +120,7 @@
     "ki:server:mcp:dev": "NODE_ENV=development bun --watch src/mcp-server/index.ts",
     "ki:server:mcp:inspect": "NODE_ENV=development bunx @modelcontextprotocol/inspector bun src/mcp-server/index.ts",
     "ki:server:mcp:start": "bun run build && node dist/mcp-server/index.js",
-    "ki:skills:link:project": "bun $HOME/.claude/skills/knowledgeislands-bootstrap/scripts/link-skills.ts",
+    "ki:skills:link:project": "bun $HOME/.claude/skills/ki-bootstrap/scripts/link-skills.ts",
     "ki:test:record": "mcporter record m365-integration --server hnr-mcp-m365 -- bun scripts/integration.ts && cp ~/.mcporter/recordings/m365-integration.ndjson fixtures/recordings/m365-integration.ndjson",
     "ki:test:replay": "cp fixtures/recordings/m365-integration.ndjson ~/.mcporter/recordings/m365-integration.ndjson && mcporter replay m365-integration -- bun scripts/integration.ts",
     "ki:test:smoke": "bun run build && bun scripts/smoke.ts",
@@ -132,7 +132,8 @@
     "ki:authoring:audit": "bun .claude/skills/ki-authoring/scripts/audit-authoring.ts .",
     "ki:engineering:audit": "bun .claude/skills/ki-engineering/scripts/audit-engineering.ts .",
     "ki:mcp:audit": "bun .claude/skills/ki-mcp/scripts/audit-mcp.ts .",
-    "ki:repo:audit": "bun .claude/skills/ki-repo/scripts/audit-repo.ts ."
+    "ki:repo:audit": "bun .claude/skills/ki-repo/scripts/audit-repo.ts .",
+    "ki:repo:conform": "bun .claude/skills/ki-repo/scripts/conform-repo.ts ."
   },
   "type": "module"
 }
