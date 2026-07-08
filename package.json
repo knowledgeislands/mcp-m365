@@ -19,7 +19,7 @@
     "@types/node": "^26.1.0",
     "@vitest/coverage-v8": "^4.1.10",
     "husky": "^9.1.7",
-    "knip": "^6.24.0",
+    "knip": "^6.25.0",
     "lint-staged": "^17.0.8",
     "markdownlint-cli2": "^0.23.0",
     "mcporter": "^0.12.3",
@@ -101,11 +101,13 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf {dist,node_modules}",
+    "ki:authoring:audit": "bun .claude/skills/ki-authoring/scripts/audit-authoring.ts .",
     "ki:conform": "bun run ki:deps:refresh && bun run ki:lint:package && bun run ki:lint:format && bun run ki:lint:fix && bun run ki:lint:md && bun run build && bun run test",
     "ki:deps:check": "bunx knip --dependencies --no-config-hints",
     "ki:deps:fix": "bunx knip --dependencies --fix --no-config-hints",
     "ki:deps:refresh": "bun update --force",
     "ki:deps:update": "bun update --latest && bun install",
+    "ki:engineering:audit": "bun .claude/skills/ki-engineering/scripts/audit-engineering.ts .",
     "ki:generate:client": "mcporter emit-ts hnr-mcp-m365 --mode client --out src/generated/client.ts --types-out src/generated/types.d.ts && printf '// @ts-nocheck\\n' | cat - src/generated/client.ts > /tmp/gen-tmp.ts && mv /tmp/gen-tmp.ts src/generated/client.ts",
     "ki:knip": "bunx knip --no-config-hints",
     "ki:lint:check": "bunx @biomejs/biome check",
@@ -115,6 +117,9 @@
     "ki:lint:md:check": "bunx prettier --check \"**/*.md\" --ignore-path .gitignore && bunx markdownlint-cli2",
     "ki:lint:package": "bunx syncpack format",
     "ki:lint:types": "tsc --noEmit",
+    "ki:mcp:audit": "bun .claude/skills/ki-mcp/scripts/audit-mcp.ts .",
+    "ki:repo:audit": "bun .claude/skills/ki-repo/scripts/audit-repo.ts .",
+    "ki:repo:conform": "bun .claude/skills/ki-repo/scripts/conform-repo.ts .",
     "ki:server:auth:dev": "NODE_ENV=development bun --watch src/auth-server/index.ts",
     "ki:server:auth:start": "bun run build && node dist/auth-server/index.js",
     "ki:server:mcp:dev": "NODE_ENV=development bun --watch src/mcp-server/index.ts",
@@ -128,12 +133,7 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest",
-    "ki:authoring:audit": "bun .claude/skills/ki-authoring/scripts/audit-authoring.ts .",
-    "ki:engineering:audit": "bun .claude/skills/ki-engineering/scripts/audit-engineering.ts .",
-    "ki:mcp:audit": "bun .claude/skills/ki-mcp/scripts/audit-mcp.ts .",
-    "ki:repo:audit": "bun .claude/skills/ki-repo/scripts/audit-repo.ts .",
-    "ki:repo:conform": "bun .claude/skills/ki-repo/scripts/conform-repo.ts ."
+    "test:watch": "vitest"
   },
   "type": "module"
 }
