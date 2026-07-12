@@ -1,15 +1,15 @@
-// Generated on 2026-06-27T20:39:34.835Z by @knowledgeislands/mcp-m365@1.0.0
+// Generated on 2026-07-12T10:44:03.016Z by @knowledgeislands/mcp-m365@1.0.0
 // Server: hnr-mcp-m365
 // Source: /Users/krisbrown/.mcporter/mcporter.json
 // Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
 
-import type { CallResult } from 'mcporter'
+import type { CallResult } from 'mcporter';
 
 export interface HnrMcpM365Tools {
   /**
    * Returns information about this MCP M365 server
    */
-  m365_about(): Promise<CallResult>
+  m365_about(): Promise<CallResult>;
 
   /**
    * Authenticate with Microsoft Graph API to access Outlook data. Initiates the OAuth flow and persists
@@ -17,13 +17,13 @@ export interface HnrMcpM365Tools {
    *
    * @param force? Force re-authentication even if already authenticated
    */
-  m365_auth_start(force?: boolean): Promise<CallResult>
+  m365_auth_start(force?: boolean): Promise<CallResult>;
 
   /**
    * Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry
    * metadata only — never the token values.
    */
-  m365_auth_status(): Promise<CallResult>
+  m365_auth_status(): Promise<CallResult>;
 
   /**
    * Lists upcoming events from your calendar
@@ -32,7 +32,7 @@ export interface HnrMcpM365Tools {
    * @param startDateTime? ISO 8601 start date/time for the query range (default: now)
    * @param endDateTime? ISO 8601 end date/time for the query range (default: startDateTime + 30 days)
    */
-  m365_calendar_events_list(count?: number, startDateTime?: string, endDateTime?: string): Promise<CallResult>
+  m365_calendar_events_list(count?: number, startDateTime?: string, endDateTime?: string): Promise<CallResult>;
 
   /**
    * Accepts a calendar event
@@ -40,7 +40,7 @@ export interface HnrMcpM365Tools {
    * @param eventId The ID of the event to accept
    * @param comment? Optional comment for accepting the event
    */
-  m365_calendar_event_accept(eventId: string, comment?: string): Promise<CallResult>
+  m365_calendar_event_accept(eventId: string, comment?: string): Promise<CallResult>;
 
   /**
    * Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run
@@ -50,7 +50,7 @@ export interface HnrMcpM365Tools {
    * @param comment? Optional comment for declining the event
    * @param dry_run? Preview only; do not decline. Default true — pass false to actually decline.
    */
-  m365_calendar_event_decline(eventId: string, comment?: string, dry_run?: boolean): Promise<CallResult>
+  m365_calendar_event_decline(eventId: string, comment?: string, dry_run?: boolean): Promise<CallResult>;
 
   /**
    * Creates a new calendar event
@@ -61,7 +61,7 @@ export interface HnrMcpM365Tools {
    * @param attendees? List of attendee email addresses
    * @param body? Optional body content for the event
    */
-  m365_calendar_event_create(subject: string, start: string, end: string, attendees?: string[], body?: string): Promise<CallResult>
+  m365_calendar_event_create(subject: string, start: string, end: string, attendees?: string[], body?: string): Promise<CallResult>;
 
   /**
    * Lists recent emails from your inbox
@@ -74,7 +74,7 @@ export interface HnrMcpM365Tools {
    * @param includeCount? Include total matching count from Microsoft Graph (@odata.count). Default:
    *                      false
    */
-  m365_email_messages_list(folder?: string, folderId?: string, count?: number, includeCount?: boolean): Promise<object>
+  m365_email_messages_list(folder?: string, folderId?: string, count?: number, includeCount?: boolean): Promise<object>;
 
   /**
    * Search for emails using various criteria
@@ -93,7 +93,7 @@ export interface HnrMcpM365Tools {
    * @param receivedBefore? Filter to emails received on or before this ISO 8601 timestamp
    * @param count? Number of results to return (default: 10, max: 1000)
    */
-  m365_email_messages_search(query?: string, folder?: string, folderId?: string, from?: string, to?: string): Promise<object>
+  m365_email_messages_search(query?: string, folder?: string, folderId?: string, from?: string, to?: string): Promise<object>;
   // optional (6): subject, hasAttachments, unreadOnly, receivedAfter, receivedBefore, ...
 
   /**
@@ -104,7 +104,7 @@ export interface HnrMcpM365Tools {
    * @param includeRawHtml? Include raw HTML content (UNSAFE - for debugging only, may contain hidden
    *                        prompt injection content)
    */
-  m365_email_message_get(id: string, includeRawHtml?: boolean): Promise<CallResult>
+  m365_email_message_get(id: string, includeRawHtml?: boolean): Promise<CallResult>;
 
   /**
    * Composes and sends a new email. Supports both plain text and HTML content.
@@ -119,7 +119,7 @@ export interface HnrMcpM365Tools {
    * @param importance? Email importance (normal, high, low)
    * @param saveToSentItems? Whether to save the email to sent items
    */
-  m365_email_message_send(to: string, cc?: string, bcc?: string, subject: string, body: string): Promise<CallResult>
+  m365_email_message_send(to: string, cc?: string, bcc?: string, subject: string, body: string): Promise<CallResult>;
   // optional (3): isHtml, importance, saveToSentItems
 
   /**
@@ -132,7 +132,7 @@ export interface HnrMcpM365Tools {
    * @param body? Draft email body content (can be plain text or HTML)
    * @param importance? Email importance (normal, high, low)
    */
-  m365_email_draft_create(to?: string, cc?: string, bcc?: string, subject?: string, body?: string): Promise<CallResult>
+  m365_email_draft_create(to?: string, cc?: string, bcc?: string, subject?: string, body?: string): Promise<CallResult>;
   // optional (1): importance
 
   /**
@@ -141,7 +141,7 @@ export interface HnrMcpM365Tools {
    * @param id ID of the email to mark as read/unread
    * @param isRead? Whether to mark as read (true) or unread (false). Default: true
    */
-  m365_email_message_mark_read(id: string, isRead?: boolean): Promise<CallResult>
+  m365_email_message_mark_read(id: string, isRead?: boolean): Promise<CallResult>;
 
   /**
    * Lists mail folders in your Outlook account
@@ -149,7 +149,7 @@ export interface HnrMcpM365Tools {
    * @param includeItemCounts? Include counts of total and unread items
    * @param includeChildren? Include child folders in hierarchy
    */
-  m365_email_folders_list(includeItemCounts?: boolean, includeChildren?: boolean): Promise<object>
+  m365_email_folders_list(includeItemCounts?: boolean, includeChildren?: boolean): Promise<object>;
 
   /**
    * Creates a new mail folder
@@ -157,7 +157,7 @@ export interface HnrMcpM365Tools {
    * @param name Name of the folder to create
    * @param parentFolder? Optional parent folder path (default is root)
    */
-  m365_email_folder_create(name: string, parentFolder?: string): Promise<CallResult>
+  m365_email_folder_create(name: string, parentFolder?: string): Promise<CallResult>;
 
   /**
    * Renames an existing mail folder
@@ -165,7 +165,7 @@ export interface HnrMcpM365Tools {
    * @param folder Folder to rename. Use a full custom path like 'Top/Sub'
    * @param newName New leaf name for the folder
    */
-  m365_email_folder_rename(folder: string, newName: string): Promise<CallResult>
+  m365_email_folder_rename(folder: string, newName: string): Promise<CallResult>;
 
   /**
    * Moves emails from one folder to another
@@ -174,7 +174,7 @@ export interface HnrMcpM365Tools {
    * @param targetFolder Folder path to move emails to
    * @param sourceFolder? Optional source folder path (default is inbox)
    */
-  m365_email_messages_move(emailIds: string, targetFolder: string, sourceFolder?: string): Promise<CallResult>
+  m365_email_messages_move(emailIds: string, targetFolder: string, sourceFolder?: string): Promise<CallResult>;
 
   /**
    * List files and folders in OneDrive at a specific path
@@ -182,7 +182,7 @@ export interface HnrMcpM365Tools {
    * @param path? Path to list (e.g., '/Documents', '/Photos'). Defaults to root.
    * @param count? Number of items to retrieve (default: 25, max: 50)
    */
-  m365_onedrive_items_list(path?: string, count?: number): Promise<CallResult>
+  m365_onedrive_items_list(path?: string, count?: number): Promise<CallResult>;
 
   /**
    * Search for files in OneDrive by name or content
@@ -190,7 +190,7 @@ export interface HnrMcpM365Tools {
    * @param query Search query to find files
    * @param count? Number of results to return (default: 25, max: 50)
    */
-  m365_onedrive_items_search(query: string, count?: number): Promise<CallResult>
+  m365_onedrive_items_search(query: string, count?: number): Promise<CallResult>;
 
   /**
    * Get a download URL for a file in OneDrive. Either 'itemId' or 'path' must be provided.
@@ -198,7 +198,7 @@ export interface HnrMcpM365Tools {
    * @param itemId? ID of the item to download
    * @param path? Path to the file (alternative to itemId)
    */
-  m365_onedrive_item_download(itemId?: string, path?: string): Promise<CallResult>
+  m365_onedrive_item_download(itemId?: string, path?: string): Promise<CallResult>;
 
   /**
    * Upload a small file (< 4MB) to OneDrive
@@ -207,7 +207,7 @@ export interface HnrMcpM365Tools {
    * @param content File content to upload
    * @param conflictBehavior? Behavior when file exists: 'rename' (default), 'replace', or 'fail'
    */
-  m365_onedrive_item_upload(path: string, content: string, conflictBehavior?: 'rename' | 'replace' | 'fail'): Promise<CallResult>
+  m365_onedrive_item_upload(path: string, content: string, conflictBehavior?: "rename" | "replace" | "fail"): Promise<CallResult>;
 
   /**
    * Upload a large file (> 4MB) to OneDrive using chunked upload
@@ -216,7 +216,7 @@ export interface HnrMcpM365Tools {
    * @param content File content to upload
    * @param conflictBehavior? Behavior when file exists: 'rename' (default), 'replace', or 'fail'
    */
-  m365_onedrive_item_upload_large(path: string, content: string, conflictBehavior?: 'rename' | 'replace' | 'fail'): Promise<CallResult>
+  m365_onedrive_item_upload_large(path: string, content: string, conflictBehavior?: "rename" | "replace" | "fail"): Promise<CallResult>;
 
   /**
    * Create a sharing link for a file or folder in OneDrive
@@ -226,12 +226,7 @@ export interface HnrMcpM365Tools {
    * @param type? Link type: 'view' (default), 'edit', or 'embed'
    * @param scope? Link scope: 'anonymous' (default) or 'organization'
    */
-  m365_onedrive_item_share(
-    itemId?: string,
-    path?: string,
-    type?: 'view' | 'edit' | 'embed',
-    scope?: 'anonymous' | 'organization'
-  ): Promise<CallResult>
+  m365_onedrive_item_share(itemId?: string, path?: string, type?: "view" | "edit" | "embed", scope?: "anonymous" | "organization"): Promise<CallResult>;
 
   /**
    * Create a new folder in OneDrive
@@ -239,14 +234,14 @@ export interface HnrMcpM365Tools {
    * @param path? Parent folder path (e.g., '/Documents'). Defaults to root.
    * @param name Name of the new folder
    */
-  m365_onedrive_folder_create(path?: string, name: string): Promise<CallResult>
+  m365_onedrive_folder_create(path?: string, name: string): Promise<CallResult>;
 
   /**
    * Lists inbox rules in your Outlook account
    *
    * @param includeDetails? Include detailed rule conditions and actions
    */
-  m365_email_rules_list(includeDetails?: boolean): Promise<CallResult>
+  m365_email_rules_list(includeDetails?: boolean): Promise<CallResult>;
 
   /**
    * Creates a new inbox rule
@@ -261,13 +256,7 @@ export interface HnrMcpM365Tools {
    * @param sequence? Order in which the rule is executed (lower numbers run first, default: 100). Graph
    *                  rejects negative values.
    */
-  m365_email_rule_create(
-    name: string,
-    fromAddresses?: string,
-    containsSubject?: string,
-    hasAttachments?: boolean,
-    moveToFolder?: string
-  ): Promise<CallResult>
+  m365_email_rule_create(name: string, fromAddresses?: string, containsSubject?: string, hasAttachments?: boolean, moveToFolder?: string): Promise<CallResult>;
   // optional (3): markAsRead, isEnabled, sequence
 
   /**
@@ -277,5 +266,6 @@ export interface HnrMcpM365Tools {
    * @param sequence New sequence value for the rule (lower numbers run first). Graph rejects negative
    *                 values.
    */
-  m365_email_rules_reorder(ruleName: string, sequence: number): Promise<CallResult>
+  m365_email_rules_reorder(ruleName: string, sequence: number): Promise<CallResult>;
 }
+
