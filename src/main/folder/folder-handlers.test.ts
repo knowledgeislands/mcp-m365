@@ -61,6 +61,18 @@ describe('handleListFolders', () => {
     expect(archiveIdx).toBeLessThan(projectsIdx)
   })
 
+  it('moves a custom folder after an earlier well-known folder', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockFetchFoldersRecursive.mockResolvedValue([
+      { id: 'i1', displayName: 'Inbox', parentFolderId: null, childFolderCount: 0 },
+      { id: 'p1', displayName: 'Projects', parentFolderId: null, childFolderCount: 0 }
+    ])
+
+    const r = await handleListFolders(ctx, {})
+
+    expect(r.content[0].text.indexOf('Inbox')).toBeLessThan(r.content[0].text.indexOf('Projects'))
+  })
+
   it('formats item counts when includeItemCounts=true', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockFetchFoldersRecursive.mockResolvedValue([

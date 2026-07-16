@@ -12,14 +12,19 @@
     // MD025 - single H1: ignore the frontmatter title field.
     "MD025": { "front_matter_title": "" },
 
-    // MD033 - inline HTML: disabled. <br> is used in table cells.
+    // MD033 - inline HTML: disabled. <br> is used in table cells and skills use angle-bracket placeholders.
     "MD033": false,
 
-    // MD036 - bold as heading: disabled. Bold labels are used intentionally.
+    // MD036 - bold as heading: disabled. Bold labels are used intentionally in skill bodies.
     "MD036": false
   },
 
-  "globs": ["src/**/*.md", "docs/**/*.md", "README.md", "CLAUDE.md"],
+  // Skill bodies, references, and repo docs are all markdown content.
+  "globs": ["**/*.md"],
 
-  "ignores": ["dist/**", "node_modules/**"]
+  // Never lint generated output, vendored/generated trees, or dependencies. The
+  // `.ki-meta/` vendored checkers + rendered help snapshots and the `.claude/` generated
+  // skill/agent symlinks are machine-generated (ADR-KI-HARNESS-TOOLCHAIN-005) — excluded
+  // like dist/, so their formatting is never a finding.
+  "ignores": ["dist/**", "node_modules/**", ".ki-meta/**", ".claude/**"]
 }
