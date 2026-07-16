@@ -10,7 +10,6 @@ Actively broken, or blocking the `Next` horizon: takes priority over everything 
 
 Scoped and ready to start — the immediate queue, picked up before anything in **Soon** or **Future**.
 
-- [Foundation Tooling: Adopt uniform governance modes and bootstrap](docs/roadmap/foundation-tooling/ROADMAP.md#adopt-uniform-governance-modes-and-bootstrap)
 - [Tool Surface: Add forward email](docs/roadmap/tool-surface/ROADMAP.md#add-forward-email)
 - [Tool Surface: Add reply and reply-all](docs/roadmap/tool-surface/ROADMAP.md#add-reply-and-reply-all)
 - [Tool Surface: Save draft replies and forwards](docs/roadmap/tool-surface/ROADMAP.md#save-draft-replies-and-forwards)
