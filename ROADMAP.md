@@ -1,21 +1,34 @@
-# Roadmap
+# Project roadmap
 
-Forward-looking plans only. Shipped features live in [README.md](./README.md); release history lives in the git log.
+This portfolio view is generated from the canonical theme roadmaps under `docs/roadmap/`. Edit those files, then run `ki-project-roadmap` CONFORM.
 
-## Next Up
+## Blocking
 
-- Reply / reply-all
-- Forward email
-- Email attachment download and send-with-attachments
-- Save draft reply / draft forward
+Actively broken, or blocking the `Next` horizon: takes priority over everything else and must clear before `Next` work proceeds. Empty means nothing is on fire.
 
-## Future Advanced Capabilities
+## Next
 
-- Find free/busy or scheduling helper
-- Mailbox triage helpers
+Scoped and ready to start — the immediate queue, picked up before anything in **Soon** or **Future**.
 
-## Tooling
+- [Foundation Tooling: Adopt uniform governance modes and bootstrap](docs/roadmap/foundation-tooling/ROADMAP.md#adopt-uniform-governance-modes-and-bootstrap)
+- [Tool Surface: Add forward email](docs/roadmap/tool-surface/ROADMAP.md#add-forward-email)
+- [Tool Surface: Add reply and reply-all](docs/roadmap/tool-surface/ROADMAP.md#add-reply-and-reply-all)
+- [Tool Surface: Save draft replies and forwards](docs/roadmap/tool-surface/ROADMAP.md#save-draft-replies-and-forwards)
+- [Tool Surface: Support email attachments](docs/roadmap/tool-surface/ROADMAP.md#support-email-attachments)
 
-- Wire `bun run ki:test:smoke` into [.github/workflows/ci.yml](./.github/workflows/ci.yml). The script is already defined in `package.json` and there's a `scripts/smoke.ts` — but CI currently only runs `ki:lint:check`, `ki:lint:types`, and `test:coverage`. mcp-gmail's CI step is the model to copy.
-- Migrate markdown formatting from prettier to Biome once Biome ships stable markdown support (currently keeping prettier + markdownlint for `.md` because Biome 2.x doesn't format markdown yet).
-- Replace hand-rolled OAuth refresh in `src/main/auth/index.ts` with `@azure/msal-node`. Roughly 300 lines of `node:https` + promise dedup + custom expiry math can collapse to a few SDK calls. Biggest remaining asymmetry vs `mcp-gmail`, which uses `googleapis` for the same work. Out of scope for an incremental change — needs careful migration of the existing token file shape and the `ensureAuthenticated` call sites.
+## Soon
+
+Understood and roughly scoped but not yet started — worth doing once the **Next** queue clears, ahead of anything still speculative.
+
+- [Foundation Tooling: Replace hand-rolled OAuth refresh with MSAL](docs/roadmap/foundation-tooling/ROADMAP.md#replace-hand-rolled-oauth-refresh-with-msal)
+
+## Waiting for
+
+Worth doing, but presently blocked on an external dependency or decision. Revisit when its named condition changes rather than treating it as dormant local work.
+
+## Future
+
+Speculative or not yet scoped — items marked _(candidate)_ need a scoping pass (or a decision to drop them) before they're actionable.
+
+- [Tool Surface: Add mailbox triage helpers](docs/roadmap/tool-surface/ROADMAP.md#add-mailbox-triage-helpers)
+- [Tool Surface: Add scheduling helpers](docs/roadmap/tool-surface/ROADMAP.md#add-scheduling-helpers)
