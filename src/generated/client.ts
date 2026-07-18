@@ -1,8 +1,8 @@
 // @ts-nocheck
-// Generated on 2026-07-12T10:44:03.016Z by @knowledgeislands/mcp-m365@1.0.0
+// Generated on 2026-07-18T16:27:50.527Z by @knowledgeislands/mcp-m365@1.0.0
 // Server: hnr-mcp-m365
 // Source: /Users/krisbrown/.mcporter/mcporter.json
-// Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
+// Transport: STDIO /Users/krisbrown/.local/share/mise/installs/node/lts/bin/node /Users/krisbrown/workspaces/kis/knowledgeislands/mcp-m365/dist/mcp-server/index.js
 
 import { createRuntime, createServerProxy, wrapCallResult } from 'mcporter';
 import type { HnrMcpM365Tools } from './types';
