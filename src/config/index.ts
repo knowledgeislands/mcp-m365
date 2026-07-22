@@ -47,7 +47,7 @@ const hydrateEnvFromFiles = (): void => {
 }
 
 export const SERVER_NAME = 'mcp-m365'
-export const SERVER_VERSION = '1.0.0'
+export const SERVER_VERSION = '0.9.0'
 
 /**
  * Canonical scope list. **Single source of truth** — both the auth-server
