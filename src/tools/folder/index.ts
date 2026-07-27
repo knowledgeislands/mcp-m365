@@ -92,5 +92,3 @@ export const registerFolderTools = (server: McpServer, ctx: GraphContext): void 
     (args) => handleMoveEmails(ctx, args)
   )
 }
-
-export { handleCreateFolder, handleDeleteFolder, handleListFolders, handleMoveEmails, handleRenameFolder } from '../../main/folder/index.js'

@@ -120,12 +120,3 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
     (args) => handleDeleteEvent(ctx, args)
   )
 }
-
-export {
-  handleAcceptEvent,
-  handleCancelEvent,
-  handleCreateEvent,
-  handleDeclineEvent,
-  handleDeleteEvent,
-  handleListEvents
-} from '../../main/calendar/index.js'

@@ -69,5 +69,3 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
     (args) => handleEditRuleSequence(ctx, args)
   )
 }
-
-export { handleCreateRule, handleEditRuleSequence, handleListRules } from '../../main/rules/index.js'
