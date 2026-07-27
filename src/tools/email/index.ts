@@ -171,13 +171,3 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
     (args) => handleDeleteEmail(ctx, args)
   )
 }
-
-export {
-  handleDeleteEmail,
-  handleDraftEmail,
-  handleListEmails,
-  handleMarkAsRead,
-  handleReadEmail,
-  handleSearchEmails,
-  handleSendEmail
-} from '../../main/email/index.js'

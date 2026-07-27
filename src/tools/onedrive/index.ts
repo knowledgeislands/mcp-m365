@@ -150,14 +150,3 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
     (args) => handleDeleteItem(ctx, args)
   )
 }
-
-export {
-  handleCreateFolder,
-  handleDeleteItem,
-  handleDownload,
-  handleListFiles,
-  handleSearchFiles,
-  handleShare,
-  handleUpload,
-  handleUploadLarge
-} from '../../main/onedrive/index.js'
