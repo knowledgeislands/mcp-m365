@@ -19,33 +19,35 @@ import { graphIdSchema } from '../../utils/odata-helpers.js'
 
 export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
-    'm365_onedrive_items_list',
+    'm365_onedrive_folder_create',
     {
-      description: 'List files and folders in OneDrive at a specific path',
+      description: 'Create a new folder in OneDrive',
       inputSchema: z
         .object({
-          path: z.string().optional().describe("Path to list (e.g., '/Documents', '/Photos'). Defaults to root."),
-          count: z.number().int().positive().max(50).optional().describe('Number of items to retrieve (default: 25, max: 50)')
+          path: z.string().optional().describe("Parent folder path (e.g., '/Documents'). Defaults to root."),
+          name: z.string().describe('Name of the new folder')
         })
         .strict(),
-      annotations: READ_ONLY_REMOTE
+      annotations: WRITE_REMOTE
     },
-    (args) => handleListFiles(ctx, args)
+    (args) => handleCreateFolder(ctx, args)
   )
 
   server.registerTool(
-    'm365_onedrive_items_search',
+    'm365_onedrive_item_delete',
     {
-      description: 'Search for files in OneDrive by name or content',
+      description:
+        'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
       inputSchema: z
         .object({
-          query: z.string().describe('Search query to find files'),
-          count: z.number().int().positive().max(50).optional().describe('Number of results to return (default: 25, max: 50)')
+          itemId: graphIdSchema.optional().describe('ID of the item to delete'),
+          path: z.string().min(1).optional().describe('Path to the item (alternative to itemId)'),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
-      annotations: READ_ONLY_REMOTE
+      annotations: DESTRUCTIVE_REMOTE
     },
-    (args) => handleSearchFiles(ctx, args)
+    (args) => handleDeleteItem(ctx, args)
   )
 
   server.registerTool(
@@ -61,6 +63,23 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
       annotations: READ_ONLY_REMOTE
     },
     (args) => handleDownload(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_onedrive_item_share',
+    {
+      description: 'Create a sharing link for a file or folder in OneDrive',
+      inputSchema: z
+        .object({
+          itemId: graphIdSchema.optional().describe('ID of the item to share'),
+          path: z.string().optional().describe('Path to the item (alternative to itemId)'),
+          type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
+          scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleShare(ctx, args)
   )
 
   server.registerTool(
@@ -102,51 +121,32 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
   )
 
   server.registerTool(
-    'm365_onedrive_item_share',
+    'm365_onedrive_items_list',
     {
-      description: 'Create a sharing link for a file or folder in OneDrive',
+      description: 'List files and folders in OneDrive at a specific path',
       inputSchema: z
         .object({
-          itemId: graphIdSchema.optional().describe('ID of the item to share'),
-          path: z.string().optional().describe('Path to the item (alternative to itemId)'),
-          type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
-          scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
+          path: z.string().optional().describe("Path to list (e.g., '/Documents', '/Photos'). Defaults to root."),
+          count: z.number().int().positive().max(50).optional().describe('Number of items to retrieve (default: 25, max: 50)')
         })
         .strict(),
-      annotations: WRITE_REMOTE
+      annotations: READ_ONLY_REMOTE
     },
-    (args) => handleShare(ctx, args)
+    (args) => handleListFiles(ctx, args)
   )
 
   server.registerTool(
-    'm365_onedrive_folder_create',
+    'm365_onedrive_items_search',
     {
-      description: 'Create a new folder in OneDrive',
+      description: 'Search for files in OneDrive by name or content',
       inputSchema: z
         .object({
-          path: z.string().optional().describe("Parent folder path (e.g., '/Documents'). Defaults to root."),
-          name: z.string().describe('Name of the new folder')
+          query: z.string().describe('Search query to find files'),
+          count: z.number().int().positive().max(50).optional().describe('Number of results to return (default: 25, max: 50)')
         })
         .strict(),
-      annotations: WRITE_REMOTE
+      annotations: READ_ONLY_REMOTE
     },
-    (args) => handleCreateFolder(ctx, args)
-  )
-
-  server.registerTool(
-    'm365_onedrive_item_delete',
-    {
-      description:
-        'Delete a file or folder from OneDrive. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the item metadata and returns name/size.',
-      inputSchema: z
-        .object({
-          itemId: graphIdSchema.optional().describe('ID of the item to delete'),
-          path: z.string().min(1).optional().describe('Path to the item (alternative to itemId)'),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
-        })
-        .strict(),
-      annotations: DESTRUCTIVE_REMOTE
-    },
-    (args) => handleDeleteItem(ctx, args)
+    (args) => handleSearchFiles(ctx, args)
   )
 }

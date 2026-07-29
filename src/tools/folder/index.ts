@@ -16,22 +16,6 @@ import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_RE
 
 export const registerFolderTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
-    'm365_email_folders_list',
-    {
-      description: 'Lists mail folders in your Outlook account',
-      inputSchema: z
-        .object({
-          includeItemCounts: z.boolean().optional().describe('Include counts of total and unread items'),
-          includeChildren: z.boolean().optional().describe('Include child folders in hierarchy')
-        })
-        .strict(),
-      outputSchema: folderListResultSchema,
-      annotations: READ_ONLY_REMOTE
-    },
-    (args) => handleListFolders(ctx, args)
-  )
-
-  server.registerTool(
     'm365_email_folder_create',
     {
       description: 'Creates a new mail folder',
@@ -44,6 +28,21 @@ export const registerFolderTools = (server: McpServer, ctx: GraphContext): void 
       annotations: WRITE_REMOTE
     },
     (args) => handleCreateFolder(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_folder_delete',
+    {
+      description: 'Deletes an existing mail folder. `dry_run` defaults to true — pass false to actually delete.',
+      inputSchema: z
+        .object({
+          folder: z.string().min(1).describe("Folder to delete. Use a full custom path like 'Top/Sub'"),
+          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+        })
+        .strict(),
+      annotations: DESTRUCTIVE_REMOTE
+    },
+    (args) => handleDeleteFolder(ctx, args)
   )
 
   server.registerTool(
@@ -62,18 +61,19 @@ export const registerFolderTools = (server: McpServer, ctx: GraphContext): void 
   )
 
   server.registerTool(
-    'm365_email_folder_delete',
+    'm365_email_folders_list',
     {
-      description: 'Deletes an existing mail folder. `dry_run` defaults to true — pass false to actually delete.',
+      description: 'Lists mail folders in your Outlook account',
       inputSchema: z
         .object({
-          folder: z.string().min(1).describe("Folder to delete. Use a full custom path like 'Top/Sub'"),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+          includeItemCounts: z.boolean().optional().describe('Include counts of total and unread items'),
+          includeChildren: z.boolean().optional().describe('Include child folders in hierarchy')
         })
         .strict(),
-      annotations: DESTRUCTIVE_REMOTE
+      outputSchema: folderListResultSchema,
+      annotations: READ_ONLY_REMOTE
     },
-    (args) => handleDeleteFolder(ctx, args)
+    (args) => handleListFolders(ctx, args)
   )
 
   server.registerTool(

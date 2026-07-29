@@ -9,20 +9,6 @@ import { READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../u
 
 export const registerRulesTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
-    'm365_email_rules_list',
-    {
-      description: 'Lists inbox rules in your Outlook account',
-      inputSchema: z
-        .object({
-          includeDetails: z.boolean().optional().describe('Include detailed rule conditions and actions')
-        })
-        .strict(),
-      annotations: READ_ONLY_REMOTE
-    },
-    (args) => handleListRules(ctx, args)
-  )
-
-  server.registerTool(
     'm365_email_rule_create',
     {
       description: 'Creates a new inbox rule',
@@ -47,6 +33,20 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_REMOTE
     },
     (args) => handleCreateRule(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_rules_list',
+    {
+      description: 'Lists inbox rules in your Outlook account',
+      inputSchema: z
+        .object({
+          includeDetails: z.boolean().optional().describe('Include detailed rule conditions and actions')
+        })
+        .strict(),
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleListRules(ctx, args)
   )
 
   server.registerTool(

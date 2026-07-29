@@ -21,22 +21,6 @@ import { graphIdSchema } from '../../utils/odata-helpers.js'
 
 export const registerCalendarTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
-    'm365_calendar_events_list',
-    {
-      description: 'Lists upcoming events from your calendar',
-      inputSchema: z
-        .object({
-          count: z.number().int().positive().max(50).optional().describe('Number of events to retrieve (default: 10, max: 50)'),
-          startDateTime: z.string().optional().describe('ISO 8601 start date/time for the query range (default: now)'),
-          endDateTime: z.string().optional().describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
-        })
-        .strict(),
-      annotations: READ_ONLY_REMOTE
-    },
-    (args) => handleListEvents(ctx, args)
-  )
-
-  server.registerTool(
     'm365_calendar_event_accept',
     {
       description: 'Accepts a calendar event',
@@ -49,6 +33,40 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
     (args) => handleAcceptEvent(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_calendar_event_cancel',
+    {
+      description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
+      inputSchema: z
+        .object({
+          eventId: graphIdSchema.describe('The ID of the event to cancel'),
+          comment: z.string().optional().describe('Optional comment for cancelling the event'),
+          dry_run: z.boolean().optional().describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
+        })
+        .strict(),
+      annotations: DESTRUCTIVE_REMOTE
+    },
+    (args) => handleCancelEvent(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_calendar_event_create',
+    {
+      description: 'Creates a new calendar event',
+      inputSchema: z
+        .object({
+          subject: z.string().describe('The subject of the event'),
+          start: z.string().describe('The start time of the event in ISO 8601 format'),
+          end: z.string().describe('The end time of the event in ISO 8601 format'),
+          attendees: z.array(z.string()).optional().describe('List of attendee email addresses'),
+          body: z.string().optional().describe('Optional body content for the event')
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleCreateEvent(ctx, args)
   )
 
   server.registerTool(
@@ -71,40 +89,6 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   )
 
   server.registerTool(
-    'm365_calendar_event_create',
-    {
-      description: 'Creates a new calendar event',
-      inputSchema: z
-        .object({
-          subject: z.string().describe('The subject of the event'),
-          start: z.string().describe('The start time of the event in ISO 8601 format'),
-          end: z.string().describe('The end time of the event in ISO 8601 format'),
-          attendees: z.array(z.string()).optional().describe('List of attendee email addresses'),
-          body: z.string().optional().describe('Optional body content for the event')
-        })
-        .strict(),
-      annotations: WRITE_REMOTE
-    },
-    (args) => handleCreateEvent(ctx, args)
-  )
-
-  server.registerTool(
-    'm365_calendar_event_cancel',
-    {
-      description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
-      inputSchema: z
-        .object({
-          eventId: graphIdSchema.describe('The ID of the event to cancel'),
-          comment: z.string().optional().describe('Optional comment for cancelling the event'),
-          dry_run: z.boolean().optional().describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
-        })
-        .strict(),
-      annotations: DESTRUCTIVE_REMOTE
-    },
-    (args) => handleCancelEvent(ctx, args)
-  )
-
-  server.registerTool(
     'm365_calendar_event_delete',
     {
       description:
@@ -118,5 +102,21 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
       annotations: DESTRUCTIVE_REMOTE
     },
     (args) => handleDeleteEvent(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_calendar_events_list',
+    {
+      description: 'Lists upcoming events from your calendar',
+      inputSchema: z
+        .object({
+          count: z.number().int().positive().max(50).optional().describe('Number of events to retrieve (default: 10, max: 50)'),
+          startDateTime: z.string().optional().describe('ISO 8601 start date/time for the query range (default: now)'),
+          endDateTime: z.string().optional().describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
+        })
+        .strict(),
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleListEvents(ctx, args)
   )
 }
