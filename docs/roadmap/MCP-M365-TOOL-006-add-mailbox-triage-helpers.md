@@ -17,3 +17,7 @@ Add mailbox triage helpers.
 ## Boundary
 
 Keep the work limited to the stated surface.
+
+## Discussion
+
+No discussion recorded yet; this item is unshaped by design at the `future` horizon.
