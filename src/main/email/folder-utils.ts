@@ -18,18 +18,13 @@ export const WELL_KNOWN_FOLDERS = {
 
 type WellKnownFolderKey = keyof typeof WELL_KNOWN_FOLDERS
 
-const lookupWellKnown = (name: string): string | undefined =>
-  name in WELL_KNOWN_FOLDERS ? WELL_KNOWN_FOLDERS[name as WellKnownFolderKey] : undefined
+const lookupWellKnown = (name: string): string | undefined => (name in WELL_KNOWN_FOLDERS ? WELL_KNOWN_FOLDERS[name as WellKnownFolderKey] : undefined)
 
 export const FOLDER_SELECT_FIELDS = 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount'
 
 const CHILD_FETCH_CONCURRENCY = 5
 
-export const resolveFolderPath = async (
-  graphApiEndpoint: string,
-  accessToken: string,
-  folderName: string | null | undefined
-): Promise<string> => {
+export const resolveFolderPath = async (graphApiEndpoint: string, accessToken: string, folderName: string | null | undefined): Promise<string> => {
   if (!folderName) {
     return WELL_KNOWN_FOLDERS.inbox
   }
@@ -122,12 +117,7 @@ export const fetchFoldersRecursive = async (
   return [...folders, ...childBatches.flat()]
 }
 
-const fetchAllPages = async (
-  graphApiEndpoint: string,
-  accessToken: string,
-  endpoint: string,
-  initialParams: Record<string, any>
-): Promise<any[]> => {
+const fetchAllPages = async (graphApiEndpoint: string, accessToken: string, endpoint: string, initialParams: Record<string, any>): Promise<any[]> => {
   const all: any[] = []
   let nextEndpoint: string | null = endpoint
   let nextParams = initialParams

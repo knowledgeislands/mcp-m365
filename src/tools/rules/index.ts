@@ -56,12 +56,7 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           ruleName: z.string().describe('Name of the rule to modify'),
-          sequence: z
-            .number()
-            .int()
-            .min(0)
-            .max(10000)
-            .describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
+          sequence: z.number().int().min(0).max(10000).describe('New sequence value for the rule (lower numbers run first). Graph rejects negative values.')
         })
         .strict(),
       annotations: WRITE_IDEMPOTENT_REMOTE

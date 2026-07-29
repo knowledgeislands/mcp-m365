@@ -66,9 +66,7 @@ export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId
-      ? `me/mailFolders/${effectiveFolderId}/messages`
-      : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
+    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
     const response = await progressiveSearch(
       ctx.graphApiEndpoint,
@@ -350,12 +348,7 @@ const addBooleanFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
 }
 
 const hasStructuredFilters = (filterTerms: any): boolean => {
-  return (
-    filterTerms.hasAttachments === true ||
-    filterTerms.unreadOnly === true ||
-    Boolean(filterTerms.receivedAfter) ||
-    Boolean(filterTerms.receivedBefore)
-  )
+  return filterTerms.hasAttachments === true || filterTerms.unreadOnly === true || Boolean(filterTerms.receivedAfter) || Boolean(filterTerms.receivedBefore)
 }
 
 /**

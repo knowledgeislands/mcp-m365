@@ -7,14 +7,7 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import {
-  handleAcceptEvent,
-  handleCancelEvent,
-  handleCreateEvent,
-  handleDeclineEvent,
-  handleDeleteEvent,
-  handleListEvents
-} from '../../main/calendar/index.js'
+import { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'

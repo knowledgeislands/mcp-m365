@@ -90,10 +90,7 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/myfile.txt')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z
-            .enum(['rename', 'replace', 'fail'])
-            .optional()
-            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -109,10 +106,7 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/largefile.zip')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z
-            .enum(['rename', 'replace', 'fail'])
-            .optional()
-            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE

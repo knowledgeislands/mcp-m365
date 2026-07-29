@@ -60,14 +60,7 @@ describe('handleListFiles', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ value: [{ id: 'x', name: 'x.txt', size: 0, lastModifiedDateTime: '2026-01-01T00:00:00Z' }] })
     await handleListFiles(ctx, { path: '/Documents/' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(
-      GRAPH_API_ENDPOINT,
-      'tok',
-      'GET',
-      'me/drive/root:/Documents:/children',
-      null,
-      expect.any(Object)
-    )
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/drive/root:/Documents:/children', null, expect.any(Object))
   })
 
   it('reports empty when value is empty', async () => {
@@ -327,13 +320,7 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     const r = await handleCreateFolder(ctx, { name: 'New' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(
-      GRAPH_API_ENDPOINT,
-      'tok',
-      'POST',
-      'me/drive/root/children',
-      expect.objectContaining({ name: 'New' })
-    )
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root/children', expect.objectContaining({ name: 'New' }))
     expect(r.content[0].text).toMatch(/Successfully created folder/)
   })
 
@@ -341,13 +328,7 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     await handleCreateFolder(ctx, { name: 'New', path: '/Documents' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(
-      GRAPH_API_ENDPOINT,
-      'tok',
-      'POST',
-      'me/drive/root:/Documents:/children',
-      expect.any(Object)
-    )
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root:/Documents:/children', expect.any(Object))
   })
 
   it('reports failure when no id is returned', async () => {

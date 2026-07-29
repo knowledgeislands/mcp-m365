@@ -46,10 +46,7 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to delete'),
-          permanent: z
-            .boolean()
-            .optional()
-            .describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
+          permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
           dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
@@ -66,10 +63,7 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to read'),
-          includeRawHtml: z
-            .boolean()
-            .optional()
-            .describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
+          includeRawHtml: z.boolean().optional().describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
         })
         .strict(),
       annotations: READ_ONLY_REMOTE
@@ -126,9 +120,7 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
             .string()
             .optional()
             .describe("Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: graphIdSchema
-            .optional()
-            .describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           count: z.number().int().positive().max(1000).optional().describe('Number of emails to retrieve (default: 10, max: 1000)'),
           includeCount: z.boolean().optional().describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
         })
@@ -149,12 +141,8 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           folder: z
             .string()
             .optional()
-            .describe(
-              "Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"
-            ),
-          folderId: graphIdSchema
-            .optional()
-            .describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+            .describe("Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
+          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
           from: z.string().optional().describe('Filter by sender email address or name'),
           to: z.string().optional().describe('Filter by recipient email address or name'),
           subject: z.string().optional().describe('Filter by email subject'),

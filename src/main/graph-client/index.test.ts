@@ -11,12 +11,7 @@ vi.mock('node:https', () => ({
 
 // Build a fake (req, res) pair for one https.request call. The caller can
 // drive the response via the returned handle.
-const mockHttpsOnce = (opts: {
-  statusCode: number
-  body?: string
-  headers?: Record<string, string>
-  emitNetworkError?: Error
-}): { reqWritten: string[] } => {
+const mockHttpsOnce = (opts: { statusCode: number; body?: string; headers?: Record<string, string>; emitNetworkError?: Error }): { reqWritten: string[] } => {
   const reqWritten: string[] = []
 
   const res = new EventEmitter() as EventEmitter & { statusCode: number; headers: Record<string, string> }
@@ -109,17 +104,13 @@ describe('callGraphAPI', () => {
   })
 
   it('rejects a full URL pointing at a non-Graph host before attaching the Bearer token (SSRF, §13.5)', async () => {
-    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'https://evil.example.com/v1.0/me/messages')).rejects.toThrow(
-      /non-Graph URL/
-    )
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'https://evil.example.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
     // The token must never have been sent: no request should have been made.
     expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
   it('rejects a full http:// (non-TLS) Graph URL before sending the token', async () => {
-    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'http://graph.microsoft.com/v1.0/me/messages')).rejects.toThrow(
-      /non-Graph URL/
-    )
+    await expect(callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'http://graph.microsoft.com/v1.0/me/messages')).rejects.toThrow(/non-Graph URL/)
     expect((https.request as unknown as Mock).mock.calls).toHaveLength(0)
   })
 
