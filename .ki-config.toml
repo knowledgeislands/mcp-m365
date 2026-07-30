@@ -1,4 +1,7 @@
 ["knowledgeislands/ki-agentic-harness:ki-repo"]
+title = "mcp-m365"
+description = "MCP for Microsoft 365 (Outlook, OneDrive) access via the Microsoft Graph API"
+repo_code = "MCP-M365"
 supported_runtimes = ["claude-code", "codex"]
 visibility = "public"
 
@@ -9,8 +12,6 @@ visibility = "public"
 ["knowledgeislands/ki-agentic-harness:ki-mcp"]
 
 ["knowledgeislands/ki-agentic-harness:ki-roadmap"]
-repo_code = "MCP-M365"
-
 ["knowledgeislands/ki-agentic-harness:ki-roadmap".themes]
 FND = "foundation-tooling"
 TOOL = "tool-surface"
