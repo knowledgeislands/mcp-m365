@@ -2,7 +2,7 @@
 title = "mcp-m365"
 description = "MCP for Microsoft 365 (Outlook, OneDrive) access via the Microsoft Graph API"
 repo_code = "MCP-M365"
-supported_runtimes = ["claude-code", "codex"]
+supported_runtimes = ["claude-code", "chatgpt-codex"]
 visibility = "public"
 
 ["knowledgeislands/ki-agentic-harness:ki-authoring"]
