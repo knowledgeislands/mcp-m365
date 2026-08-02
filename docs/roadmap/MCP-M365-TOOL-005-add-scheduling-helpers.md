@@ -10,6 +10,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Add scheduling helpers.
+
 ## Context
 
 Add free/busy lookup and scheduling assistance.

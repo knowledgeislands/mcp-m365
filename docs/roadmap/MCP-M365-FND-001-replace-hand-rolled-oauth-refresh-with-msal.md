@@ -9,6 +9,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Replace hand-rolled OAuth refresh with MSAL.
+
 ## Context
 
 Replace the custom OAuth refresh implementation in `auth/index.ts` with `@azure/msal-node`, preserving the existing token-file shape and `ensureAuthenticated` call sites through a deliberate migration.

@@ -9,6 +9,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Save draft replies and forwards.
+
 ## Context
 
 Add operations to save draft replies and forwarded messages.
@@ -23,11 +27,11 @@ Keep the work limited to the stated surface.
 
 ## Steps
 
-1. Add handlers over `me/messages/{id}/createReply`, `createReplyAll`, and `createForward` that return the created draft's ID and subject, matching what `handleDraftEmail` reports today.
-2. Decide how the draft body is populated. Graph's create actions accept a comment and prefill the quoted original, so the tool must state whether a caller-supplied body replaces or supplements that prefill, and whether a follow-up `PATCH` on the returned draft is part of this item.
-3. Re-export from `src/main/email/index.ts` and register in `src/tools/email/index.ts` with `graphIdSchema` for the originating message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_draft_create`.
-4. Add handler tests covering the success path, the missing-ID rejection, the `Authentication required` branch, and the `Mail.ReadWrite` 403 diagnostic already established in `draft.ts`.
-5. Add the new tools to the Outlook table under README's Available Tools.
+- [ ] Add handlers over `me/messages/{id}/createReply`, `createReplyAll`, and `createForward` that return the created draft's ID and subject, matching what `handleDraftEmail` reports today.
+- [ ] Decide how the draft body is populated. Graph's create actions accept a comment and prefill the quoted original, so the tool must state whether a caller-supplied body replaces or supplements that prefill, and whether a follow-up `PATCH` on the returned draft is part of this item.
+- [ ] Re-export from `src/main/email/index.ts` and register in `src/tools/email/index.ts` with `graphIdSchema` for the originating message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_draft_create`.
+- [ ] Add handler tests covering the success path, the missing-ID rejection, the `Authentication required` branch, and the `Mail.ReadWrite` 403 diagnostic already established in `draft.ts`.
+- [ ] Add the new tools to the Outlook table under README's Available Tools.
 
 ## Files touched
 

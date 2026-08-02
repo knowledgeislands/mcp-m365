@@ -9,6 +9,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Add forward email.
+
 ## Context
 
 Add email forwarding.
@@ -23,11 +27,11 @@ No forwarding path exists. Graph's `me/messages/{id}/forward` action is not call
 
 ## Steps
 
-1. Add `src/main/email/forward.ts` with a handler that takes the originating message ID, a recipient list, and an optional comment, and calls Graph's `forward` action so the original body and attachments travel with the message.
-2. Extract the duplicated comma-separated recipient parsing out of `send.ts` and `draft.ts` into a shared helper the new handler also uses, instead of adding a third copy.
-3. Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` with `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset.
-4. Add handler tests for the success path, the missing-ID and missing-recipient rejections, and the `Authentication required` branch, and extend the existing send/draft tests to cover the extracted helper.
-5. Add the new tool to the Outlook table under README's Available Tools.
+- [ ] Add `src/main/email/forward.ts` with a handler that takes the originating message ID, a recipient list, and an optional comment, and calls Graph's `forward` action so the original body and attachments travel with the message.
+- [ ] Extract the duplicated comma-separated recipient parsing out of `send.ts` and `draft.ts` into a shared helper the new handler also uses, instead of adding a third copy.
+- [ ] Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` with `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset.
+- [ ] Add handler tests for the success path, the missing-ID and missing-recipient rejections, and the `Authentication required` branch, and extend the existing send/draft tests to cover the extracted helper.
+- [ ] Add the new tool to the Outlook table under README's Available Tools.
 
 ## Files touched
 

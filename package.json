@@ -103,6 +103,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "clean": "rm -rf {dist,node_modules}",
+    "ki:deps:update": "bun update --latest",
     "ki:generate:client": "mcporter emit-ts hnr-mcp-m365 --mode client --out src/generated/client.ts --types-out src/generated/types.d.ts && printf '// @ts-nocheck\\n' | cat - src/generated/client.ts > /tmp/gen-tmp.ts && mv /tmp/gen-tmp.ts src/generated/client.ts",
     "ki:server:auth:dev": "NODE_ENV=development bun --watch src/auth-server/index.ts",
     "ki:server:auth:start": "bun run build && node dist/auth-server/index.js",
@@ -115,8 +116,7 @@
     "prepare": "husky",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
-    "test:watch": "vitest",
-    "ki:deps:update": "bun update --latest"
+    "test:watch": "vitest"
   },
   "type": "module"
 }

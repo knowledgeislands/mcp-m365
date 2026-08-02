@@ -9,6 +9,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Add reply and reply-all.
+
 ## Context
 
 Add reply and reply-all operations.
@@ -23,11 +27,11 @@ Keep the work limited to the stated surface.
 
 ## Steps
 
-1. Add `src/main/email/reply.ts` with a handler that takes the originating message ID and a comment body, and calls the Graph `reply` or `replyAll` action so Graph derives the recipients, subject prefix, and threading headers rather than the server re-deriving them.
-2. Decide and document which caller-supplied fields are forwarded into Graph's optional `message` override (additional recipients, importance, body content type) and reject the rest, so the tool's contract is explicit rather than pass-through.
-3. Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` using `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_message_send`.
-4. Add handler tests covering the success path plus the missing-ID and `Authentication required` branches that every other email handler already handles, to hold the repository's 100% coverage thresholds.
-5. Add the new tool to the Outlook table under README's Available Tools.
+- [ ] Add `src/main/email/reply.ts` with a handler that takes the originating message ID and a comment body, and calls the Graph `reply` or `replyAll` action so Graph derives the recipients, subject prefix, and threading headers rather than the server re-deriving them.
+- [ ] Decide and document which caller-supplied fields are forwarded into Graph's optional `message` override (additional recipients, importance, body content type) and reject the rest, so the tool's contract is explicit rather than pass-through.
+- [ ] Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` using `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_message_send`.
+- [ ] Add handler tests covering the success path plus the missing-ID and `Authentication required` branches that every other email handler already handles, to hold the repository's 100% coverage thresholds.
+- [ ] Add the new tool to the Outlook table under README's Available Tools.
 
 ## Files touched
 

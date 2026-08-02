@@ -10,6 +10,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Add mailbox triage helpers.
+
 ## Context
 
 Add mailbox triage helpers.

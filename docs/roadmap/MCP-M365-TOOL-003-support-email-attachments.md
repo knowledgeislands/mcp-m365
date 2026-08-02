@@ -9,6 +9,10 @@ blocked-by: []
 baseline-ref: null
 ---
 
+## Goal
+
+Achieve the stated outcome: Support email attachments.
+
 ## Context
 
 Support attachment download and sending messages with attachments.
@@ -23,12 +27,12 @@ Attachments are visible but inaccessible. `src/main/email/read.ts` selects `EMAI
 
 ## Steps
 
-1. Add a read-only attachment listing and download path over `me/messages/{id}/attachments`, returning attachment IDs, names, content types, and sizes, with content fetched only when explicitly requested.
-2. Decide where outbound attachment bytes come from: a base64 tool argument, or a reference to an existing OneDrive item the server fetches. This decision governs the whole outbound design and must be settled before the schema is written.
-3. Add outbound attachment support to the existing composition handlers by attaching an `attachments` array to the message payload, rather than adding a parallel send path.
-4. Handle the size boundary. `src/main/onedrive/upload-large.ts` already establishes the pattern for the 4 MiB threshold in `ONEDRIVE_UPLOAD_THRESHOLD` using a chunked upload session; Graph mail attachments have the same inline limit and need an upload session above it. Decide whether this item ships only the inline path and rejects oversized attachments with a clear error.
-5. Register the tools in `src/tools/email/index.ts` — `READ_ONLY_REMOTE` for listing and download, and no new annotation for the composition changes.
-6. Add tests including the size-rejection and `Authentication required` branches, and document the tools and their size limit in README's Available Tools.
+- [ ] Add a read-only attachment listing and download path over `me/messages/{id}/attachments`, returning attachment IDs, names, content types, and sizes, with content fetched only when explicitly requested.
+- [ ] Decide where outbound attachment bytes come from: a base64 tool argument, or a reference to an existing OneDrive item the server fetches. This decision governs the whole outbound design and must be settled before the schema is written.
+- [ ] Add outbound attachment support to the existing composition handlers by attaching an `attachments` array to the message payload, rather than adding a parallel send path.
+- [ ] Handle the size boundary. `src/main/onedrive/upload-large.ts` already establishes the pattern for the 4 MiB threshold in `ONEDRIVE_UPLOAD_THRESHOLD` using a chunked upload session; Graph mail attachments have the same inline limit and need an upload session above it. Decide whether this item ships only the inline path and rejects oversized attachments with a clear error.
+- [ ] Register the tools in `src/tools/email/index.ts` — `READ_ONLY_REMOTE` for listing and download, and no new annotation for the composition changes.
+- [ ] Add tests including the size-rejection and `Authentication required` branches, and document the tools and their size limit in README's Available Tools.
 
 ## Files touched
 
