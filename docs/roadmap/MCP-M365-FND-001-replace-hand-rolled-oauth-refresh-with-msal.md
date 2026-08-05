@@ -1,6 +1,6 @@
 ---
 id: MCP-M365-FND-001
-title: Replace hand-rolled OAuth refresh with MSAL
+title: Use MSAL refresh
 theme: foundation-tooling
 horizon: soon
 status: open

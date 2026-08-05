@@ -1,6 +1,6 @@
 ---
 id: MCP-M365-TOOL-004
-title: Save draft replies and forwards
+title: Save draft replies
 theme: tool-surface
 horizon: next
 status: open

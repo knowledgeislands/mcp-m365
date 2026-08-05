@@ -1,6 +1,6 @@
 ---
 id: MCP-M365-TOOL-001
-title: Add reply and reply-all
+title: Add reply support
 theme: tool-surface
 horizon: next
 status: open
