@@ -3,7 +3,7 @@ id: MCP-M365-TOOL-002
 title: Add forward email
 theme: tool-surface
 horizon: next
-status: open
+status: draft
 blocks: []
 blocked-by: []
 baseline-ref: null

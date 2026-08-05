@@ -3,7 +3,7 @@ id: MCP-M365-TOOL-006
 title: Add mailbox triage helpers
 theme: tool-surface
 horizon: future
-status: open
+status: draft
 candidate: true
 blocks: []
 blocked-by: []

@@ -3,7 +3,7 @@ id: MCP-M365-FND-001
 title: Use MSAL refresh
 theme: foundation-tooling
 horizon: soon
-status: open
+status: draft
 blocks: []
 blocked-by: []
 baseline-ref: null

@@ -3,7 +3,7 @@ id: MCP-M365-TOOL-005
 title: Add scheduling helpers
 theme: tool-surface
 horizon: future
-status: open
+status: draft
 candidate: true
 blocks: []
 blocked-by: []
