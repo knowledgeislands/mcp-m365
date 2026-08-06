@@ -78,7 +78,13 @@ export const handleUploadLarge = async (ctx: GraphContext, args: any): Promise<a
   }
 }
 
-const uploadChunk = async (uploadUrl: string, chunk: Buffer, start: number, end: number, totalSize: number): Promise<any> => {
+const uploadChunk = async (
+  uploadUrl: string,
+  chunk: Buffer,
+  start: number,
+  end: number,
+  totalSize: number
+): Promise<any> => {
   return new Promise((resolve) => {
     const options: https.RequestOptions = {
       method: 'PUT',

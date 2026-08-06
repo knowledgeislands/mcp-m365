@@ -179,7 +179,10 @@ export const sanitizeHtmlToText = (html: string | null | undefined): string => {
   result = removeHiddenElements(result, `color\\s*:\\s*white[^"']*background[^"']*:\\s*white`)
   result = removeHiddenElements(result, `background[^"']*:\\s*white[^"']*color\\s*:\\s*white`)
 
-  result = result.replace(/<[^>]+style\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b)[^"']*["'][^>]*\/?>/gi, '')
+  result = result.replace(
+    /<[^>]+style\s*=\s*["'][^"']*(?:display\s*:\s*none|visibility\s*:\s*hidden|opacity\s*:\s*0\b)[^"']*["'][^>]*\/?>/gi,
+    ''
+  )
 
   result = result.replace(/<[^>]+\bhidden\b[^>]*>[\s\S]*?<\/[^>]+>/gi, '')
   result = result.replace(/<[^>]+aria-hidden\s*=\s*["']true["'][^>]*>[\s\S]*?<\/[^>]+>/gi, '')

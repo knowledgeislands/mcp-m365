@@ -57,7 +57,9 @@ const summarise = (result: DriftScanResult): string => {
     `Tracking: ${result.trackingPath}`
   ]
   for (const item of result.reRouted) {
-    lines.push(`- "${item.subject}" <${item.from}> ${item.from_folder} → ${item.to_folder} (matched \`${item.ruleset}\`)`)
+    lines.push(
+      `- "${item.subject}" <${item.from}> ${item.from_folder} → ${item.to_folder} (matched \`${item.ruleset}\`)`
+    )
   }
   if (result.reRouted.length > 0) {
     lines.push(
@@ -85,7 +87,8 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
     const now = new Date()
 
     const candidate = args?.trackingPath?.trim() || ctx.trackingPath
-    if (!candidate) return errorText('No tracking cache configured — pass `trackingPath`, or set MCP_M365_TRIAGE_TRACKING_PATH.')
+    if (!candidate)
+      return errorText('No tracking cache configured — pass `trackingPath`, or set MCP_M365_TRIAGE_TRACKING_PATH.')
     let trackingPath: string
     try {
       trackingPath = await assertWithinRoots(ctx.roots, candidate, 'tracking cache')
@@ -97,7 +100,9 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
     // Unparseable is not the same as empty: pruning and rewriting from an
     // assumed-empty cache would discard the entire routing history.
     if (tracking === null) {
-      return errorText(`The tracking cache at ${trackingPath} exists but could not be parsed. Refusing to scan, so nothing is overwritten.`)
+      return errorText(
+        `The tracking cache at ${trackingPath} exists but could not be parsed. Refusing to scan, so nothing is overwritten.`
+      )
     }
 
     const { kept, pruned: expired } = pruneOlderThan(tracking, RETENTION_DAYS, now)

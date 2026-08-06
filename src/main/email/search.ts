@@ -66,7 +66,9 @@ export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
+    const endpoint = effectiveFolderId
+      ? `me/mailFolders/${effectiveFolderId}/messages`
+      : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
     const response = await progressiveSearch(
       ctx.graphApiEndpoint,
@@ -208,7 +210,14 @@ const progressiveSearch = async (
 
         simplifiedParams.$search = `"${kqlParts.join(' ')}"`
 
-        const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, simplifiedParams, maxCount)
+        const response = await callGraphAPIPaginated(
+          graphApiEndpoint,
+          accessToken,
+          'GET',
+          endpoint,
+          simplifiedParams,
+          maxCount
+        )
         if (response.value && response.value.length > 0) {
           response._searchInfo = {
             attemptsCount: searchAttempts.length,
@@ -237,7 +246,14 @@ const progressiveSearch = async (
 
       addBooleanFilters(filterOnlyParams, filterTerms)
 
-      const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, filterOnlyParams, maxCount)
+      const response = await callGraphAPIPaginated(
+        graphApiEndpoint,
+        accessToken,
+        'GET',
+        endpoint,
+        filterOnlyParams,
+        maxCount
+      )
       response._searchInfo = {
         attemptsCount: searchAttempts.length,
         strategies: [...searchAttempts],
@@ -348,7 +364,12 @@ const addBooleanFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
 }
 
 const hasStructuredFilters = (filterTerms: any): boolean => {
-  return filterTerms.hasAttachments === true || filterTerms.unreadOnly === true || Boolean(filterTerms.receivedAfter) || Boolean(filterTerms.receivedBefore)
+  return (
+    filterTerms.hasAttachments === true ||
+    filterTerms.unreadOnly === true ||
+    Boolean(filterTerms.receivedAfter) ||
+    Boolean(filterTerms.receivedBefore)
+  )
 }
 
 /**
@@ -389,14 +410,17 @@ export const formatSearchResults = (response: any): any => {
   // is absent — the latent bug on the combined-search early-return path.
   const additionalInfo = strategies.length > 0 ? `\n(Search used ${strategies[strategies.length - 1]} strategy)` : ''
 
-  return createSearchResponse(`Found ${response.value.length} emails matching your search criteria:${additionalInfo}\n\n${emailList}`, {
-    type: 'email-search',
-    success: true,
-    returnedCount: response.value.length,
-    attempts: strategies,
-    errors: info.errors,
-    originalTerms: info.originalTerms,
-    filters: info.filterTerms,
-    items: response.value
-  })
+  return createSearchResponse(
+    `Found ${response.value.length} emails matching your search criteria:${additionalInfo}\n\n${emailList}`,
+    {
+      type: 'email-search',
+      success: true,
+      returnedCount: response.value.length,
+      attempts: strategies,
+      errors: info.errors,
+      originalTerms: info.originalTerms,
+      filters: info.filterTerms,
+      items: response.value
+    }
+  )
 }

@@ -40,7 +40,8 @@ export const registerAuthTools = (server: McpServer, cfg: Config, storage: Token
   server.registerTool(
     'm365_auth_status',
     {
-      description: 'Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry metadata only — never the token values.',
+      description:
+        'Check the current authentication status with Microsoft Graph API. Returns presence + scope/expiry metadata only — never the token values.',
       inputSchema: z.object({}).strict(),
       annotations: READ_ONLY
     },

@@ -7,7 +7,14 @@
  */
 import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
-import { handleAcceptEvent, handleCancelEvent, handleCreateEvent, handleDeclineEvent, handleDeleteEvent, handleListEvents } from '../../main/calendar/index.js'
+import {
+  handleAcceptEvent,
+  handleCancelEvent,
+  handleCreateEvent,
+  handleDeclineEvent,
+  handleDeleteEvent,
+  handleListEvents
+} from '../../main/calendar/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
@@ -36,7 +43,10 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           eventId: graphIdSchema.describe('The ID of the event to cancel'),
           comment: z.string().optional().describe('Optional comment for cancelling the event'),
-          dry_run: z.boolean().optional().describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
         })
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
@@ -71,7 +81,10 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           eventId: graphIdSchema.describe('The ID of the event to decline'),
           comment: z.string().optional().describe('Optional comment for declining the event'),
-          dry_run: z.boolean().optional().describe('Preview only; do not decline. Default true — pass false to actually decline.')
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not decline. Default true — pass false to actually decline.')
         })
         .strict(),
       // Declining an invite is a non-destructive, idempotent RSVP (end state =
@@ -89,7 +102,10 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
       inputSchema: z
         .object({
           eventId: graphIdSchema.describe('The ID of the event to delete'),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
@@ -103,9 +119,18 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
       description: 'Lists upcoming events from your calendar',
       inputSchema: z
         .object({
-          count: z.number().int().positive().max(50).optional().describe('Number of events to retrieve (default: 10, max: 50)'),
+          count: z
+            .number()
+            .int()
+            .positive()
+            .max(50)
+            .optional()
+            .describe('Number of events to retrieve (default: 10, max: 50)'),
           startDateTime: z.string().optional().describe('ISO 8601 start date/time for the query range (default: now)'),
-          endDateTime: z.string().optional().describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
+          endDateTime: z
+            .string()
+            .optional()
+            .describe('ISO 8601 end date/time for the query range (default: startDateTime + 30 days)')
         })
         .strict(),
       annotations: READ_ONLY_REMOTE

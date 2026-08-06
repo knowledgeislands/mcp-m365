@@ -18,7 +18,12 @@ export const handleDeclineEvent = async (ctx: GraphContext, args: any): Promise<
     const body = { comment: comment || 'Declined via API' }
 
     if (dry_run) {
-      const event = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/events/${eventId}?$select=id,subject,start`)
+      const event = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'GET',
+        `me/events/${eventId}?$select=id,subject,start`
+      )
       return {
         content: [
           {

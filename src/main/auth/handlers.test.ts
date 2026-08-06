@@ -5,7 +5,11 @@ import { handleAbout, handleAuthenticate, handleCheckAuthStatus } from './handle
 import type TokenStorage from './index.js'
 import { createTokenStorage } from './index.js'
 
-const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'test-client', MCP_M365_AUTH_PORT: '3333' } as NodeJS.ProcessEnv)
+const cfg = loadConfig({
+  HOME: '/mock/home',
+  MCP_M365_CLIENT_ID: 'test-client',
+  MCP_M365_AUTH_PORT: '3333'
+} as NodeJS.ProcessEnv)
 
 let tokenStorage: TokenStorage
 let getTokensSpy: Mock

@@ -415,7 +415,8 @@ describe('TokenStorage', () => {
       const mockRes = {
         statusCode: 200,
         on: (event: string, cb: any) => {
-          if (event === 'data') cb(Buffer.from(JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: undefined })))
+          if (event === 'data')
+            cb(Buffer.from(JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: undefined })))
           if (event === 'end') cb()
         }
       }
@@ -429,7 +430,12 @@ describe('TokenStorage', () => {
       const mockRes = {
         statusCode: 200,
         on: (event: string, cb: any) => {
-          if (event === 'data') cb(Buffer.from(JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: 'new_returned_refresh_token' })))
+          if (event === 'data')
+            cb(
+              Buffer.from(
+                JSON.stringify({ ...mockSuccessfulRefreshResponse, refresh_token: 'new_returned_refresh_token' })
+              )
+            )
           if (event === 'end') cb()
         }
       }
@@ -456,7 +462,9 @@ describe('TokenStorage', () => {
 
     it('should throw if no refresh token is available', async () => {
       if (tokenStorage.tokens) tokenStorage.tokens.refresh_token = undefined
-      await expect(tokenStorage.refreshAccessToken()).rejects.toThrow('No refresh token available to refresh the access token.')
+      await expect(tokenStorage.refreshAccessToken()).rejects.toThrow(
+        'No refresh token available to refresh the access token.'
+      )
     })
 
     it('rejects when the refresh 2xx body has no access_token', async () => {
@@ -570,7 +578,11 @@ describe('TokenStorage', () => {
     })
 
     it('should propagate error if saving nulled token fails after refresh failure', async () => {
-      tokenStorage.tokens = { access_token: 'expired_token_save_fail', refresh_token: 'refresh_me', expires_at: Date.now() - 1000 }
+      tokenStorage.tokens = {
+        access_token: 'expired_token_save_fail',
+        refresh_token: 'refresh_me',
+        expires_at: Date.now() - 1000
+      }
       vi.spyOn(tokenStorage, 'refreshAccessToken').mockRejectedValue(new Error('Refresh API down'))
       const saveError = new Error('Disk write error during null save')
       vi.spyOn(tokenStorage, '_saveTokensToFile').mockRejectedValueOnce(saveError)
@@ -649,7 +661,11 @@ describe('TokenStorage', () => {
 
   describe('config-injected factory', () => {
     it('createTokenStorage maps the Config auth slice onto TokenStorage config', () => {
-      const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
+      const cfg = loadConfig({
+        HOME: '/mock/home',
+        MCP_M365_CLIENT_ID: 'cid',
+        MCP_M365_CLIENT_SECRET: 'sec'
+      } as NodeJS.ProcessEnv)
       const ts = createTokenStorage(cfg)
       expect(ts.config.clientId).toBe('cid')
       expect(ts.config.clientSecret).toBe('sec')
@@ -660,7 +676,11 @@ describe('TokenStorage', () => {
   })
 
   describe('makeEnsureAuthenticated (injected gate)', () => {
-    const cfg = loadConfig({ HOME: '/mock/home', MCP_M365_CLIENT_ID: 'cid', MCP_M365_CLIENT_SECRET: 'sec' } as NodeJS.ProcessEnv)
+    const cfg = loadConfig({
+      HOME: '/mock/home',
+      MCP_M365_CLIENT_ID: 'cid',
+      MCP_M365_CLIENT_SECRET: 'sec'
+    } as NodeJS.ProcessEnv)
 
     it('returns the access token from the injected storage when one is available', async () => {
       const ts = createTokenStorage(cfg)

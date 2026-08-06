@@ -18,13 +18,18 @@ export const WELL_KNOWN_FOLDERS = {
 
 type WellKnownFolderKey = keyof typeof WELL_KNOWN_FOLDERS
 
-const lookupWellKnown = (name: string): string | undefined => (name in WELL_KNOWN_FOLDERS ? WELL_KNOWN_FOLDERS[name as WellKnownFolderKey] : undefined)
+const lookupWellKnown = (name: string): string | undefined =>
+  name in WELL_KNOWN_FOLDERS ? WELL_KNOWN_FOLDERS[name as WellKnownFolderKey] : undefined
 
 export const FOLDER_SELECT_FIELDS = 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount'
 
 const CHILD_FETCH_CONCURRENCY = 5
 
-export const resolveFolderPath = async (graphApiEndpoint: string, accessToken: string, folderName: string | null | undefined): Promise<string> => {
+export const resolveFolderPath = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  folderName: string | null | undefined
+): Promise<string> => {
   if (!folderName) {
     return WELL_KNOWN_FOLDERS.inbox
   }
@@ -39,7 +44,9 @@ export const resolveFolderPath = async (graphApiEndpoint: string, accessToken: s
     if (folderId) {
       return `me/mailFolders/${folderId}/messages`
     }
-    throw new Error(`Folder "${folderName}" was not found or is ambiguous. Use a full slash-delimited path such as "Top/Sub".`)
+    throw new Error(
+      `Folder "${folderName}" was not found or is ambiguous. Use a full slash-delimited path such as "Top/Sub".`
+    )
   } catch (error: any) {
     if (error.message?.includes('was not found or is ambiguous')) {
       throw error
@@ -48,7 +55,11 @@ export const resolveFolderPath = async (graphApiEndpoint: string, accessToken: s
   }
 }
 
-export const getFolderIdByName = async (graphApiEndpoint: string, accessToken: string, folderName: string): Promise<string | null> => {
+export const getFolderIdByName = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  folderName: string
+): Promise<string | null> => {
   const allFolders = await fetchFoldersRecursive(graphApiEndpoint, accessToken, 'me/mailFolders')
   if (allFolders.length === 0) {
     return null
@@ -117,7 +128,12 @@ export const fetchFoldersRecursive = async (
   return [...folders, ...childBatches.flat()]
 }
 
-const fetchAllPages = async (graphApiEndpoint: string, accessToken: string, endpoint: string, initialParams: Record<string, any>): Promise<any[]> => {
+const fetchAllPages = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  endpoint: string,
+  initialParams: Record<string, any>
+): Promise<any[]> => {
   const all: any[] = []
   let nextEndpoint: string | null = endpoint
   let nextParams = initialParams
@@ -141,7 +157,11 @@ const fetchAllPages = async (graphApiEndpoint: string, accessToken: string, endp
   return all
 }
 
-const mapWithConcurrency = async <T, R>(items: T[], limit: number, fn: (item: T, index: number) => Promise<R>): Promise<R[]> => {
+const mapWithConcurrency = async <T, R>(
+  items: T[],
+  limit: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> => {
   const results = new Array(items.length)
   let cursor = 0
 

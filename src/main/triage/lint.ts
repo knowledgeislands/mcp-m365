@@ -12,7 +12,16 @@
 
 import { resolveMoveTarget } from './folders.js'
 import { renderAction, renderGroup, renderPredicates } from './parser.js'
-import { type AndGroup, BROAD_KEYS, type ParseResult, type PredicateKey, type PredicateTerm, type Rule, type RuleBlock, type Term } from './types.js'
+import {
+  type AndGroup,
+  BROAD_KEYS,
+  type ParseResult,
+  type PredicateKey,
+  type PredicateTerm,
+  type Rule,
+  type RuleBlock,
+  type Term
+} from './types.js'
 
 export type LintSeverity = 'error' | 'warning' | 'info'
 
@@ -56,7 +65,9 @@ const patternSubsumes = (broad: string, narrow: string): boolean => {
 
   const bDomain = b.slice(bAt + 1)
   const nDomain = n.slice(nAt + 1)
-  const domainOk = bDomain.startsWith('*.') ? nDomain === bDomain.slice(2) || nDomain.endsWith(`.${bDomain.slice(2)}`) : bDomain === nDomain
+  const domainOk = bDomain.startsWith('*.')
+    ? nDomain === bDomain.slice(2) || nDomain.endsWith(`.${bDomain.slice(2)}`)
+    : bDomain === nDomain
   if (!domainOk) return false
 
   const bLocal = b.slice(0, bAt)
@@ -101,9 +112,12 @@ export const ruleShadows = (earlier: Rule, later: Rule): boolean =>
 /** A rule built only from content-agnostic predicates — it cuts across every topic below it. */
 const isBroad = (rule: Rule): boolean =>
   rule.groups.length > 0 &&
-  rule.groups.every((group) => group.terms.length > 0 && group.terms.every((term) => isPredicate(term) && BROAD_KEYS.includes(term.key)))
+  rule.groups.every(
+    (group) => group.terms.length > 0 && group.terms.every((term) => isPredicate(term) && BROAD_KEYS.includes(term.key))
+  )
 
-const isFallback = (rule: Rule): boolean => rule.groups.length === 1 && (rule.groups[0] as AndGroup).terms.every((term) => term.kind === 'any')
+const isFallback = (rule: Rule): boolean =>
+  rule.groups.length === 1 && (rule.groups[0] as AndGroup).terms.every((term) => term.kind === 'any')
 
 const destinationOf = (rule: Rule): string | null => {
   const move = rule.actions.find((action) => action.kind === 'move')
@@ -111,7 +125,8 @@ const destinationOf = (rule: Rule): string | null => {
 }
 
 /** Canonical text for a rule, used to spot exact duplicates regardless of spacing or comments. */
-const canonical = (rule: Rule): string => `${renderPredicates(rule)} -> ${rule.actions.map(renderAction).join(', ')}`.toLowerCase()
+const canonical = (rule: Rule): string =>
+  `${renderPredicates(rule)} -> ${rule.actions.map(renderAction).join(', ')}`.toLowerCase()
 
 const checkFallback = (block: RuleBlock, findings: LintFinding[]): void => {
   const { rules } = block
@@ -171,7 +186,9 @@ const checkShadowing = (rules: readonly Rule[], findings: LintFinding[]): void =
         line: later.line,
         message:
           `unreachable: the rule at line ${earlier.line} (\`${renderPredicates(earlier)}\`) already claims every message this would match` +
-          (earlierDest && laterDest && earlierDest !== laterDest ? ` — mail intended for "${laterDest}" is going to "${earlierDest}"` : ''),
+          (earlierDest && laterDest && earlierDest !== laterDest
+            ? ` — mail intended for "${laterDest}" is going to "${earlierDest}"`
+            : ''),
         source: later.source
       })
       break

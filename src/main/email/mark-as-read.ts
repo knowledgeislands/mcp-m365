@@ -29,7 +29,9 @@ export const handleMarkAsRead = async (ctx: GraphContext, args: any): Promise<an
       }
     } catch (error: any) {
       if (error.message.includes("doesn't belong to the targeted mailbox")) {
-        return errorText("The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID.")
+        return errorText(
+          "The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID."
+        )
       } else if (error.message.includes('UNAUTHORIZED')) {
         return errorText('Authentication failed. Please re-authenticate and try again.')
       } else {

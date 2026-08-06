@@ -19,8 +19,25 @@ export {
   listFolderMessages,
   resolveMessageId
 } from './graph-ops.js'
-export { ALLOW_COLLISION, groupSubsumes, type LintFinding, type LintOptions, type LintSeverity, lintRules, ruleShadows } from './lint.js'
-export { classify, detectType, evaluateGroup, evaluatePredicate, evaluateTerm, type MatchContext, matchesAddress, matchRule } from './matcher.js'
+export {
+  ALLOW_COLLISION,
+  groupSubsumes,
+  type LintFinding,
+  type LintOptions,
+  type LintSeverity,
+  lintRules,
+  ruleShadows
+} from './lint.js'
+export {
+  classify,
+  detectType,
+  evaluateGroup,
+  evaluatePredicate,
+  evaluateTerm,
+  type MatchContext,
+  matchesAddress,
+  matchRule
+} from './matcher.js'
 export { MESSAGE_CLASS_PROPERTY, TRIAGE_EXPAND, TRIAGE_SELECT_FIELDS, toEmailRecord } from './message.js'
 export {
   assembleLines,

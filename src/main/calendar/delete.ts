@@ -17,7 +17,12 @@ export const handleDeleteEvent = async (ctx: GraphContext, args: any): Promise<a
     const endpoint = `me/events/${eventId}`
 
     if (dry_run) {
-      const event = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `${endpoint}?$select=id,subject,start,end`)
+      const event = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'GET',
+        `${endpoint}?$select=id,subject,start,end`
+      )
       return {
         content: [
           {

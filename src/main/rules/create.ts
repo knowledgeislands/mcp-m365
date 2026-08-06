@@ -8,7 +8,16 @@ import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getInboxRules } from './list.js'
 
 export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<any> => {
-  const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled = true, sequence } = args
+  const {
+    name,
+    fromAddresses,
+    containsSubject,
+    hasAttachments,
+    moveToFolder,
+    markAsRead,
+    isEnabled = true,
+    sequence
+  } = args
 
   if (sequence !== undefined && (Number.isNaN(sequence) || sequence < 1)) {
     return errorText('Sequence must be a positive number greater than zero.')
@@ -46,7 +55,8 @@ export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<an
     let responseText = result.message
 
     if (!sequence && !result.error) {
-      responseText += "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first."
+      responseText +=
+        "\n\nTip: You can specify a 'sequence' parameter when creating rules to control their execution order. Lower sequence numbers run first."
     }
 
     return {
@@ -68,8 +78,13 @@ interface CreateRuleResult {
   error?: boolean
 }
 
-const createInboxRule = async (graphApiEndpoint: string, accessToken: string, ruleOptions: any): Promise<CreateRuleResult> => {
-  const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled, sequence } = ruleOptions
+const createInboxRule = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  ruleOptions: any
+): Promise<CreateRuleResult> => {
+  const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled, sequence } =
+    ruleOptions
 
   let ruleSequence = sequence
   if (!ruleSequence) {

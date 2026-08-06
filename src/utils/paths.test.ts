@@ -76,13 +76,17 @@ describe('realpathOfNearestExisting', () => {
 
   it('resolves symlinks in the existing portion', async () => {
     await fs.symlink(path.join(root, 'Admin'), path.join(root, 'link'))
-    expect(await realpathOfNearestExisting(path.join(root, 'link', 'new.json5'))).toBe(path.join(root, 'Admin', 'new.json5'))
+    expect(await realpathOfNearestExisting(path.join(root, 'link', 'new.json5'))).toBe(
+      path.join(root, 'Admin', 'new.json5')
+    )
   })
 })
 
 describe('assertWithinRoots', () => {
   it('accepts a path inside a root and returns it resolved', async () => {
-    expect(await assertWithinRoots([root], path.join(root, 'Admin', 'rules.md'), 'rule file')).toBe(path.join(root, 'Admin', 'rules.md'))
+    expect(await assertWithinRoots([root], path.join(root, 'Admin', 'rules.md'), 'rule file')).toBe(
+      path.join(root, 'Admin', 'rules.md')
+    )
   })
 
   it('accepts the root itself', async () => {
@@ -97,28 +101,38 @@ describe('assertWithinRoots', () => {
   it('refuses a sibling directory that merely shares a prefix', async () => {
     const sibling = `${root}-other`
     await fs.mkdir(sibling, { recursive: true })
-    await expect(assertWithinRoots([root], path.join(sibling, 'x'), 'rule file')).rejects.toThrow(/resolves outside the configured roots/)
+    await expect(assertWithinRoots([root], path.join(sibling, 'x'), 'rule file')).rejects.toThrow(
+      /resolves outside the configured roots/
+    )
   })
 
   it('refuses an absolute path elsewhere on disk', async () => {
-    await expect(assertWithinRoots([root], path.join(outside, 'secrets.txt'), 'rule file')).rejects.toThrow(/resolves outside/)
+    await expect(assertWithinRoots([root], path.join(outside, 'secrets.txt'), 'rule file')).rejects.toThrow(
+      /resolves outside/
+    )
   })
 
   it('refuses a traversal out of the root', async () => {
-    await expect(assertWithinRoots([root], path.join(root, '..', 'elsewhere', 'secrets.txt'), 'rule file')).rejects.toThrow(/resolves outside/)
+    await expect(
+      assertWithinRoots([root], path.join(root, '..', 'elsewhere', 'secrets.txt'), 'rule file')
+    ).rejects.toThrow(/resolves outside/)
   })
 
   it('refuses a symlink inside the root that points out of it', async () => {
     // The lexical check passes here — this is the case only realpath catches,
     // and the knowledge base genuinely contains symlinks into another repo.
     await fs.symlink(path.join(outside, 'secrets.txt'), path.join(root, 'escape.md'))
-    await expect(assertWithinRoots([root], path.join(root, 'escape.md'), 'rule file')).rejects.toThrow(/resolves outside/)
+    await expect(assertWithinRoots([root], path.join(root, 'escape.md'), 'rule file')).rejects.toThrow(
+      /resolves outside/
+    )
   })
 
   it('accepts a root that is itself reached through a symlink', async () => {
     const linked = path.join(base, 'linked-repo')
     await fs.symlink(root, linked)
-    expect(await assertWithinRoots([linked], path.join(linked, 'Admin', 'rules.md'), 'rule file')).toBe(path.join(root, 'Admin', 'rules.md'))
+    expect(await assertWithinRoots([linked], path.join(linked, 'Admin', 'rules.md'), 'rule file')).toBe(
+      path.join(root, 'Admin', 'rules.md')
+    )
   })
 
   it('expands a tilde-prefixed candidate before checking it against the roots', async () => {
@@ -136,11 +150,15 @@ describe('assertWithinRoots', () => {
   })
 
   it('accepts a path under any one of several roots', async () => {
-    expect(await assertWithinRoots([outside, root], path.join(root, 'Admin', 'rules.md'), 'rule file')).toBe(path.join(root, 'Admin', 'rules.md'))
+    expect(await assertWithinRoots([outside, root], path.join(root, 'Admin', 'rules.md'), 'rule file')).toBe(
+      path.join(root, 'Admin', 'rules.md')
+    )
   })
 
   it('refuses everything when no roots are configured', async () => {
-    await expect(assertWithinRoots([], path.join(root, 'Admin', 'rules.md'), 'rule file')).rejects.toThrow(/no roots are configured/)
+    await expect(assertWithinRoots([], path.join(root, 'Admin', 'rules.md'), 'rule file')).rejects.toThrow(
+      /no roots are configured/
+    )
   })
 
   it('names the purpose and the rejected path, but never file contents', async () => {

@@ -34,7 +34,9 @@ export const handleReadEmail = async (ctx: GraphContext, args: any): Promise<any
 
       const sender = email.from ? `${email.from.emailAddress.name} (${email.from.emailAddress.address})` : 'Unknown'
       const senderAddress = email.from?.emailAddress?.address || 'unknown'
-      const to = email.toRecipients ? email.toRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ') : 'None'
+      const to = email.toRecipients
+        ? email.toRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ')
+        : 'None'
       const cc =
         email.ccRecipients && email.ccRecipients.length > 0
           ? email.ccRecipients.map((r: any) => `${r.emailAddress.name} (${r.emailAddress.address})`).join(', ')
@@ -92,7 +94,9 @@ ${body}`
       }
     } catch (error: any) {
       if (error.message.includes("doesn't belong to the targeted mailbox")) {
-        return errorText("The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID.")
+        return errorText(
+          "The email ID seems invalid or doesn't belong to your mailbox. Please try with a different email ID."
+        )
       } else {
         return errorText(`Failed to read email: ${error.message}`)
       }

@@ -1,4 +1,14 @@
-import { assembleLines, parseRule, parseRules, renderAction, renderGroup, renderPredicates, selectBlock, splitOutsideQuotes, stripComment } from './parser.js'
+import {
+  assembleLines,
+  parseRule,
+  parseRules,
+  renderAction,
+  renderGroup,
+  renderPredicates,
+  selectBlock,
+  splitOutsideQuotes,
+  stripComment
+} from './parser.js'
 import type { AndGroup, Rule } from './types.js'
 
 const block = (body: string, label = 'Inbound'): string => `## ${label}\n\n\`\`\`rules v1\n${body}\n\`\`\`\n`
@@ -117,11 +127,19 @@ describe('parseRules — rule shape', () => {
   })
 
   it('keeps unquoted spaces in a move target', () => {
-    expect(firstRule('sender:a@b.com -> move:111 Partner').actions[0]).toEqual({ kind: 'move', value: '111 Partner', quoted: false })
+    expect(firstRule('sender:a@b.com -> move:111 Partner').actions[0]).toEqual({
+      kind: 'move',
+      value: '111 Partner',
+      quoted: false
+    })
   })
 
   it('records that a value was quoted', () => {
-    expect(firstRule('sender:a@b.com -> move:"Junk Email"').actions[0]).toEqual({ kind: 'move', value: 'Junk Email', quoted: true })
+    expect(firstRule('sender:a@b.com -> move:"Junk Email"').actions[0]).toEqual({
+      kind: 'move',
+      value: 'Junk Email',
+      quoted: true
+    })
   })
 
   it('parses multiple comma-separated actions in order', () => {
@@ -134,7 +152,9 @@ describe('parseRules — rule shape', () => {
   })
 
   it('reassembles a rule that wraps before its arrow', () => {
-    const rule = firstRule('subject:"Partner" | subject:"Partner"\n                     -> move:111 Partner   # variants')
+    const rule = firstRule(
+      'subject:"Partner" | subject:"Partner"\n                     -> move:111 Partner   # variants'
+    )
     expect(rule.groups).toHaveLength(2)
     expect(rule.line).toBe(4)
     expect(rule.comment).toBe('variants')
@@ -242,7 +262,9 @@ describe('parseRule', () => {
 })
 
 describe('selectBlock', () => {
-  const two = parseRules(`${block('* -> move:000 Unknown', 'Inbound')}\n${block('folder:"981 Delete" -> delete', 'Aged')}`)
+  const two = parseRules(
+    `${block('* -> move:000 Unknown', 'Inbound')}\n${block('folder:"981 Delete" -> delete', 'Aged')}`
+  )
 
   it('selects by label', () => {
     const selected = selectBlock(two, 'aged')
@@ -256,7 +278,9 @@ describe('selectBlock', () => {
 
   it('reports when the requested label is absent and there is more than one block', () => {
     const selected = selectBlock(two, 'archive')
-    expect('error' in selected && selected.error).toMatch(/no "archive" rules block found \(blocks present: inbound, aged\)/)
+    expect('error' in selected && selected.error).toMatch(
+      /no "archive" rules block found \(blocks present: inbound, aged\)/
+    )
   })
 
   it('reports when there are no blocks at all', () => {

@@ -36,14 +36,25 @@ export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Prom
     }
 
     if (permanent) {
-      await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/permanentDelete`)
+      await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'POST',
+        `me/messages/${encodeURIComponent(emailId)}/permanentDelete`
+      )
       return {
         content: [{ type: 'text', text: 'Email permanently deleted.' }]
       }
     } else {
-      const result = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${encodeURIComponent(emailId)}/move`, {
-        destinationId: 'deleteditems'
-      })
+      const result = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'POST',
+        `me/messages/${encodeURIComponent(emailId)}/move`,
+        {
+          destinationId: 'deleteditems'
+        }
+      )
       return {
         content: [{ type: 'text', text: `Email moved to Deleted Items. ID: ${result.id}` }]
       }

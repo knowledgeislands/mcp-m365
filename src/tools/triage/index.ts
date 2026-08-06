@@ -45,7 +45,9 @@ const rulesPathSchema = z
   .string()
   .max(4096)
   .optional()
-  .describe('Path to the rule note, overriding MCP_M365_TRIAGE_RULES_PATH. Must resolve inside MCP_M365_TRIAGE_ROOTS. Ignored when `rules` is supplied.')
+  .describe(
+    'Path to the rule note, overriding MCP_M365_TRIAGE_RULES_PATH. Must resolve inside MCP_M365_TRIAGE_ROOTS. Ignored when `rules` is supplied.'
+  )
 
 const trackingPathSchema = z
   .string()
@@ -77,7 +79,13 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
       description:
         'Applies the `aged` retention block across the _TRIAGE subfolders — archiving, marking read, deleting, or returning mail for re-evaluation. Same batch-bounded, resumable contract as m365_email_routing_triage. Defaults to report mode.',
       inputSchema: z
-        .object({ rules: rulesSchema, rulesPath: rulesPathSchema, trackingPath: trackingPathSchema, mode: modeSchema, maxActions: maxActionsSchema })
+        .object({
+          rules: rulesSchema,
+          rulesPath: rulesPathSchema,
+          trackingPath: trackingPathSchema,
+          mode: modeSchema,
+          maxActions: maxActionsSchema
+        })
         .strict(),
       outputSchema: triageRunResultSchema,
       annotations: DESTRUCTIVE_ONESHOT_REMOTE
@@ -126,7 +134,9 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
             .array(z.string())
             .max(1000)
             .optional()
-            .describe('Folder paths that exist, e.g. `_TRIAGE/111 Partner`. When supplied, every move target is checked against it.')
+            .describe(
+              'Folder paths that exist, e.g. `_TRIAGE/111 Partner`. When supplied, every move target is checked against it.'
+            )
         })
         .strict(),
       annotations: READ_ONLY
@@ -140,7 +150,13 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
       description:
         'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
       inputSchema: z
-        .object({ rules: rulesSchema, rulesPath: rulesPathSchema, trackingPath: trackingPathSchema, mode: modeSchema, maxActions: maxActionsSchema })
+        .object({
+          rules: rulesSchema,
+          rulesPath: rulesPathSchema,
+          trackingPath: trackingPathSchema,
+          mode: modeSchema,
+          maxActions: maxActionsSchema
+        })
         .strict(),
       outputSchema: triageRunResultSchema,
       annotations: DESTRUCTIVE_ONESHOT_REMOTE

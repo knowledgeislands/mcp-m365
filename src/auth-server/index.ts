@@ -33,8 +33,10 @@ setInterval(
 ).unref()
 
 /** RFC 7636 S256 PKCE: base64url(SHA-256(verifier)). */
-const base64UrlEncode = (buf: Buffer): string => buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
-const pkceChallengeS256 = (verifier: string): string => base64UrlEncode(crypto.createHash('sha256').update(verifier).digest())
+const base64UrlEncode = (buf: Buffer): string =>
+  buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+const pkceChallengeS256 = (verifier: string): string =>
+  base64UrlEncode(crypto.createHash('sha256').update(verifier).digest())
 
 // The OAuth slice of the loaded Config. The canonical scope list lives in
 // src/config/index.ts as M365_DEFAULT_SCOPES so the consent flow (here) and

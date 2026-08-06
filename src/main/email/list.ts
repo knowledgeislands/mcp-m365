@@ -46,7 +46,9 @@ export const handleListEmails = async (ctx: GraphContext, args: any): Promise<an
 
     const effectiveFolderId = folderId
 
-    const endpoint = effectiveFolderId ? `me/mailFolders/${effectiveFolderId}/messages` : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
+    const endpoint = effectiveFolderId
+      ? `me/mailFolders/${effectiveFolderId}/messages`
+      : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
     const queryParams: Record<string, any> = {
       $top: Math.min(DEFAULT_PAGE_SIZE, requestedCount),
@@ -58,7 +60,14 @@ export const handleListEmails = async (ctx: GraphContext, args: any): Promise<an
       queryParams.$count = true
     }
 
-    const response = await callGraphAPIPaginated(ctx.graphApiEndpoint, accessToken, 'GET', endpoint, queryParams, requestedCount)
+    const response = await callGraphAPIPaginated(
+      ctx.graphApiEndpoint,
+      accessToken,
+      'GET',
+      endpoint,
+      queryParams,
+      requestedCount
+    )
 
     if (!response.value || response.value.length === 0) {
       return createResponse(`No emails found in ${folderRef}.`, {
@@ -82,7 +91,8 @@ export const handleListEmails = async (ctx: GraphContext, args: any): Promise<an
       })
       .join('\n')
 
-    const totalCountText = includeCount && Number.isFinite(response['@odata.count']) ? ` (total matching: ${response['@odata.count']})` : ''
+    const totalCountText =
+      includeCount && Number.isFinite(response['@odata.count']) ? ` (total matching: ${response['@odata.count']})` : ''
 
     return createResponse(`Found ${response.value.length} emails in ${folderRef}${totalCountText}:\n\n${emailList}`, {
       type: 'email-list',

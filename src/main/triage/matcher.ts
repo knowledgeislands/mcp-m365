@@ -82,7 +82,11 @@ const SUBJECT_TYPE_PREFIXES: readonly (readonly [string, TypeValue])[] = [
 export const detectType = (record: EmailRecord): TypeValue | null => {
   const messageClass = record.messageClass?.toLowerCase() ?? ''
   if (messageClass.startsWith('ipm.schedule.meeting.resp')) return 'calendar-response'
-  if (messageClass.startsWith('ipm.schedule.meeting.canceled') || messageClass.startsWith('ipm.schedule.meeting.cancelled')) return 'calendar-update'
+  if (
+    messageClass.startsWith('ipm.schedule.meeting.canceled') ||
+    messageClass.startsWith('ipm.schedule.meeting.cancelled')
+  )
+    return 'calendar-update'
   if (messageClass.startsWith('ipm.schedule.meeting.request')) return 'calendar-invite'
 
   const odataType = record.odataType?.toLowerCase() ?? ''
@@ -98,7 +102,8 @@ export const detectType = (record: EmailRecord): TypeValue | null => {
 
 const contains = (haystack: string, needle: string): boolean => haystack.toLowerCase().includes(needle.toLowerCase())
 
-const anyAddressMatches = (pattern: string, addresses: readonly string[]): boolean => addresses.some((a) => matchesAddress(pattern, a))
+const anyAddressMatches = (pattern: string, addresses: readonly string[]): boolean =>
+  addresses.some((a) => matchesAddress(pattern, a))
 
 const evaluateStatus = (value: string, record: EmailRecord): boolean => {
   if (value === 'unread') return record.isRead === false
@@ -147,10 +152,12 @@ export const evaluateTerm = (term: AndGroup['terms'][number], record: EmailRecor
 }
 
 /** An AND-group holds when every one of its juxtaposed terms holds. */
-export const evaluateGroup = (group: AndGroup, record: EmailRecord, ctx: MatchContext): boolean => group.terms.every((term) => evaluateTerm(term, record, ctx))
+export const evaluateGroup = (group: AndGroup, record: EmailRecord, ctx: MatchContext): boolean =>
+  group.terms.every((term) => evaluateTerm(term, record, ctx))
 
 /** Index of the first OR-group that holds, or -1. */
-export const matchRule = (rule: Rule, record: EmailRecord, ctx: MatchContext): number => rule.groups.findIndex((group) => evaluateGroup(group, record, ctx))
+export const matchRule = (rule: Rule, record: EmailRecord, ctx: MatchContext): number =>
+  rule.groups.findIndex((group) => evaluateGroup(group, record, ctx))
 
 /**
  * Run the ordered rule list against one message. First match wins; evaluation

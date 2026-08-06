@@ -7,7 +7,8 @@ import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig, M365_DEFAULT_SCOPES } from './index.js'
 
-const baseEnv = (over: Record<string, string | undefined> = {}): NodeJS.ProcessEnv => ({ HOME: '/home/alice', ...over }) as NodeJS.ProcessEnv
+const baseEnv = (over: Record<string, string | undefined> = {}): NodeJS.ProcessEnv =>
+  ({ HOME: '/home/alice', ...over }) as NodeJS.ProcessEnv
 
 describe('parseScopes (via auth.scopes)', () => {
   it('defaults to M365_DEFAULT_SCOPES when MCP_M365_SCOPES is unset', () => {
@@ -85,7 +86,9 @@ describe('auth client credentials', () => {
 
 describe('parseAccessLevel', () => {
   it('throws on an unknown value', () => {
-    expect(() => loadConfig(baseEnv({ MCP_M365_ACCESS_LEVEL: 'godmode' }))).toThrow(/Invalid MCP_M365_ACCESS_LEVEL="godmode"/)
+    expect(() => loadConfig(baseEnv({ MCP_M365_ACCESS_LEVEL: 'godmode' }))).toThrow(
+      /Invalid MCP_M365_ACCESS_LEVEL="godmode"/
+    )
   })
 
   it('defaults to read when unset', () => {
@@ -152,7 +155,10 @@ describe('triageTrackingPath', () => {
 
 describe('triageRoots', () => {
   it('parses a delimiter-separated list', () => {
-    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_ROOTS: ['/a', '/b'].join(path.delimiter) })).triageRoots).toEqual(['/a', '/b'])
+    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_ROOTS: ['/a', '/b'].join(path.delimiter) })).triageRoots).toEqual([
+      '/a',
+      '/b'
+    ])
   })
 
   it('is empty when unset, which disables engine file access', () => {
@@ -182,11 +188,15 @@ describe('parseNonNegativeInt (via auditLogMaxBytes)', () => {
   })
 
   it('throws on a non-numeric value', () => {
-    expect(() => loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: 'oops' }))).toThrow(/Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="oops"/)
+    expect(() => loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: 'oops' }))).toThrow(
+      /Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="oops"/
+    )
   })
 
   it('throws on a negative value', () => {
-    expect(() => loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: '-5' }))).toThrow(/Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="-5"/)
+    expect(() => loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: '-5' }))).toThrow(
+      /Invalid MCP_M365_AUDIT_LOG_MAX_BYTES="-5"/
+    )
   })
 })
 

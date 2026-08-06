@@ -8,7 +8,8 @@ import { sanitizeHtmlToText } from '../../utils/html-sanitizer.js'
 import type { EmailRecord } from './types.js'
 
 /** `$select` for triage: everything a predicate can test, and nothing else. */
-export const TRIAGE_SELECT_FIELDS = 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,bodyPreview,importance,isRead,flag'
+export const TRIAGE_SELECT_FIELDS =
+  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,bodyPreview,importance,isRead,flag'
 
 /**
  * `PR_MESSAGE_CLASS`. Graph does not surface it as a first-class property, so it
@@ -20,7 +21,8 @@ export const TRIAGE_EXPAND = `singleValueExtendedProperties($filter=id eq '${MES
 
 const addressOf = (recipient: any): string => String(recipient?.emailAddress?.address ?? '').toLowerCase()
 
-const addressList = (recipients: any): string[] => (Array.isArray(recipients) ? recipients.map(addressOf).filter(Boolean) : [])
+const addressList = (recipients: any): string[] =>
+  Array.isArray(recipients) ? recipients.map(addressOf).filter(Boolean) : []
 
 const FLAG_STATUS: Record<string, EmailRecord['flag']> = {
   flagged: 'flagged',

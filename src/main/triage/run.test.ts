@@ -48,7 +48,13 @@ const message = (over: Record<string, unknown> = {}) => ({
 })
 
 let dir: string
-let ctx: { graphApiEndpoint: string; ensureAuthenticated: Mock; roots: string[]; trackingPath: string; rulesPath: string }
+let ctx: {
+  graphApiEndpoint: string
+  ensureAuthenticated: Mock
+  roots: string[]
+  trackingPath: string
+  rulesPath: string
+}
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -82,9 +88,26 @@ describe('handleTriageRun — report mode is the default', () => {
     stubInbox([message()])
     const result = await handleTriageRun(ctx, { rules: RULES })
 
-    expect(result.structuredContent).toMatchObject({ mode: 'report', block: 'inbound', considered: 1, acted: 1, remaining: false, unmatched: 0 })
-    expect(result.structuredContent.items[0]).toMatchObject({ destination: '_TRIAGE/991 Junk', ruleset: 'sender:*@junk.example', applied: [] })
-    expect(mockCall).not.toHaveBeenCalledWith(expect.anything(), expect.anything(), 'POST', expect.anything(), expect.anything())
+    expect(result.structuredContent).toMatchObject({
+      mode: 'report',
+      block: 'inbound',
+      considered: 1,
+      acted: 1,
+      remaining: false,
+      unmatched: 0
+    })
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: '_TRIAGE/991 Junk',
+      ruleset: 'sender:*@junk.example',
+      applied: []
+    })
+    expect(mockCall).not.toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      'POST',
+      expect.anything(),
+      expect.anything()
+    )
   })
 
   it('writes no tracking entries in report mode', async () => {
@@ -106,7 +129,9 @@ describe('handleTriageRun — live mode', () => {
     const result = await handleTriageRun(ctx, { rules: RULES, mode: 'live' })
 
     expect(result.structuredContent.items[0].applied).toEqual([{ action: 'move:_TRIAGE/991 Junk', ok: true }])
-    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'POST', 'me/messages/msg-1/move', { destinationId: 'junk-id' })
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'POST', 'me/messages/msg-1/move', {
+      destinationId: 'junk-id'
+    })
   })
 
   it('records a tracking entry keyed on identity, not the Graph id', async () => {
@@ -157,13 +182,27 @@ describe('handleTriageRun — batch bounding', () => {
   it('asks Graph for one more than the batch so it can tell whether more remain', async () => {
     stubInbox([])
     await handleTriageRun(ctx, { rules: RULES, maxActions: 5 })
-    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'GET', 'me/mailFolders/inbox-id/messages', null, expect.objectContaining({ $top: 6 }))
+    expect(mockCall).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'token',
+      'GET',
+      'me/mailFolders/inbox-id/messages',
+      null,
+      expect.objectContaining({ $top: 6 })
+    )
   })
 
   it('defaults to 50', async () => {
     stubInbox([])
     await handleTriageRun(ctx, { rules: RULES })
-    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'GET', 'me/mailFolders/inbox-id/messages', null, expect.objectContaining({ $top: 51 }))
+    expect(mockCall).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'token',
+      'GET',
+      'me/mailFolders/inbox-id/messages',
+      null,
+      expect.objectContaining({ $top: 51 })
+    )
   })
 })
 
@@ -193,7 +232,9 @@ describe('rules from the configured note', () => {
   it('treats a blank rules argument as absent', async () => {
     await configured(RULES)
     stubInbox([message()])
-    expect((await handleTriageRun(ctx, { rules: '   ' })).structuredContent.items[0].destination).toBe('_TRIAGE/991 Junk')
+    expect((await handleTriageRun(ctx, { rules: '   ' })).structuredContent.items[0].destination).toBe(
+      '_TRIAGE/991 Junk'
+    )
   })
 
   it('picks up an edit to the note without a restart', async () => {
@@ -216,7 +257,9 @@ describe('rules from the configured note', () => {
 
   it('lints the note when no rules are passed', async () => {
     await configured(RULES)
-    expect((await handleRulesLint(ctx, {})).content[0].text).toContain('Parsed blocks: inbound (3 rules), aged (1 rules)')
+    expect((await handleRulesLint(ctx, {})).content[0].text).toContain(
+      'Parsed blocks: inbound (3 rules), aged (1 rules)'
+    )
   })
 
   it('names all three ways to supply rules when none is available', async () => {
@@ -236,7 +279,9 @@ describe('rules from the configured note', () => {
     const file = path.join(dir, 'passed-in.md')
     await fs.writeFile(file, RULES)
     stubInbox([message()])
-    expect((await handleTriageRun(ctx, { rulesPath: file })).structuredContent.items[0].destination).toBe('_TRIAGE/991 Junk')
+    expect((await handleTriageRun(ctx, { rulesPath: file })).structuredContent.items[0].destination).toBe(
+      '_TRIAGE/991 Junk'
+    )
   })
 
   it('prefers a rulesPath in the call over the configured default', async () => {
@@ -244,7 +289,9 @@ describe('rules from the configured note', () => {
     const file = path.join(dir, 'override.md')
     await fs.writeFile(file, RULES)
     stubInbox([message()])
-    expect((await handleTriageRun(ctx, { rulesPath: file })).structuredContent.items[0].destination).toBe('_TRIAGE/991 Junk')
+    expect((await handleTriageRun(ctx, { rulesPath: file })).structuredContent.items[0].destination).toBe(
+      '_TRIAGE/991 Junk'
+    )
   })
 
   it('refuses a rulesPath outside the configured roots', async () => {
@@ -299,7 +346,11 @@ describe('the tracking cache a run writes to', () => {
     const elsewhere = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'triage-outside-')))
     try {
       stubInbox([message()])
-      const result = await handleTriageRun(ctx, { rules: RULES, mode: 'live', trackingPath: path.join(elsewhere, 'tracking.json5') })
+      const result = await handleTriageRun(ctx, {
+        rules: RULES,
+        mode: 'live',
+        trackingPath: path.join(elsewhere, 'tracking.json5')
+      })
       expect(result.isError).toBe(true)
       expect(result.content[0].text).toMatch(/resolves outside the configured roots/)
       expect(await fs.readdir(elsewhere)).toEqual([])
@@ -339,7 +390,9 @@ describe('the tracking cache a run writes to', () => {
   it('refuses a live run with no tracking cache configured at all', async () => {
     ctx.trackingPath = ''
     stubInbox([message()])
-    expect((await handleTriageRun(ctx, { rules: RULES, mode: 'live' })).content[0].text).toMatch(/No tracking cache configured/)
+    expect((await handleTriageRun(ctx, { rules: RULES, mode: 'live' })).content[0].text).toMatch(
+      /No tracking cache configured/
+    )
   })
 
   it('does not require a tracking cache in report mode', async () => {
@@ -351,14 +404,18 @@ describe('the tracking cache a run writes to', () => {
 
 describe('handleTriageRun — refusals', () => {
   it('refuses to run a rule file that will not parse', async () => {
-    const result = await handleTriageRun(ctx, { rules: '## Inbound\n\n```rules v1\ntheme:x -> move:A\n* -> move:000 Unknown\n```' })
+    const result = await handleTriageRun(ctx, {
+      rules: '## Inbound\n\n```rules v1\ntheme:x -> move:A\n* -> move:000 Unknown\n```'
+    })
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('Refusing to run')
     expect(result.content[0].text).toContain('unknown predicate key "theme"')
   })
 
   it('refuses to run a rule file whose fence was never closed', async () => {
-    const result = await handleTriageRun(ctx, { rules: '## Inbound\n\n```rules v1\nsender:*@x.com -> move:A\n* -> move:000 Unknown, suggest' })
+    const result = await handleTriageRun(ctx, {
+      rules: '## Inbound\n\n```rules v1\nsender:*@x.com -> move:A\n* -> move:000 Unknown, suggest'
+    })
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain('unterminated ```rules block')
   })
@@ -373,7 +430,8 @@ describe('handleTriageRun — refusals', () => {
   })
 
   it('reports when the requested block is absent', async () => {
-    const rules = '## Archive\n\n```rules v1\n* -> move:000 Unknown, suggest\n```\n\n## Aged\n\n```rules v1\nfolder:"x" -> delete\n```'
+    const rules =
+      '## Archive\n\n```rules v1\n* -> move:000 Unknown, suggest\n```\n\n## Aged\n\n```rules v1\nfolder:"x" -> delete\n```'
     expect((await handleTriageRun(ctx, { rules })).content[0].text).toContain('no "inbound" rules block found')
   })
 
@@ -416,7 +474,8 @@ describe('handleTriageRun — reporting', () => {
   it('counts messages that match no rule when the block has no fallback', async () => {
     // The aged block has no fallback by design, so route an unmatched message through it.
     mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
-      if (method === 'GET' && apiPath === 'me/mailFolders/junk-id/messages') return { value: [message({ parentFolderId: 'junk-id' })] }
+      if (method === 'GET' && apiPath === 'me/mailFolders/junk-id/messages')
+        return { value: [message({ parentFolderId: 'junk-id' })] }
       if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
       return {}
     })
@@ -500,19 +559,26 @@ describe('handleRulesLint', () => {
   })
 
   it('checks move targets when a taxonomy is supplied', async () => {
-    const result = await handleRulesLint(ctx, { rules: RULES, knownFolders: ['_TRIAGE/991 Junk', '_TRIAGE/111 Partner', '_TRIAGE/000 Unknown'] })
+    const result = await handleRulesLint(ctx, {
+      rules: RULES,
+      knownFolders: ['_TRIAGE/991 Junk', '_TRIAGE/111 Partner', '_TRIAGE/000 Unknown']
+    })
     expect(result.content[0].text).not.toContain('no knownFolders supplied')
     expect(result.content[0].text).toContain('0 error')
   })
 
   it('reports findings with their source line', async () => {
-    const result = await handleRulesLint(ctx, { rules: '## Inbound\n\n```rules v1\nsender:db.example.net -> move:A\n* -> move:000 Unknown, suggest\n```' })
+    const result = await handleRulesLint(ctx, {
+      rules: '## Inbound\n\n```rules v1\nsender:db.example.net -> move:A\n* -> move:000 Unknown, suggest\n```'
+    })
     expect(result.content[0].text).toContain('malformed-address')
     expect(result.content[0].text).toContain('sender:db.example.net -> move:A')
   })
 
   it('reports a source that contains no rule blocks', async () => {
-    expect((await handleRulesLint(ctx, { rules: 'just prose, no fences here' })).content[0].text).toContain('Parsed blocks: none')
+    expect((await handleRulesLint(ctx, { rules: 'just prose, no fences here' })).content[0].text).toContain(
+      'Parsed blocks: none'
+    )
   })
 
   it('asks for rules rather than linting nothing when none are available', async () => {
@@ -526,6 +592,8 @@ describe('handleRulesLint', () => {
   })
 
   it('ignores a knownFolders value that is not an array', async () => {
-    expect((await handleRulesLint(ctx, { rules: RULES, knownFolders: 'nope' })).content[0].text).toContain('no knownFolders supplied')
+    expect((await handleRulesLint(ctx, { rules: RULES, knownFolders: 'nope' })).content[0].text).toContain(
+      'no knownFolders supplied'
+    )
   })
 })

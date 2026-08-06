@@ -12,7 +12,9 @@ export const handleListEvents = async (ctx: GraphContext, args: any): Promise<an
     const accessToken = await ctx.ensureAuthenticated()
 
     const startDate = args.startDateTime ? new Date(args.startDateTime) : new Date()
-    const endDate = args.endDateTime ? new Date(args.endDateTime) : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
+    const endDate = args.endDateTime
+      ? new Date(args.endDateTime)
+      : new Date(startDate.getTime() + 30 * 24 * 60 * 60 * 1000)
 
     if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || endDate <= startDate) {
       return errorText('Invalid date range. Provide valid startDateTime/endDateTime with endDateTime > startDateTime.')

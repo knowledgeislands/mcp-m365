@@ -94,7 +94,11 @@ const formatFolderListError = (error: any, context: any): string => {
   return lines.join('\n')
 }
 
-const getAllFoldersHierarchy = async (graphApiEndpoint: string, accessToken: string, includeItemCounts: boolean): Promise<any[]> => {
+const getAllFoldersHierarchy = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  includeItemCounts: boolean
+): Promise<any[]> => {
   const selectFields = includeItemCounts
     ? 'id,displayName,parentFolderId,childFolderCount,totalItemCount,unreadItemCount'
     : 'id,displayName,parentFolderId,childFolderCount'

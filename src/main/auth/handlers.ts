@@ -42,7 +42,11 @@ export const handleCheckAuthStatus = async (tokenStorage: TokenStorage): Promise
       content: [
         {
           type: 'text',
-          text: JSON.stringify({ authenticated: false, hasRefreshToken: false, scope: [], expiresAt: null, expired: false }, null, 2)
+          text: JSON.stringify(
+            { authenticated: false, hasRefreshToken: false, scope: [], expiresAt: null, expired: false },
+            null,
+            2
+          )
         }
       ]
     }

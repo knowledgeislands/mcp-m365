@@ -72,7 +72,8 @@ export const identityKey = (record: Pick<EmailRecord, 'subject' | 'from' | 'rece
   [record.subject.trim(), record.from.trim().toLowerCase(), record.received.trim()].join(SEP)
 
 /** Identity key for a stored entry — same shape, different field names. */
-export const entryKey = (entry: TrackingEntry): string => identityKey({ subject: entry.subject, from: entry.from, received: entry.received })
+export const entryKey = (entry: TrackingEntry): string =>
+  identityKey({ subject: entry.subject, from: entry.from, received: entry.received })
 
 /**
  * Quote bare object keys (`entries:` → `"entries":`), string-aware so a colon
@@ -233,7 +234,11 @@ export const upsertEntries = (file: TrackingFile, entries: readonly TrackingEntr
 }
 
 /** Drop entries routed more than `days` ago. Keeps the cache bounded; the drift scan is the only caller. */
-export const pruneOlderThan = (file: TrackingFile, days: number, now: Date): { kept: TrackingFile; pruned: TrackingEntry[] } => {
+export const pruneOlderThan = (
+  file: TrackingFile,
+  days: number,
+  now: Date
+): { kept: TrackingFile; pruned: TrackingEntry[] } => {
   const cutoff = now.getTime() - days * 86_400_000
   const kept: TrackingEntry[] = []
   const pruned: TrackingEntry[] = []

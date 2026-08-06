@@ -42,7 +42,10 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           itemId: graphIdSchema.optional().describe('ID of the item to delete'),
           path: z.string().min(1).optional().describe('Path to the item (alternative to itemId)'),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
@@ -73,8 +76,14 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           itemId: graphIdSchema.optional().describe('ID of the item to share'),
           path: z.string().optional().describe('Path to the item (alternative to itemId)'),
-          type: z.enum(['view', 'edit', 'embed']).optional().describe("Link type: 'view' (default), 'edit', or 'embed'"),
-          scope: z.enum(['anonymous', 'organization']).optional().describe("Link scope: 'anonymous' (default) or 'organization'")
+          type: z
+            .enum(['view', 'edit', 'embed'])
+            .optional()
+            .describe("Link type: 'view' (default), 'edit', or 'embed'"),
+          scope: z
+            .enum(['anonymous', 'organization'])
+            .optional()
+            .describe("Link scope: 'anonymous' (default) or 'organization'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -90,7 +99,10 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/myfile.txt')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z
+            .enum(['rename', 'replace', 'fail'])
+            .optional()
+            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -106,7 +118,10 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
         .object({
           path: z.string().describe("Destination path including filename (e.g., '/Documents/largefile.zip')"),
           content: z.string().describe('File content to upload'),
-          conflictBehavior: z.enum(['rename', 'replace', 'fail']).optional().describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
+          conflictBehavior: z
+            .enum(['rename', 'replace', 'fail'])
+            .optional()
+            .describe("Behavior when file exists: 'rename' (default), 'replace', or 'fail'")
         })
         .strict(),
       annotations: WRITE_REMOTE
@@ -121,7 +136,13 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
       inputSchema: z
         .object({
           path: z.string().optional().describe("Path to list (e.g., '/Documents', '/Photos'). Defaults to root."),
-          count: z.number().int().positive().max(50).optional().describe('Number of items to retrieve (default: 25, max: 50)')
+          count: z
+            .number()
+            .int()
+            .positive()
+            .max(50)
+            .optional()
+            .describe('Number of items to retrieve (default: 25, max: 50)')
         })
         .strict(),
       annotations: READ_ONLY_REMOTE
@@ -136,7 +157,13 @@ export const registerOnedriveTools = (server: McpServer, ctx: GraphContext): voi
       inputSchema: z
         .object({
           query: z.string().describe('Search query to find files'),
-          count: z.number().int().positive().max(50).optional().describe('Number of results to return (default: 25, max: 50)')
+          count: z
+            .number()
+            .int()
+            .positive()
+            .max(50)
+            .optional()
+            .describe('Number of results to return (default: 25, max: 50)')
         })
         .strict(),
       annotations: READ_ONLY_REMOTE

@@ -1,7 +1,13 @@
 import type { Mock, MockInstance } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
-import { fetchFoldersRecursive, getAllFolders, getFolderIdByName, resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
+import {
+  fetchFoldersRecursive,
+  getAllFolders,
+  getFolderIdByName,
+  resolveFolderPath,
+  WELL_KNOWN_FOLDERS
+} from './folder-utils.js'
 
 vi.mock('../graph-client/index.js', () => ({
   callGraphAPI: vi.fn()
@@ -11,32 +17,34 @@ const mockCallGraphAPI = callGraphAPI as Mock
 
 const mockGraphWithFolders = (folders: any[], { pageSize = 100 }: { pageSize?: number } = {}): void => {
   const rootParentId = 'mailbox-root'
-  mockCallGraphAPI.mockImplementation(async (_endpoint: any, _token: any, _method: any, endpoint: string, _body: any, params: any) => {
-    let pool: any[]
-    const childMatch = endpoint.match(/^me\/mailFolders\/([^/]+)\/childFolders$/)
-    if (endpoint === 'me/mailFolders') {
-      pool = folders.filter((f) => !f.parentFolderId || f.parentFolderId === rootParentId)
-    } else if (childMatch) {
-      const parentId = childMatch[1]
-      pool = folders.filter((f) => f.parentFolderId === parentId)
-    } else {
-      const idMatch = endpoint.match(/^me\/mailFolders\/([^/]+)$/)
-      if (idMatch) {
-        const found = folders.find((f) => f.id === idMatch[1])
-        return found || null
+  mockCallGraphAPI.mockImplementation(
+    async (_endpoint: any, _token: any, _method: any, endpoint: string, _body: any, params: any) => {
+      let pool: any[]
+      const childMatch = endpoint.match(/^me\/mailFolders\/([^/]+)\/childFolders$/)
+      if (endpoint === 'me/mailFolders') {
+        pool = folders.filter((f) => !f.parentFolderId || f.parentFolderId === rootParentId)
+      } else if (childMatch) {
+        const parentId = childMatch[1]
+        pool = folders.filter((f) => f.parentFolderId === parentId)
+      } else {
+        const idMatch = endpoint.match(/^me\/mailFolders\/([^/]+)$/)
+        if (idMatch) {
+          const found = folders.find((f) => f.id === idMatch[1])
+          return found || null
+        }
+        return { value: [] }
       }
-      return { value: [] }
-    }
 
-    const skip = Number(params?.$skiptoken) || 0
-    const page = pool.slice(skip, skip + pageSize)
-    const hasMore = skip + pageSize < pool.length
-    const result: any = { value: page }
-    if (hasMore) {
-      result['@odata.nextLink'] = `https://graph.microsoft.com/v1.0/${endpoint}?$skiptoken=${skip + pageSize}`
+      const skip = Number(params?.$skiptoken) || 0
+      const page = pool.slice(skip, skip + pageSize)
+      const hasMore = skip + pageSize < pool.length
+      const result: any = { value: page }
+      if (hasMore) {
+        result['@odata.nextLink'] = `https://graph.microsoft.com/v1.0/${endpoint}?$skiptoken=${skip + pageSize}`
+      }
+      return result
     }
-    return result
-  })
+  )
 }
 
 describe('resolveFolderPath', () => {
@@ -119,7 +127,9 @@ describe('resolveFolderPath', () => {
     test('throws when folder is not found', async () => {
       mockGraphWithFolders([{ id: 'id-other', displayName: 'SomethingElse', childFolderCount: 0 }])
 
-      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'NonExistent')).rejects.toThrow('was not found or is ambiguous')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'NonExistent')).rejects.toThrow(
+        'was not found or is ambiguous'
+      )
     })
 
     test('throws when ambiguous (multiple matches)', async () => {
@@ -128,13 +138,17 @@ describe('resolveFolderPath', () => {
         { id: 'id-b', displayName: 'Orders', parentFolderId: 'mailbox-root', childFolderCount: 0 }
       ])
 
-      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Orders')).rejects.toThrow('was not found or is ambiguous')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'Orders')).rejects.toThrow(
+        'was not found or is ambiguous'
+      )
     })
 
     test('throws when the Graph call fails', async () => {
       mockCallGraphAPI.mockRejectedValue(new Error('API Error'))
 
-      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'CustomFolder')).rejects.toThrow('Error resolving folder "CustomFolder": API Error')
+      await expect(resolveFolderPath(GRAPH_API_ENDPOINT, mockAccessToken, 'CustomFolder')).rejects.toThrow(
+        'Error resolving folder "CustomFolder": API Error'
+      )
     })
   })
 })

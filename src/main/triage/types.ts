@@ -8,7 +8,19 @@
  */
 
 /** Predicate keys accepted by the v1 grammar. */
-export const PREDICATE_KEYS = ['type', 'party', 'sender', 'to', 'cc', 'subject', 'body', 'importance', 'status', 'age', 'folder'] as const
+export const PREDICATE_KEYS = [
+  'type',
+  'party',
+  'sender',
+  'to',
+  'cc',
+  'subject',
+  'body',
+  'importance',
+  'status',
+  'age',
+  'folder'
+] as const
 export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 
 /**

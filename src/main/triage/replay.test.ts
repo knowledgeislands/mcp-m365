@@ -53,7 +53,10 @@ const inbound = (over: Partial<EmailRecord> = {}): string => route(INBOUND, over
 const aged = (over: Partial<EmailRecord> = {}): string => route(AGED, over)
 
 /** A calendar invite, the message class Phase 3's §C scan was restricted to. */
-const invite = (over: Partial<EmailRecord>): Partial<EmailRecord> => ({ messageClass: 'IPM.Schedule.Meeting.Request', ...over })
+const invite = (over: Partial<EmailRecord>): Partial<EmailRecord> => ({
+  messageClass: 'IPM.Schedule.Meeting.Request',
+  ...over
+})
 
 describe('the rule file itself', () => {
   it('parses with no errors', () => {
@@ -65,7 +68,9 @@ describe('the rule file itself', () => {
   })
 
   it('ends the inbound block with the mandatory fallback', () => {
-    expect(lintRules(PARSED).filter((f) => f.code === 'missing-fallback' || f.code === 'misplaced-fallback')).toEqual([])
+    expect(lintRules(PARSED).filter((f) => f.code === 'missing-fallback' || f.code === 'misplaced-fallback')).toEqual(
+      []
+    )
   })
 })
 
@@ -97,7 +102,9 @@ describe('B — route-level entries', () => {
   })
 
   it('routes a calendar update to 981 Delete', () => {
-    expect(inbound({ messageClass: 'IPM.Schedule.Meeting.Canceled', subject: 'Canceled: standup' })).toBe('_TRIAGE/981 Delete')
+    expect(inbound({ messageClass: 'IPM.Schedule.Meeting.Canceled', subject: 'Canceled: standup' })).toBe(
+      '_TRIAGE/981 Delete'
+    )
   })
 })
 
@@ -145,7 +152,9 @@ describe('the Vendor guard, folded from a deny row into a negation', () => {
   })
 
   it('keeps signature requests visible', () => {
-    expect(inbound({ from: 'noreply@vendor.example.com', subject: 'Please sign your agreement' })).toBe('_TRIAGE/000 Unknown')
+    expect(inbound({ from: 'noreply@vendor.example.com', subject: 'Please sign your agreement' })).toBe(
+      '_TRIAGE/000 Unknown'
+    )
   })
 })
 
@@ -189,10 +198,16 @@ describe('the fallback', () => {
 
 describe('the aged block', () => {
   it('archives Partner mail after seven days', () => {
-    const result = classify(AGED, email({ folder: '111 Partner', received: '2026-07-20T09:00:00Z', flag: 'unflagged' }), { now: NOW })
+    const result = classify(
+      AGED,
+      email({ folder: '111 Partner', received: '2026-07-20T09:00:00Z', flag: 'unflagged' }),
+      { now: NOW }
+    )
     expect(result.ruleIndex).not.toBe(-1)
     expect((result as Matched).rule.actions.map((a) => a.kind)).toEqual(['move', 'tag', 'mark'])
-    expect(aged({ folder: '111 Partner', received: '2026-07-20T09:00:00Z', flag: 'unflagged' })).toBe('_ARCHIVE/Success/Partner')
+    expect(aged({ folder: '111 Partner', received: '2026-07-20T09:00:00Z', flag: 'unflagged' })).toBe(
+      '_ARCHIVE/Success/Partner'
+    )
   })
 
   it('never archives a flagged message', () => {
@@ -220,7 +235,9 @@ describe('lint over the live rule file', () => {
   const findings = lintRules(PARSED)
 
   it('reports no parse or fallback errors', () => {
-    expect(findings.filter((f) => ['parse-error', 'missing-fallback', 'misplaced-fallback'].includes(f.code))).toEqual([])
+    expect(findings.filter((f) => ['parse-error', 'missing-fallback', 'misplaced-fallback'].includes(f.code))).toEqual(
+      []
+    )
   })
 
   /**
@@ -230,7 +247,9 @@ describe('lint over the live rule file', () => {
    * grow unnoticed — shrink this list as they are fixed in the note.
    */
   it('reports exactly the four known unreachable rules', () => {
-    const shadowed = findings.filter((f) => f.code === 'shadowed-rule').map((f) => f.source?.replace(/\s+/g, ' ').trim())
+    const shadowed = findings
+      .filter((f) => f.code === 'shadowed-rule')
+      .map((f) => f.source?.replace(/\s+/g, ' ').trim())
     expect(shadowed).toEqual([
       'sender:notifications@tasks.example.net -> move:981 Delete # Linear in-app notification emails',
       'party:members@forum.example.org -> move:241 Media',

@@ -158,7 +158,14 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
   let currentParams = queryParams
 
   do {
-    const response = await callGraphAPI<GraphResponse<T>>(graphApiEndpoint, accessToken, method, currentUrl, null, currentParams)
+    const response = await callGraphAPI<GraphResponse<T>>(
+      graphApiEndpoint,
+      accessToken,
+      method,
+      currentUrl,
+      null,
+      currentParams
+    )
 
     if (response.value && Array.isArray(response.value)) {
       allItems.push(...response.value)
@@ -189,7 +196,11 @@ export const callGraphAPIPaginated = async <T = GraphValue>(
   }
 }
 
-export const callGraphAPIDownload = async (graphApiEndpoint: string, accessToken: string, path: string): Promise<string> => {
+export const callGraphAPIDownload = async (
+  graphApiEndpoint: string,
+  accessToken: string,
+  path: string
+): Promise<string> => {
   return new Promise((resolve, reject) => {
     let fullUrl: string
     if (path.startsWith('http://') || path.startsWith('https://')) {

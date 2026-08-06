@@ -18,7 +18,12 @@ export const handleCancelEvent = async (ctx: GraphContext, args: any): Promise<a
     const body = { comment: comment || 'Cancelled via API' }
 
     if (dry_run) {
-      const event = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/events/${eventId}?$select=id,subject,start`)
+      const event = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'GET',
+        `me/events/${eventId}?$select=id,subject,start`
+      )
       return {
         content: [
           {

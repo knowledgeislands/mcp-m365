@@ -63,21 +63,36 @@ export const buildFolderMap = async (ctx: GraphContext, accessToken: string): Pr
 /** Immediate children of a folder path, as full paths. Used to enumerate the `_TRIAGE` subfolders for the aged pass. */
 export const childPaths = (map: FolderMap, parentPath: string): string[] => {
   const prefix = `${parentPath}/`
-  return map.paths.filter((p) => p.toLowerCase().startsWith(prefix.toLowerCase()) && !p.slice(prefix.length).includes('/'))
+  return map.paths.filter(
+    (p) => p.toLowerCase().startsWith(prefix.toLowerCase()) && !p.slice(prefix.length).includes('/')
+  )
 }
 
 /** Read messages from a folder, oldest first so repeated batched runs make monotonic progress. */
-export const listFolderMessages = async (ctx: GraphContext, accessToken: string, folderId: string, top: number): Promise<any[]> => {
-  const response: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/mailFolders/${folderId}/messages`, null, {
-    $top: top,
-    $select: TRIAGE_SELECT_FIELDS,
-    $expand: TRIAGE_EXPAND,
-    $orderby: 'receivedDateTime asc'
-  })
+export const listFolderMessages = async (
+  ctx: GraphContext,
+  accessToken: string,
+  folderId: string,
+  top: number
+): Promise<any[]> => {
+  const response: any = await callGraphAPI(
+    ctx.graphApiEndpoint,
+    accessToken,
+    'GET',
+    `me/mailFolders/${folderId}/messages`,
+    null,
+    {
+      $top: top,
+      $select: TRIAGE_SELECT_FIELDS,
+      $expand: TRIAGE_EXPAND,
+      $orderby: 'receivedDateTime asc'
+    }
+  )
   return Array.isArray(response?.value) ? response.value : []
 }
 
-const sameMessage = (record: EmailRecord, candidate: any): boolean => identityKey(record) === identityKey(toEmailRecord(candidate))
+const sameMessage = (record: EmailRecord, candidate: any): boolean =>
+  identityKey(record) === identityKey(toEmailRecord(candidate))
 
 /** Fields every identity lookup needs, plus the current folder so the drift scan needs only one round trip per entry. */
 const IDENTITY_SELECT = 'id,subject,from,receivedDateTime,parentFolderId'
@@ -93,7 +108,14 @@ const IDENTITY_SELECT = 'id,subject,from,receivedDateTime,parentFolderId'
 export const findMessage = async (ctx: GraphContext, accessToken: string, record: EmailRecord): Promise<any | null> => {
   if (record.id) {
     try {
-      const message: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/messages/${record.id}`, null, { $select: IDENTITY_SELECT })
+      const message: any = await callGraphAPI(
+        ctx.graphApiEndpoint,
+        accessToken,
+        'GET',
+        `me/messages/${record.id}`,
+        null,
+        { $select: IDENTITY_SELECT }
+      )
       if (sameMessage(record, message)) return message
     } catch {
       // Stale id — fall through to the identity search.
@@ -116,7 +138,11 @@ export const findMessage = async (ctx: GraphContext, accessToken: string, record
 }
 
 /** Identity-resolved Graph id, or null when the message is gone. */
-export const resolveMessageId = async (ctx: GraphContext, accessToken: string, record: EmailRecord): Promise<string | null> => {
+export const resolveMessageId = async (
+  ctx: GraphContext,
+  accessToken: string,
+  record: EmailRecord
+): Promise<string | null> => {
   const message = await findMessage(ctx, accessToken, record)
   return message ? String(message.id) : null
 }
@@ -143,8 +169,14 @@ const applyOne = async (
   if (action.kind === 'move') {
     const target = resolveMoveTarget(action)
     const destinationId = map.idByPath.get(target.toLowerCase())
-    if (!destinationId) return { result: { action: `move:${target}`, ok: false, detail: 'destination folder does not exist' }, nextId: messageId }
-    const moved: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${messageId}/move`, { destinationId })
+    if (!destinationId)
+      return {
+        result: { action: `move:${target}`, ok: false, detail: 'destination folder does not exist' },
+        nextId: messageId
+      }
+    const moved: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', `me/messages/${messageId}/move`, {
+      destinationId
+    })
     // The move reissues the id; everything after this acts on the new one.
     const nextId = moved?.id ? String(moved.id) : messageId
     return { result: { action: `move:${target}`, ok: true }, nextId }
@@ -160,7 +192,14 @@ const applyOne = async (
   }
 
   if (action.kind === 'tag') {
-    const current: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', `me/messages/${messageId}`, null, { $select: 'categories' })
+    const current: any = await callGraphAPI(
+      ctx.graphApiEndpoint,
+      accessToken,
+      'GET',
+      `me/messages/${messageId}`,
+      null,
+      { $select: 'categories' }
+    )
     const existing: string[] = Array.isArray(current?.categories) ? current.categories : []
     const value = String(action.value)
     const categories = existing.includes(value) ? existing : [...existing, value]
@@ -186,7 +225,11 @@ export const applyActions = async (
   map: FolderMap
 ): Promise<{ applied: AppliedAction[]; resolvedId: string | null }> => {
   const resolvedId = await resolveMessageId(ctx, accessToken, record)
-  if (!resolvedId) return { applied: [{ action: 'resolve', ok: false, detail: 'message no longer found by subject + sender + received' }], resolvedId: null }
+  if (!resolvedId)
+    return {
+      applied: [{ action: 'resolve', ok: false, detail: 'message no longer found by subject + sender + received' }],
+      resolvedId: null
+    }
 
   const applied: AppliedAction[] = []
   let messageId = resolvedId

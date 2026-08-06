@@ -35,7 +35,9 @@ const config = loadConfig()
 console.error(`${config.serverName} starting...`)
 console.error(`  SERVER_NAME=${config.serverName}`)
 console.error(`  MCP_M365_ACCESS_LEVEL=${config.accessLevel}`)
-console.error(`  MCP_M365_AUDIT_LOG=${config.auditLogMode}${config.auditLogMode === 'off' ? '' : ` (path: ${config.auditLogPath})`}`)
+console.error(
+  `  MCP_M365_AUDIT_LOG=${config.auditLogMode}${config.auditLogMode === 'off' ? '' : ` (path: ${config.auditLogPath})`}`
+)
 // Print the engine's filesystem surface at boot, so a mistyped root or tracking
 // path is visible in the server log rather than at 06:00 in a scheduled run.
 console.error(`  MCP_M365_TRIAGE_ROOTS=${config.triageRoots.join(', ') || '(none — engine file access disabled)'}`)

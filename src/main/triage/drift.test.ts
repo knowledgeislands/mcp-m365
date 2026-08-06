@@ -45,7 +45,13 @@ const graphMessage = (over: Record<string, unknown> = {}) => ({
 })
 
 let dir: string
-let ctx: { graphApiEndpoint: string; ensureAuthenticated: Mock; roots: string[]; trackingPath: string; rulesPath: string }
+let ctx: {
+  graphApiEndpoint: string
+  ensureAuthenticated: Mock
+  roots: string[]
+  trackingPath: string
+  rulesPath: string
+}
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -70,7 +76,13 @@ afterEach(async () => {
 describe('handleDriftScan', () => {
   it('does nothing but say so when there is no tracking data', async () => {
     const result = await handleDriftScan(ctx, {})
-    expect(result.structuredContent).toMatchObject({ scanned: 0, reRouted: [], prunedMissing: 0, prunedExpired: 0, trackedAfter: 0 })
+    expect(result.structuredContent).toMatchObject({
+      scanned: 0,
+      reRouted: [],
+      prunedMissing: 0,
+      prunedExpired: 0,
+      trackedAfter: 0
+    })
     expect(ctx.ensureAuthenticated).not.toHaveBeenCalled()
   })
 
@@ -132,7 +144,9 @@ describe('handleDriftScan', () => {
 
   it('refreshes the cached id from the message it found', async () => {
     await writeTracking(ctx.trackingPath, { entries: [entry({ id: 'stale-id' })] })
-    mockCall.mockRejectedValueOnce(new Error('404')).mockResolvedValueOnce({ value: [graphMessage({ id: 'reissued' })] })
+    mockCall
+      .mockRejectedValueOnce(new Error('404'))
+      .mockResolvedValueOnce({ value: [graphMessage({ id: 'reissued' })] })
     await handleDriftScan(ctx, {})
     expect((await readTracking(ctx.trackingPath))?.entries[0]?.id).toBe('reissued')
   })
@@ -164,7 +178,10 @@ describe('handleDriftScan', () => {
     const alternate = path.join(dir, 'alternate.json5')
     await writeTracking(alternate, { entries: [entry()] })
     mockCall.mockResolvedValue(graphMessage())
-    expect((await handleDriftScan(ctx, { trackingPath: alternate })).structuredContent).toMatchObject({ scanned: 1, trackingPath: alternate })
+    expect((await handleDriftScan(ctx, { trackingPath: alternate })).structuredContent).toMatchObject({
+      scanned: 1,
+      trackingPath: alternate
+    })
   })
 
   it('refuses a trackingPath outside the roots', async () => {
@@ -196,7 +213,9 @@ describe('handleDriftScan', () => {
 
     /** Three distinct tracked messages, each resolvable by its own id. */
     const seed = async () => {
-      await writeTracking(ctx.trackingPath, { entries: SUBJECTS.map((subject) => entry({ id: `msg-${subject}`, subject })) })
+      await writeTracking(ctx.trackingPath, {
+        entries: SUBJECTS.map((subject) => entry({ id: `msg-${subject}`, subject }))
+      })
       mockCall.mockImplementation(async (_e: string, _t: string, _m: string, apiPath: string) => {
         const id = apiPath.replace('me/messages/', '')
         return graphMessage({ id, subject: id.replace('msg-', '') })
@@ -265,7 +284,9 @@ describe('handleDriftScan', () => {
   })
 
   it('bounds the batch and reports how many entries are left', async () => {
-    await writeTracking(ctx.trackingPath, { entries: [entry({ subject: 'one' }), entry({ subject: 'two' }), entry({ subject: 'three' })] })
+    await writeTracking(ctx.trackingPath, {
+      entries: [entry({ subject: 'one' }), entry({ subject: 'two' }), entry({ subject: 'three' })]
+    })
     mockCall.mockResolvedValue({ value: [] })
 
     const result = await handleDriftScan(ctx, { maxEntries: 1 })
@@ -276,7 +297,9 @@ describe('handleDriftScan', () => {
   it('surfaces a failure as an error envelope', async () => {
     await writeTracking(ctx.trackingPath, { entries: [entry()] })
     ctx.ensureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    expect((await handleDriftScan(ctx, {})).content[0].text).toContain('Error scanning for drift: Authentication required')
+    expect((await handleDriftScan(ctx, {})).content[0].text).toContain(
+      'Error scanning for drift: Authentication required'
+    )
   })
 
   it('appends the re-authentication hint on a 401', async () => {

@@ -4,13 +4,15 @@ import type { AndGroup, Rule } from './types.js'
 
 const FALLBACK = '* -> move:000 Unknown, suggest'
 
-const lint = (body: string, options = {}) => lintRules(parseRules(`## Inbound\n\n\`\`\`rules v1\n${body}\n\`\`\`\n`), options)
+const lint = (body: string, options = {}) =>
+  lintRules(parseRules(`## Inbound\n\n\`\`\`rules v1\n${body}\n\`\`\`\n`), options)
 
 const codes = (body: string, options = {}): string[] => lint(body, options).map((f) => f.code)
 
 const find = (body: string, code: string, options = {}) => lint(body, options).find((f) => f.code === code)
 
-const ruleOf = (text: string): Rule => parseRules(`## Inbound\n\n\`\`\`rules v1\n${text}\n\`\`\`\n`).blocks[0]?.rules[0] as Rule
+const ruleOf = (text: string): Rule =>
+  parseRules(`## Inbound\n\n\`\`\`rules v1\n${text}\n\`\`\`\n`).blocks[0]?.rules[0] as Rule
 
 const groupOf = (text: string): AndGroup => ruleOf(text).groups[0] as AndGroup
 
@@ -47,11 +49,15 @@ describe('groupSubsumes', () => {
   })
 
   it('refuses to reason about a negation in the earlier rule', () => {
-    expect(groupSubsumes(groupOf('sender:*@x.com !subject:sign -> move:A'), groupOf('sender:*@x.com -> move:B'))).toBe(false)
+    expect(groupSubsumes(groupOf('sender:*@x.com !subject:sign -> move:A'), groupOf('sender:*@x.com -> move:B'))).toBe(
+      false
+    )
   })
 
   it('ignores a negated term when using the later rule as evidence', () => {
-    expect(groupSubsumes(groupOf('sender:*@x.com -> move:A'), groupOf('sender:*@x.com !subject:sign -> move:B'))).toBe(true)
+    expect(groupSubsumes(groupOf('sender:*@x.com -> move:A'), groupOf('sender:*@x.com !subject:sign -> move:B'))).toBe(
+      true
+    )
   })
 
   it('does not relate unrelated keys', () => {
@@ -93,7 +99,10 @@ describe('lintRules — fallback', () => {
 
 describe('lintRules — shadowing', () => {
   it('catches a seeded shadowing case', () => {
-    const finding = find(`sender:*@x.com -> move:981 Delete\nsender:billing@x.com -> move:282 Finance\n${FALLBACK}`, 'shadowed-rule')
+    const finding = find(
+      `sender:*@x.com -> move:981 Delete\nsender:billing@x.com -> move:282 Finance\n${FALLBACK}`,
+      'shadowed-rule'
+    )
     expect(finding?.severity).toBe('error')
     expect(finding?.message).toMatch(/unreachable/)
     expect(finding?.message).toMatch(/mail intended for "_TRIAGE\/282 Finance" is going to "_TRIAGE\/981 Delete"/)
@@ -109,7 +118,10 @@ describe('lintRules — shadowing', () => {
   })
 
   it('omits the destination clause when both rules land in the same folder', () => {
-    const finding = find(`sender:*@x.com -> move:981 Delete\nsender:billing@x.com -> move:981 Delete\n${FALLBACK}`, 'shadowed-rule')
+    const finding = find(
+      `sender:*@x.com -> move:981 Delete\nsender:billing@x.com -> move:981 Delete\n${FALLBACK}`,
+      'shadowed-rule'
+    )
     expect(finding?.message).not.toMatch(/mail intended for/)
   })
 
@@ -134,16 +146,22 @@ describe('lintRules — broad-rule collisions', () => {
   })
 
   it('does not count other broad rules as pre-empted', () => {
-    expect(codes(`type:calendar-invite -> move:101 Do\nstatus:flagged -> move:102 Urgent\n${FALLBACK}`)).not.toContain('broad-rule-collision')
+    expect(codes(`type:calendar-invite -> move:101 Do\nstatus:flagged -> move:102 Urgent\n${FALLBACK}`)).not.toContain(
+      'broad-rule-collision'
+    )
   })
 
   it('truncates a long destination list', () => {
     const targets = ['A', 'B', 'C', 'D', 'E', 'F'].map((n, i) => `subject:s${i} -> move:${n}`).join('\n')
-    expect(find(`type:calendar-invite -> move:101 Do\n${targets}\n${FALLBACK}`, 'broad-rule-collision')?.message).toMatch(/, …\)/)
+    expect(
+      find(`type:calendar-invite -> move:101 Do\n${targets}\n${FALLBACK}`, 'broad-rule-collision')?.message
+    ).toMatch(/, …\)/)
   })
 
   it('handles a broad rule with no move action', () => {
-    expect(find(`status:flagged -> mark:read\nsubject:x -> move:A\n${FALLBACK}`, 'broad-rule-collision')?.message).toMatch(/goes to "its actions"/)
+    expect(
+      find(`status:flagged -> mark:read\nsubject:x -> move:A\n${FALLBACK}`, 'broad-rule-collision')?.message
+    ).toMatch(/goes to "its actions"/)
   })
 })
 
@@ -168,11 +186,15 @@ describe('lintRules — hygiene', () => {
   })
 
   it('ignores multi-term and negated groups when consolidating', () => {
-    expect(codes(`sender:*@x.com subject:y -> move:A\n!to:*@x.com -> move:A\n${FALLBACK}`)).not.toContain('party-consolidation')
+    expect(codes(`sender:*@x.com subject:y -> move:A\n!to:*@x.com -> move:A\n${FALLBACK}`)).not.toContain(
+      'party-consolidation'
+    )
   })
 
   it('ignores rules with no move target when consolidating', () => {
-    expect(codes(`sender:*@x.com -> mark:read\nto:*@x.com -> mark:read\n${FALLBACK}`)).not.toContain('party-consolidation')
+    expect(codes(`sender:*@x.com -> mark:read\nto:*@x.com -> mark:read\n${FALLBACK}`)).not.toContain(
+      'party-consolidation'
+    )
   })
 
   it('flags an address predicate with no @', () => {
@@ -180,8 +202,12 @@ describe('lintRules — hygiene', () => {
   })
 
   it('checks move targets against a supplied folder list', () => {
-    const findings = lint(`sender:*@x.com -> move:111 Partner\n${FALLBACK}`, { knownFolders: ['_TRIAGE/111 Partner'] })
-    expect(findings.find((f) => f.code === 'unknown-folder')?.message).toMatch(/"_TRIAGE\/000 Unknown" is not among the 1 known folders/)
+    const findings = lint(`sender:*@x.com -> move:111 Partner\n${FALLBACK}`, {
+      knownFolders: ['_TRIAGE/111 Partner']
+    })
+    expect(findings.find((f) => f.code === 'unknown-folder')?.message).toMatch(
+      /"_TRIAGE\/000 Unknown" is not among the 1 known folders/
+    )
   })
 
   it('skips the folder check when no taxonomy is supplied', () => {
@@ -198,7 +224,9 @@ describe('lintRules — hygiene', () => {
   })
 
   it('orders findings by line', () => {
-    const lines = lint(`sender:*@x.com -> move:A\nsender:a@x.com -> move:B\nsender:db.example.net -> move:C\n${FALLBACK}`).map((f) => f.line)
+    const lines = lint(
+      `sender:*@x.com -> move:A\nsender:a@x.com -> move:B\nsender:db.example.net -> move:C\n${FALLBACK}`
+    ).map((f) => f.line)
     expect(lines).toEqual([...lines].sort((a, b) => a - b))
   })
 })

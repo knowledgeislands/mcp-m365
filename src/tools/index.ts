@@ -10,4 +10,12 @@ import { registerOnedriveTools } from './onedrive/index.js'
 import { registerRulesTools } from './rules/index.js'
 import { registerTriageTools } from './triage/index.js'
 
-export { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools, registerTriageTools }
+export {
+  registerAuthTools,
+  registerCalendarTools,
+  registerEmailTools,
+  registerFolderTools,
+  registerOnedriveTools,
+  registerRulesTools,
+  registerTriageTools
+}

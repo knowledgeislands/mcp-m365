@@ -73,15 +73,21 @@ describe('toEmailRecord', () => {
   })
 
   it('drops recipients with no address', () => {
-    expect(toEmailRecord({ toRecipients: [{ emailAddress: {} }, { emailAddress: { address: 'a@b.com' } }] }).to).toEqual(['a@b.com'])
+    expect(
+      toEmailRecord({ toRecipients: [{ emailAddress: {} }, { emailAddress: { address: 'a@b.com' } }] }).to
+    ).toEqual(['a@b.com'])
   })
 
   it('ignores extended properties that are not the message class', () => {
-    expect(toEmailRecord({ singleValueExtendedProperties: [{ id: 'String 0x999', value: 'x' }] }).messageClass).toBeUndefined()
+    expect(
+      toEmailRecord({ singleValueExtendedProperties: [{ id: 'String 0x999', value: 'x' }] }).messageClass
+    ).toBeUndefined()
   })
 
   it('ignores an extended property with no value', () => {
-    expect(toEmailRecord({ singleValueExtendedProperties: [{ id: MESSAGE_CLASS_PROPERTY }] }).messageClass).toBeUndefined()
+    expect(
+      toEmailRecord({ singleValueExtendedProperties: [{ id: MESSAGE_CLASS_PROPERTY }] }).messageClass
+    ).toBeUndefined()
   })
 
   it('ignores an extended properties field that is not an array', () => {
@@ -99,7 +105,9 @@ describe('resolveMoveTarget', () => {
   })
 
   it('leaves an explicit path alone', () => {
-    expect(resolveMoveTarget({ kind: 'move', value: '_ARCHIVE/Success/Partner', quoted: false })).toBe('_ARCHIVE/Success/Partner')
+    expect(resolveMoveTarget({ kind: 'move', value: '_ARCHIVE/Success/Partner', quoted: false })).toBe(
+      '_ARCHIVE/Success/Partner'
+    )
   })
 
   it('treats a quoted name as an absolute mailbox folder', () => {

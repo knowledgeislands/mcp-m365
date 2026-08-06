@@ -46,8 +46,13 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('redacts a rule document, which would otherwise be logged verbatim on every scheduled routing run', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg(), 'm365_email_routing_triage', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
-    await wrapped({ mode: 'live', rules: '```rules v1\nparty:*@partner.example -> move:111 Project   # commercially sensitive\n```' })
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_routing_triage', 'destructive', async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
+    await wrapped({
+      mode: 'live',
+      rules: '```rules v1\nparty:*@partner.example -> move:111 Project   # commercially sensitive\n```'
+    })
     await flushAsync()
     const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
     expect(event.args.rules).toMatch(/^\[redacted \d+B\]$/)
@@ -56,7 +61,9 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('redacts body / htmlBody / content / data / fileContent / OAuth code+state fields', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg(), 'm365_email_message_send', 'write', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_message_send', 'write', async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
     await wrapped({
       to: 'a@x',
       body: 'plain body',
@@ -130,7 +137,9 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
   it('skips all levels when audit mode is "off"', async () => {
     const { withAuditLog } = await import('./audit-log.js')
     const writeHandler = vi.fn(async (_args: unknown) => ({ content: [{ type: 'text', text: 'ok' }] }))
-    expect(withAuditLog(auditCfg({ mode: 'off' }), 'm365_email_message_delete', 'destructive', writeHandler)).toBe(writeHandler)
+    expect(withAuditLog(auditCfg({ mode: 'off' }), 'm365_email_message_delete', 'destructive', writeHandler)).toBe(
+      writeHandler
+    )
     await writeHandler({})
     await flushAsync()
     await expect(fs.access(logPath)).rejects.toThrow()
@@ -156,10 +165,13 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string; handler: (args: unknown) => Promise<unknown> }[] = []
     const stub = {
-      registerTool: (name: string, _config: unknown, handler: (args: unknown) => Promise<unknown>) => calls.push({ name, handler })
+      registerTool: (name: string, _config: unknown, handler: (args: unknown) => Promise<unknown>) =>
+        calls.push({ name, handler })
     }
     const wrapped = makeAccessGatedRegister(stub as any, 'destructive', auditCfg({ mode: 'all' }))
-    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
     wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({
       content: [{ type: 'text', text: 'ok' }]
     }))
@@ -182,9 +194,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
   it('skips registration for tools whose level exceeds the configured access level (default = read)', async () => {
     const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string }[] = []
-    const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
+    const stub = {
+      registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) =>
+        calls.push({ name })
+    }
     const wrapped = makeAccessGatedRegister(stub as any, 'read', auditCfg())
-    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
     wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({
       content: [{ type: 'text', text: 'ok' }]
     }))
@@ -197,9 +214,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
   it('registers read + non-destructive writes but skips destructive when access level = write', async () => {
     const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string }[] = []
-    const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
+    const stub = {
+      registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) =>
+        calls.push({ name })
+    }
     const wrapped = makeAccessGatedRegister(stub as any, 'write', auditCfg())
-    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    wrapped('m365_email_messages_list', { annotations: { readOnlyHint: true } }, async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
     wrapped('m365_email_message_send', { annotations: { readOnlyHint: false, destructiveHint: false } }, async () => ({
       content: [{ type: 'text', text: 'ok' }]
     }))
@@ -212,7 +234,10 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
   it('treats an unannotated tool as destructive (fail-safe — skipped when only read is configured)', async () => {
     const { makeAccessGatedRegister } = await import('./access-level.js')
     const calls: { name: string }[] = []
-    const stub = { registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) => calls.push({ name }) }
+    const stub = {
+      registerTool: (name: string, _config: unknown, _handler: (args: unknown) => Promise<unknown>) =>
+        calls.push({ name })
+    }
     const wrapped = makeAccessGatedRegister(stub as any, 'read', auditCfg())
     wrapped('unannotated_tool', {}, async () => ({ content: [{ type: 'text', text: 'ok' }] }))
     expect(calls).toEqual([])
@@ -232,9 +257,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('rotates the audit log when it exceeds maxBytes (keeps history)', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg({ maxBytes: 100, keep: 2 }), 'm365_email_message_delete', 'destructive', async () => ({
-      content: [{ type: 'text', text: 'ok' }]
-    }))
+    const wrapped = withAuditLog(
+      auditCfg({ maxBytes: 100, keep: 2 }),
+      'm365_email_message_delete',
+      'destructive',
+      async () => ({
+        content: [{ type: 'text', text: 'ok' }]
+      })
+    )
     for (let i = 0; i < 6; i++) await wrapped({ idx: i })
     await new Promise((r) => setTimeout(r, 50))
     await expect(fs.access(`${logPath}.1`)).resolves.toBeUndefined()
@@ -242,9 +272,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('rotates by truncating the log when keep=0 (no history)', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg({ maxBytes: 100, keep: 0 }), 'm365_email_message_delete', 'destructive', async () => ({
-      content: [{ type: 'text', text: 'ok' }]
-    }))
+    const wrapped = withAuditLog(
+      auditCfg({ maxBytes: 100, keep: 0 }),
+      'm365_email_message_delete',
+      'destructive',
+      async () => ({
+        content: [{ type: 'text', text: 'ok' }]
+      })
+    )
     for (let i = 0; i < 6; i++) await wrapped({ idx: i })
     await new Promise((r) => setTimeout(r, 50))
     await expect(fs.access(`${logPath}.1`)).rejects.toThrow()
@@ -295,9 +330,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
 
   it('does not rotate when maxBytes is 0 (rotation disabled)', async () => {
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg({ maxBytes: 0, keep: 2 }), 'm365_email_message_delete', 'destructive', async () => ({
-      content: [{ type: 'text', text: 'ok' }]
-    }))
+    const wrapped = withAuditLog(
+      auditCfg({ maxBytes: 0, keep: 2 }),
+      'm365_email_message_delete',
+      'destructive',
+      async () => ({
+        content: [{ type: 'text', text: 'ok' }]
+      })
+    )
     for (let i = 0; i < 6; i++) await wrapped({ idx: i })
     await new Promise((r) => setTimeout(r, 50))
     await expect(fs.access(`${logPath}.1`)).rejects.toThrow()
@@ -310,9 +350,14 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     await fs.mkdir(`${logPath}.1`, { recursive: true })
     await fs.writeFile(path.join(`${logPath}.1`, 'blocker'), 'x')
     const { withAuditLog } = await import('./audit-log.js')
-    const wrapped = withAuditLog(auditCfg({ maxBytes: 100, keep: 2 }), 'm365_email_message_delete', 'destructive', async () => ({
-      content: [{ type: 'text', text: 'ok' }]
-    }))
+    const wrapped = withAuditLog(
+      auditCfg({ maxBytes: 100, keep: 2 }),
+      'm365_email_message_delete',
+      'destructive',
+      async () => ({
+        content: [{ type: 'text', text: 'ok' }]
+      })
+    )
     for (let i = 0; i < 6; i++) await wrapped({ idx: i })
     await new Promise((r) => setTimeout(r, 50))
     // The append still succeeds; rotation failure is swallowed.

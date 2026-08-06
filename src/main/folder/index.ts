@@ -4,7 +4,13 @@
  */
 export { handleCreateFolder } from './create.js'
 export { handleDeleteFolder } from './delete.js'
-export { fetchFoldersRecursive, getAllFolders, getFolderIdByName, resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
+export {
+  fetchFoldersRecursive,
+  getAllFolders,
+  getFolderIdByName,
+  resolveFolderPath,
+  WELL_KNOWN_FOLDERS
+} from './folder-utils.js'
 export { type FolderListResult, folderListResultSchema, handleListFolders } from './list.js'
 export { handleMoveEmails } from './move.js'
 export { handleRenameFolder } from './rename.js'

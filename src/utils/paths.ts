@@ -34,7 +34,8 @@ import path from 'node:path'
 export const expandHome = (target: string): string => {
   const trimmed = target.trim()
   if (trimmed === '~') return os.homedir()
-  if (trimmed.startsWith(`~${path.sep}`) || trimmed.startsWith('~/')) return path.resolve(os.homedir(), trimmed.slice(2))
+  if (trimmed.startsWith(`~${path.sep}`) || trimmed.startsWith('~/'))
+    return path.resolve(os.homedir(), trimmed.slice(2))
   return path.resolve(trimmed)
 }
 
@@ -50,7 +51,8 @@ export const parseRoots = (raw: string | undefined): string[] => {
 }
 
 /** Is `candidate` the same as `root`, or beneath it? Compares resolved paths, never raw strings. */
-const isWithin = (root: string, candidate: string): boolean => candidate === root || candidate.startsWith(root + path.sep)
+const isWithin = (root: string, candidate: string): boolean =>
+  candidate === root || candidate.startsWith(root + path.sep)
 
 /**
  * Resolve `target` through `realpath`, walking up to the deepest ancestor that
@@ -80,9 +82,15 @@ export const realpathOfNearestExisting = async (target: string): Promise<string>
  * `purpose` appears in the error so a refusal says which path was rejected and
  * what it was for, without echoing any file contents.
  */
-export const assertWithinRoots = async (roots: readonly string[], candidate: string, purpose: string): Promise<string> => {
+export const assertWithinRoots = async (
+  roots: readonly string[],
+  candidate: string,
+  purpose: string
+): Promise<string> => {
   if (roots.length === 0) {
-    throw new Error(`Refusing to access the ${purpose}: no roots are configured. Set MCP_M365_TRIAGE_ROOTS to the directories the engine may use.`)
+    throw new Error(
+      `Refusing to access the ${purpose}: no roots are configured. Set MCP_M365_TRIAGE_ROOTS to the directories the engine may use.`
+    )
   }
 
   const lexical = expandHome(candidate)
@@ -91,7 +99,9 @@ export const assertWithinRoots = async (roots: readonly string[], candidate: str
 
   const allowed = roots.some((root, index) => isWithin(root, lexical) && isWithin(realRoots[index] as string, real))
   if (!allowed) {
-    throw new Error(`Refusing to access the ${purpose} at "${candidate}": it resolves outside the configured roots (${roots.join(', ')}).`)
+    throw new Error(
+      `Refusing to access the ${purpose} at "${candidate}": it resolves outside the configured roots (${roots.join(', ')}).`
+    )
   }
   return real
 }

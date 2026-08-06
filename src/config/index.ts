@@ -74,11 +74,13 @@ export const M365_DEFAULT_SCOPES = [
 
 export const GRAPH_API_ENDPOINT = 'https://graph.microsoft.com/v1.0/'
 
-export const EMAIL_SELECT_FIELDS = 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead'
+export const EMAIL_SELECT_FIELDS =
+  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,bodyPreview,hasAttachments,importance,isRead'
 export const EMAIL_DETAIL_FIELDS =
   'id,subject,from,toRecipients,ccRecipients,bccRecipients,receivedDateTime,bodyPreview,body,hasAttachments,importance,isRead,internetMessageHeaders'
 
-export const CALENDAR_SELECT_FIELDS = 'id,subject,bodyPreview,start,end,location,organizer,attendees,isAllDay,isCancelled'
+export const CALENDAR_SELECT_FIELDS =
+  'id,subject,bodyPreview,start,end,location,organizer,attendees,isAllDay,isCancelled'
 
 export const DEFAULT_LIST_SIZE = 10
 export const DEFAULT_PAGE_SIZE = 50
@@ -244,10 +246,16 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     auditLogPath: env.MCP_M365_AUDIT_LOG_PATH?.trim()
       ? path.resolve(env.MCP_M365_AUDIT_LOG_PATH.trim())
       : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
-    auditLogMaxBytes: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_MAX_BYTES, 10 * 1024 * 1024, 'MCP_M365_AUDIT_LOG_MAX_BYTES'),
+    auditLogMaxBytes: parseNonNegativeInt(
+      env.MCP_M365_AUDIT_LOG_MAX_BYTES,
+      10 * 1024 * 1024,
+      'MCP_M365_AUDIT_LOG_MAX_BYTES'
+    ),
     auditLogKeep: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP'),
     triageRoots,
-    triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_TRACKING_PATH) : defaultTrackingPath(triageRoots),
+    triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim()
+      ? expandHome(env.MCP_M365_TRIAGE_TRACKING_PATH)
+      : defaultTrackingPath(triageRoots),
     triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : ''
   }
 }

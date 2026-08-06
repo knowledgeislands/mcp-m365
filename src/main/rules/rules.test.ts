@@ -262,8 +262,12 @@ describe('handleEditRuleSequence', () => {
 
   it('rejects when sequence is missing or non-positive', async () => {
     expect((await handleEditRuleSequence(ctx, { ruleName: 'X' })).content[0].text).toMatch(/positive sequence/)
-    expect((await handleEditRuleSequence(ctx, { ruleName: 'X', sequence: 0 })).content[0].text).toMatch(/positive sequence/)
-    expect((await handleEditRuleSequence(ctx, { ruleName: 'X', sequence: -5 })).content[0].text).toMatch(/positive sequence/)
+    expect((await handleEditRuleSequence(ctx, { ruleName: 'X', sequence: 0 })).content[0].text).toMatch(
+      /positive sequence/
+    )
+    expect((await handleEditRuleSequence(ctx, { ruleName: 'X', sequence: -5 })).content[0].text).toMatch(
+      /positive sequence/
+    )
   })
 
   it('reports not-found when no rule matches the name', async () => {
@@ -278,9 +282,15 @@ describe('handleEditRuleSequence', () => {
     mockCallGraphAPI.mockResolvedValueOnce({ value: [{ id: 'r1', displayName: 'Triage', sequence: 100 }] })
     mockCallGraphAPI.mockResolvedValueOnce({})
     const r = await handleEditRuleSequence(ctx, { ruleName: 'Triage', sequence: 50 })
-    expect(mockCallGraphAPI).toHaveBeenLastCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/mailFolders/inbox/messageRules/r1', {
-      sequence: 50
-    })
+    expect(mockCallGraphAPI).toHaveBeenLastCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'PATCH',
+      'me/mailFolders/inbox/messageRules/r1',
+      {
+        sequence: 50
+      }
+    )
     expect(r.content[0].text).toMatch(/Successfully updated/)
   })
 

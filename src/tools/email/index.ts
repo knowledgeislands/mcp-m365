@@ -46,8 +46,14 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to delete'),
-          permanent: z.boolean().optional().describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+          permanent: z
+            .boolean()
+            .optional()
+            .describe('If true, permanently delete the email instead of moving to Deleted Items. Default: false'),
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
       annotations: DESTRUCTIVE_REMOTE
@@ -63,7 +69,12 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       inputSchema: z
         .object({
           id: graphIdSchema.describe('ID of the email to read'),
-          includeRawHtml: z.boolean().optional().describe('Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)')
+          includeRawHtml: z
+            .boolean()
+            .optional()
+            .describe(
+              'Include raw HTML content (UNSAFE - for debugging only, may contain hidden prompt injection content)'
+            )
         })
         .strict(),
       annotations: READ_ONLY_REMOTE
@@ -100,7 +111,9 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           isHtml: z
             .boolean()
             .optional()
-            .describe('Set to true to send as HTML, false for plain text. If not specified, auto-detects based on <html> tag presence.'),
+            .describe(
+              'Set to true to send as HTML, false for plain text. If not specified, auto-detects based on <html> tag presence.'
+            ),
           importance: z.enum(['normal', 'high', 'low']).optional().describe('Email importance (normal, high, low)'),
           saveToSentItems: z.boolean().optional().describe('Whether to save the email to sent items')
         })
@@ -119,10 +132,25 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           folder: z
             .string()
             .optional()
-            .describe("Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
-          count: z.number().int().positive().max(1000).optional().describe('Number of emails to retrieve (default: 10, max: 1000)'),
-          includeCount: z.boolean().optional().describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
+            .describe(
+              "Email folder to list. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"
+            ),
+          folderId: graphIdSchema
+            .optional()
+            .describe(
+              'Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'
+            ),
+          count: z
+            .number()
+            .int()
+            .positive()
+            .max(1000)
+            .optional()
+            .describe('Number of emails to retrieve (default: 10, max: 1000)'),
+          includeCount: z
+            .boolean()
+            .optional()
+            .describe('Include total matching count from Microsoft Graph (@odata.count). Default: false')
         })
         .strict(),
       outputSchema: emailListResultSchema,
@@ -141,16 +169,34 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           folder: z
             .string()
             .optional()
-            .describe("Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"),
-          folderId: graphIdSchema.optional().describe('Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'),
+            .describe(
+              "Email folder to search in. Use well-known names like 'inbox' or a full custom path like 'Top/Sub' (default: 'inbox')"
+            ),
+          folderId: graphIdSchema
+            .optional()
+            .describe(
+              'Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'
+            ),
           from: z.string().optional().describe('Filter by sender email address or name'),
           to: z.string().optional().describe('Filter by recipient email address or name'),
           subject: z.string().optional().describe('Filter by email subject'),
           hasAttachments: z.boolean().optional().describe('Filter to only emails with attachments'),
           unreadOnly: z.boolean().optional().describe('Filter to only unread emails'),
-          receivedAfter: z.string().optional().describe('Filter to emails received on or after this ISO 8601 timestamp'),
-          receivedBefore: z.string().optional().describe('Filter to emails received on or before this ISO 8601 timestamp'),
-          count: z.number().int().positive().max(1000).optional().describe('Number of results to return (default: 10, max: 1000)')
+          receivedAfter: z
+            .string()
+            .optional()
+            .describe('Filter to emails received on or after this ISO 8601 timestamp'),
+          receivedBefore: z
+            .string()
+            .optional()
+            .describe('Filter to emails received on or before this ISO 8601 timestamp'),
+          count: z
+            .number()
+            .int()
+            .positive()
+            .max(1000)
+            .optional()
+            .describe('Number of results to return (default: 10, max: 1000)')
         })
         .strict(),
       outputSchema: emailSearchResultSchema,

@@ -146,7 +146,9 @@ describe('handleSearchEmails', () => {
   test('returns detailed error info including source and context', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated.mockRejectedValue(new Error('API call failed with status 400: {"error":{"code":"BadRequest"}}'))
+    mockCallGraphAPIPaginated.mockRejectedValue(
+      new Error('API call failed with status 400: {"error":{"code":"BadRequest"}}')
+    )
 
     const result = await handleSearchEmails(ctx, { query: 'release', count: 10 })
 
@@ -286,7 +288,11 @@ describe('handleSearchEmails', () => {
 
     await handleSearchEmails(ctx, { count: 10 })
 
-    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $orderby?: string; $filter?: string; $search?: string }
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as {
+      $orderby?: string
+      $filter?: string
+      $search?: string
+    }
     expect(params.$orderby).toBe('receivedDateTime desc')
     expect(params.$filter).toBeUndefined()
     expect(params.$search).toBeUndefined()
@@ -311,7 +317,11 @@ describe('handleSearchEmails', () => {
 
     expect(result.isError).toBe(true)
     expect(result.content[0].text).toContain("'m365_auth_start'")
-    expect(result.structuredContent).toMatchObject({ type: 'email-search', success: false, error: 'Authentication required' })
+    expect(result.structuredContent).toMatchObject({
+      type: 'email-search',
+      success: false,
+      error: 'Authentication required'
+    })
   })
 })
 

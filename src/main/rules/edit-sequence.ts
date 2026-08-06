@@ -26,9 +26,15 @@ export const handleEditRuleSequence = async (ctx: GraphContext, args: any): Prom
       return errorText(`Rule with name "${ruleName}" not found.`)
     }
 
-    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', `me/mailFolders/inbox/messageRules/${encodeURIComponent(rule.id)}`, {
-      sequence
-    })
+    await callGraphAPI(
+      ctx.graphApiEndpoint,
+      accessToken,
+      'PATCH',
+      `me/mailFolders/inbox/messageRules/${encodeURIComponent(rule.id)}`,
+      {
+        sequence
+      }
+    )
 
     return {
       content: [

@@ -52,7 +52,9 @@ describe('identity', () => {
   })
 
   it('derives the same key from a stored entry', () => {
-    expect(entryKey(entry())).toBe(identityKey({ subject: 'Subject', from: 'a@example.com', received: '2026-08-01T09:00:00Z' }))
+    expect(entryKey(entry())).toBe(
+      identityKey({ subject: 'Subject', from: 'a@example.com', received: '2026-08-01T09:00:00Z' })
+    )
   })
 })
 
@@ -215,7 +217,12 @@ describe('pruneOlderThan', () => {
 
   it('drops entries routed outside the window', () => {
     const { kept, pruned } = pruneOlderThan(
-      { entries: [entry({ routed_at: '2026-07-01T09:00:00Z' }), entry({ subject: 'recent', routed_at: '2026-08-05T09:00:00Z' })] },
+      {
+        entries: [
+          entry({ routed_at: '2026-07-01T09:00:00Z' }),
+          entry({ subject: 'recent', routed_at: '2026-08-05T09:00:00Z' })
+        ]
+      },
       21,
       now
     )
@@ -271,7 +278,10 @@ describe('sweepPending', () => {
 describe('sweep persistence', () => {
   it('round-trips the sweep marker through the file', async () => {
     const file = path.join(dir, 'tracking.json5')
-    await writeTracking(file, { entries: [entry({ scanned_at: '2026-08-06T08:00:00Z' })], sweep: { started_at: '2026-08-06T07:00:00Z' } })
+    await writeTracking(file, {
+      entries: [entry({ scanned_at: '2026-08-06T08:00:00Z' })],
+      sweep: { started_at: '2026-08-06T07:00:00Z' }
+    })
     const read = await readTracking(file)
     expect(read?.sweep).toEqual({ started_at: '2026-08-06T07:00:00Z' })
     expect(read?.entries[0]?.scanned_at).toBe('2026-08-06T08:00:00Z')

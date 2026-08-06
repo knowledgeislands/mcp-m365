@@ -2,7 +2,15 @@ import type { Mock } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import { callGraphAPI } from '../graph-client/index.js'
-import { applyActions, buildFolderMap, childPaths, findMessage, hasExecutableActions, listFolderMessages, resolveMessageId } from './graph-ops.js'
+import {
+  applyActions,
+  buildFolderMap,
+  childPaths,
+  findMessage,
+  hasExecutableActions,
+  listFolderMessages,
+  resolveMessageId
+} from './graph-ops.js'
 import type { EmailRecord } from './types.js'
 
 vi.mock('../graph-client/index.js', () => ({ callGraphAPI: vi.fn() }))
@@ -96,7 +104,9 @@ describe('findMessage — identity, not id', () => {
   })
 
   it('rejects a cached id that now points at a different message', async () => {
-    mockCall.mockResolvedValueOnce(graphMessage({ subject: 'Something else' })).mockResolvedValueOnce({ value: [graphMessage({ id: 'msg-2' })] })
+    mockCall
+      .mockResolvedValueOnce(graphMessage({ subject: 'Something else' }))
+      .mockResolvedValueOnce({ value: [graphMessage({ id: 'msg-2' })] })
     expect(await resolveMessageId(ctx, TOKEN, record({ id: 'msg-1' }))).toBe('msg-2')
   })
 
@@ -151,14 +161,23 @@ describe('applyActions', () => {
 
   it('refuses to act when the message can no longer be identified', async () => {
     mockCall.mockResolvedValue({ value: [] })
-    const { applied, resolvedId } = await applyActions(ctx, TOKEN, record(), [{ kind: 'move', value: '111 Partner' }], await withMap())
+    const { applied, resolvedId } = await applyActions(
+      ctx,
+      TOKEN,
+      record(),
+      [{ kind: 'move', value: '111 Partner' }],
+      await withMap()
+    )
     expect(resolvedId).toBeNull()
     expect(applied[0]).toMatchObject({ action: 'resolve', ok: false })
   })
 
   it('moves a message and threads the reissued id into the actions that follow', async () => {
     const map = await withMap()
-    mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ id: 'msg-after-move' }).mockResolvedValueOnce({})
+    mockCall
+      .mockResolvedValueOnce(graphMessage())
+      .mockResolvedValueOnce({ id: 'msg-after-move' })
+      .mockResolvedValueOnce({})
 
     const { applied } = await applyActions(
       ctx,
@@ -175,8 +194,12 @@ describe('applyActions', () => {
       { action: 'move:_TRIAGE/111 Partner', ok: true },
       { action: 'mark:read', ok: true }
     ])
-    expect(mockCall).toHaveBeenNthCalledWith(2, GRAPH_API_ENDPOINT, TOKEN, 'POST', 'me/messages/msg-1/move', { destinationId: 'emerge-id' })
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-after-move', { isRead: true })
+    expect(mockCall).toHaveBeenNthCalledWith(2, GRAPH_API_ENDPOINT, TOKEN, 'POST', 'me/messages/msg-1/move', {
+      destinationId: 'emerge-id'
+    })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-after-move', {
+      isRead: true
+    })
   })
 
   it('keeps the original id when the move response carries none', async () => {
@@ -191,7 +214,9 @@ describe('applyActions', () => {
       ],
       await withMap()
     )
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', { isRead: true })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
+      isRead: true
+    })
   })
 
   it('stops when the destination folder does not exist', async () => {
@@ -206,7 +231,9 @@ describe('applyActions', () => {
       ],
       await withMap()
     )
-    expect(applied).toEqual([{ action: 'move:_TRIAGE/Nowhere', ok: false, detail: 'destination folder does not exist' }])
+    expect(applied).toEqual([
+      { action: 'move:_TRIAGE/Nowhere', ok: false, detail: 'destination folder does not exist' }
+    ])
   })
 
   it.each([
@@ -226,7 +253,9 @@ describe('applyActions', () => {
       .mockResolvedValueOnce({ categories: ['Existing'] })
       .mockResolvedValueOnce({})
     await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'tag', value: 'Partner' }], await withMap())
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', { categories: ['Existing', 'Partner'] })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
+      categories: ['Existing', 'Partner']
+    })
   })
 
   it('does not add a category twice', async () => {
@@ -235,13 +264,17 @@ describe('applyActions', () => {
       .mockResolvedValueOnce({ categories: ['Partner'] })
       .mockResolvedValueOnce({})
     await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'tag', value: 'Partner' }], await withMap())
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', { categories: ['Partner'] })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
+      categories: ['Partner']
+    })
   })
 
   it('tolerates a message with no categories field', async () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({}).mockResolvedValueOnce({})
     await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'tag', value: 'X' }], await withMap())
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', { categories: ['X'] })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
+      categories: ['X']
+    })
   })
 
   it('deletes', async () => {
@@ -253,13 +286,25 @@ describe('applyActions', () => {
 
   it('skips suggest, which has no mailbox effect', async () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ id: 'msg-2' })
-    const { applied } = await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'move', value: '000 Unknown' }, { kind: 'suggest' }], await withMap())
+    const { applied } = await applyActions(
+      ctx,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [{ kind: 'move', value: '000 Unknown' }, { kind: 'suggest' }],
+      await withMap()
+    )
     expect(applied).toEqual([{ action: 'move:_TRIAGE/000 Unknown', ok: true }])
   })
 
   it('records a Graph failure and stops rather than pressing on', async () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockRejectedValueOnce(new Error('rate limited'))
-    const { applied } = await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'mark', value: 'read' }, { kind: 'delete' }], await withMap())
+    const { applied } = await applyActions(
+      ctx,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [{ kind: 'mark', value: 'read' }, { kind: 'delete' }],
+      await withMap()
+    )
     expect(applied).toEqual([{ action: 'mark', ok: false, detail: 'rate limited' }])
   })
 

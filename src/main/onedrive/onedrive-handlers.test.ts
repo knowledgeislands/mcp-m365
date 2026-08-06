@@ -50,7 +50,14 @@ describe('handleListFiles', () => {
       ]
     })
     const r = await handleListFiles(ctx, {})
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/drive/root/children', null, expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      'me/drive/root/children',
+      null,
+      expect.any(Object)
+    )
     expect(r.content[0].text).toContain('Found 2 items in root')
     expect(r.content[0].text).toContain('[FOLDER]')
     expect(r.content[0].text).toContain('[FILE]')
@@ -58,9 +65,18 @@ describe('handleListFiles', () => {
 
   it('lists by path', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({ value: [{ id: 'x', name: 'x.txt', size: 0, lastModifiedDateTime: '2026-01-01T00:00:00Z' }] })
+    mockCallGraphAPI.mockResolvedValue({
+      value: [{ id: 'x', name: 'x.txt', size: 0, lastModifiedDateTime: '2026-01-01T00:00:00Z' }]
+    })
     await handleListFiles(ctx, { path: '/Documents/' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/drive/root:/Documents:/children', null, expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      'me/drive/root:/Documents:/children',
+      null,
+      expect.any(Object)
+    )
   })
 
   it('reports empty when value is empty', async () => {
@@ -104,7 +120,14 @@ describe('handleSearchFiles', () => {
       ]
     })
     const r = await handleSearchFiles(ctx, { query: 'spec' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', "me/drive/search(q='spec')", null, expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      "me/drive/search(q='spec')",
+      null,
+      expect.any(Object)
+    )
     expect(r.content[0].text).toContain('Found 1 items matching "spec"')
     expect(r.content[0].text).toContain('Path: /Documents')
   })
@@ -152,7 +175,12 @@ describe('handleDownload', () => {
 
   it('returns the download URL by itemId', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({ id: 'a', name: 'doc.md', size: 100, '@microsoft.graph.downloadUrl': 'https://blob/x' })
+    mockCallGraphAPI.mockResolvedValue({
+      id: 'a',
+      name: 'doc.md',
+      size: 100,
+      '@microsoft.graph.downloadUrl': 'https://blob/x'
+    })
     const r = await handleDownload(ctx, { itemId: 'a' })
     expect(r.content[0].text).toContain('Download URL for "doc.md"')
     expect(r.content[0].text).toContain('https://blob/x')
@@ -160,9 +188,21 @@ describe('handleDownload', () => {
 
   it('returns the download URL by path', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({ id: 'a', name: 'x.txt', size: 0, '@microsoft.graph.downloadUrl': 'https://blob/y' })
+    mockCallGraphAPI.mockResolvedValue({
+      id: 'a',
+      name: 'x.txt',
+      size: 0,
+      '@microsoft.graph.downloadUrl': 'https://blob/y'
+    })
     await handleDownload(ctx, { path: '/x.txt' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/drive/root:/x.txt', null, expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      'me/drive/root:/x.txt',
+      null,
+      expect.any(Object)
+    )
   })
 
   it('reports a folder is not directly downloadable', async () => {
@@ -221,9 +261,16 @@ describe('handleUpload', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'i', name: 'a.txt', size: 5, webUrl: 'https://x' })
     const r = await handleUpload(ctx, { path: '/a.txt', content: 'hello' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PUT', 'me/drive/root:/a.txt:/content', 'hello', {
-      '@microsoft.graph.conflictBehavior': 'rename'
-    })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'PUT',
+      'me/drive/root:/a.txt:/content',
+      'hello',
+      {
+        '@microsoft.graph.conflictBehavior': 'rename'
+      }
+    )
     expect(r.content[0].text).toMatch(/Successfully uploaded/)
   })
 
@@ -320,7 +367,13 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     const r = await handleCreateFolder(ctx, { name: 'New' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root/children', expect.objectContaining({ name: 'New' }))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'POST',
+      'me/drive/root/children',
+      expect.objectContaining({ name: 'New' })
+    )
     expect(r.content[0].text).toMatch(/Successfully created folder/)
   })
 
@@ -328,7 +381,13 @@ describe('handleCreateFolder (onedrive)', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'f', name: 'New', webUrl: 'https://x' })
     await handleCreateFolder(ctx, { name: 'New', path: '/Documents' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/drive/root:/Documents:/children', expect.any(Object))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'POST',
+      'me/drive/root:/Documents:/children',
+      expect.any(Object)
+    )
   })
 
   it('reports failure when no id is returned', async () => {
@@ -434,10 +493,12 @@ const mockChunkPutOnce = (opts: { statusCode: number; body?: string; emitNetwork
       res.emit('end')
     })
   }
-  ;(https.request as unknown as Mock).mockImplementationOnce((_url: string, _options: object, callback: (r: typeof res) => void) => {
-    callback(res)
-    return req
-  })
+  ;(https.request as unknown as Mock).mockImplementationOnce(
+    (_url: string, _options: object, callback: (r: typeof res) => void) => {
+      callback(res)
+      return req
+    }
+  )
 }
 
 describe('handleUploadLarge', () => {
@@ -455,7 +516,10 @@ describe('handleUploadLarge', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ uploadUrl: 'https://upload/x' })
     // The chunk size is large (~3MB) so a small content uploads in a single chunk
-    mockChunkPutOnce({ statusCode: 201, body: JSON.stringify({ id: 'i', name: 'f.bin', size: 5, webUrl: 'https://x' }) })
+    mockChunkPutOnce({
+      statusCode: 201,
+      body: JSON.stringify({ id: 'i', name: 'f.bin', size: 5, webUrl: 'https://x' })
+    })
     const r = await handleUploadLarge(ctx, { path: '/big.bin', content: 'hello' })
     expect(r.content[0].text).toMatch(/Successfully uploaded/)
   })
@@ -502,7 +566,10 @@ describe('handleUploadLarge', () => {
   it('renders a 0 B size for an empty large upload', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ uploadUrl: 'https://upload/x' })
-    mockChunkPutOnce({ statusCode: 201, body: JSON.stringify({ id: 'i', name: 'f.bin', size: 0, webUrl: 'https://x' }) })
+    mockChunkPutOnce({
+      statusCode: 201,
+      body: JSON.stringify({ id: 'i', name: 'f.bin', size: 0, webUrl: 'https://x' })
+    })
     const r = await handleUploadLarge(ctx, { path: '/big.bin', content: 'hello' })
     expect(r.content[0].text).toContain('(0 B)')
   })

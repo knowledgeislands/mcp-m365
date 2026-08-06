@@ -37,7 +37,10 @@ export const registerFolderTools = (server: McpServer, ctx: GraphContext): void 
       inputSchema: z
         .object({
           folder: z.string().min(1).describe("Folder to delete. Use a full custom path like 'Top/Sub'"),
-          dry_run: z.boolean().optional().describe('Preview only; do not delete. Default true — pass false to actually delete.')
+          dry_run: z
+            .boolean()
+            .optional()
+            .describe('Preview only; do not delete. Default true — pass false to actually delete.')
         })
         .strict(),
       annotations: DESTRUCTIVE_REMOTE

@@ -76,7 +76,14 @@ describe('handleListFolders', () => {
   it('formats item counts when includeItemCounts=true', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockFetchFoldersRecursive.mockResolvedValue([
-      { id: 'i1', displayName: 'Inbox', parentFolderId: null, childFolderCount: 0, totalItemCount: 12, unreadItemCount: 3 }
+      {
+        id: 'i1',
+        displayName: 'Inbox',
+        parentFolderId: null,
+        childFolderCount: 0,
+        totalItemCount: 12,
+        unreadItemCount: 3
+      }
     ])
     const r = await handleListFolders(ctx, { includeItemCounts: true })
     expect(r.content[0].text).toContain('12 items')
@@ -162,7 +169,14 @@ describe('handleListFolders', () => {
   it('renders a hierarchy with item counts and promotes orphans to the root', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockFetchFoldersRecursive.mockResolvedValue([
-      { id: 'p', displayName: 'Parent', parentFolderId: 'root', childFolderCount: 1, totalItemCount: 5, unreadItemCount: 2 },
+      {
+        id: 'p',
+        displayName: 'Parent',
+        parentFolderId: 'root',
+        childFolderCount: 1,
+        totalItemCount: 5,
+        unreadItemCount: 2
+      },
       { id: 'c', displayName: 'Child', parentFolderId: 'p', totalItemCount: 1, unreadItemCount: 0 },
       // Orphan: not top-level but its parent id is absent from the set → root.
       { id: 'o', displayName: 'Orphan', parentFolderId: 'ghost', totalItemCount: 0, unreadItemCount: 0 }
@@ -201,7 +215,9 @@ describe('handleCreateFolder', () => {
     mockGetFolderIdByName.mockResolvedValueOnce(null)
     mockCallGraphAPI.mockResolvedValue({ id: 'new-id' })
     const r = await handleCreateFolder(ctx, { name: 'Brand New' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/mailFolders', { displayName: 'Brand New' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/mailFolders', {
+      displayName: 'Brand New'
+    })
     expect(r.content[0].text).toMatch(/Successfully created folder "Brand New" at the root level/)
   })
 
@@ -211,9 +227,15 @@ describe('handleCreateFolder', () => {
     mockGetFolderIdByName.mockResolvedValueOnce('parent-id')
     mockCallGraphAPI.mockResolvedValue({ id: 'new-id' })
     const r = await handleCreateFolder(ctx, { name: 'Sub', parentFolder: 'Parent' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/mailFolders/parent-id/childFolders', {
-      displayName: 'Sub'
-    })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'POST',
+      'me/mailFolders/parent-id/childFolders',
+      {
+        displayName: 'Sub'
+      }
+    )
     expect(r.content[0].text).toMatch(/inside "Parent"/)
   })
 
@@ -332,7 +354,9 @@ describe('handleRenameFolder', () => {
     mockGetFolderIdByName.mockResolvedValue('id-1')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleRenameFolder(ctx, { folder: 'Old', newName: 'New' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/mailFolders/id-1', { displayName: 'New' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/mailFolders/id-1', {
+      displayName: 'New'
+    })
     expect(r.content[0].text).toMatch(/renamed folder "Old" to "New"/)
   })
 

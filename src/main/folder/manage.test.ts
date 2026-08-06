@@ -34,9 +34,15 @@ describe('folder management handlers', () => {
     const result = await handleRenameFolder(ctx, { folder: 'Projects/2024', newName: '2025' })
 
     consoleErrorSpy.mockRestore()
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'PATCH', 'me/mailFolders/folder-123', {
-      displayName: '2025'
-    })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      mockAccessToken,
+      'PATCH',
+      'me/mailFolders/folder-123',
+      {
+        displayName: '2025'
+      }
+    )
     expect(result.content[0].text).toContain('Successfully renamed folder')
   })
 
@@ -47,7 +53,12 @@ describe('folder management handlers', () => {
 
     const result = await handleDeleteFolder(ctx, { folder: 'Projects/2024', dry_run: false })
 
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, mockAccessToken, 'DELETE', 'me/mailFolders/folder-456')
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      mockAccessToken,
+      'DELETE',
+      'me/mailFolders/folder-456'
+    )
     expect(result.content[0].text).toContain('Successfully deleted folder')
   })
 

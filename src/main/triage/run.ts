@@ -19,7 +19,14 @@ import { assertWithinRoots } from '../../utils/paths.js'
 import { errorResult, errorText } from '../../utils/results.js'
 import type { TriageContext } from './context.js'
 import { resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
-import { applyActions, buildFolderMap, childPaths, type FolderMap, hasExecutableActions, listFolderMessages } from './graph-ops.js'
+import {
+  applyActions,
+  buildFolderMap,
+  childPaths,
+  type FolderMap,
+  hasExecutableActions,
+  listFolderMessages
+} from './graph-ops.js'
 import { type LintFinding, lintRules } from './lint.js'
 import { classify } from './matcher.js'
 import { toEmailRecord } from './message.js'
@@ -51,18 +58,24 @@ const MAX_RULES_BYTES = 1024 * 1024
  * back in a lint finding's `source` line. Read failures report the failure and
  * never the contents.
  */
-const resolveRules = async (ctx: TriageContext, args: { rules?: string; rulesPath?: string }): Promise<{ rules: string } | { error: string }> => {
+const resolveRules = async (
+  ctx: TriageContext,
+  args: { rules?: string; rulesPath?: string }
+): Promise<{ rules: string } | { error: string }> => {
   if (typeof args.rules === 'string' && args.rules.trim()) return { rules: args.rules }
 
   const candidate = args.rulesPath?.trim() || ctx.rulesPath
   if (!candidate) {
-    return { error: 'No rules supplied — pass `rules`, pass `rulesPath`, or set MCP_M365_TRIAGE_RULES_PATH to the rule note.' }
+    return {
+      error: 'No rules supplied — pass `rules`, pass `rulesPath`, or set MCP_M365_TRIAGE_RULES_PATH to the rule note.'
+    }
   }
 
   try {
     const file = await assertWithinRoots(ctx.roots, candidate, 'rule file')
     const { size } = await fs.stat(file)
-    if (size > MAX_RULES_BYTES) return { error: `The rule file is ${size} bytes, over the ${MAX_RULES_BYTES}-byte limit.` }
+    if (size > MAX_RULES_BYTES)
+      return { error: `The rule file is ${size} bytes, over the ${MAX_RULES_BYTES}-byte limit.` }
     return { rules: await fs.readFile(file, 'utf8') }
   } catch (error) {
     return { error: `Could not read the rule file: ${errMessage(error)}` }
@@ -75,7 +88,10 @@ const resolveRules = async (ctx: TriageContext, args: { rules?: string; rulesPat
  * allowed path would otherwise fork the routing history silently, and that is
  * the kind of mistake you notice a week late.
  */
-const resolveTrackingPath = async (ctx: TriageContext, args: { trackingPath?: string }): Promise<{ path: string } | { error: string }> => {
+const resolveTrackingPath = async (
+  ctx: TriageContext,
+  args: { trackingPath?: string }
+): Promise<{ path: string } | { error: string }> => {
   const candidate = args.trackingPath?.trim() || ctx.trackingPath
   if (!candidate) {
     return { error: 'No tracking cache configured — pass `trackingPath`, or set MCP_M365_TRIAGE_TRACKING_PATH.' }
@@ -130,7 +146,8 @@ const describeDestination = (actions: readonly Action[]): string => {
 
 const leafOf = (destination: string): string => destination.slice(destination.lastIndexOf('/') + 1)
 
-const formatFinding = (finding: LintFinding): string => `L${finding.line} [${finding.severity}] ${finding.code}: ${finding.message}`
+const formatFinding = (finding: LintFinding): string =>
+  `L${finding.line} [${finding.severity}] ${finding.code}: ${finding.message}`
 
 /** One message's worth of work, before anything is executed. */
 interface Candidate {
@@ -148,7 +165,10 @@ const summarise = (result: TriageRunResult): string => {
   ]
   if (result.unmatched > 0) lines.push(`${result.unmatched} message(s) matched no rule — check the fallback.`)
   for (const item of result.items) {
-    const outcome = item.applied.length === 0 ? 'pending' : item.applied.map((a) => `${a.action}${a.ok ? '' : ` FAILED (${a.detail})`}`).join(', ')
+    const outcome =
+      item.applied.length === 0
+        ? 'pending'
+        : item.applied.map((a) => `${a.action}${a.ok ? '' : ` FAILED (${a.detail})`}`).join(', ')
     lines.push(`- "${item.subject}" <${item.from}> → ${item.destination} [${item.ruleset}] ${outcome}`)
   }
   if (result.warnings.length > 0) {
@@ -167,7 +187,11 @@ const runPass = async (
   ctx: TriageContext,
   args: { rules?: string; rulesPath?: string; trackingPath?: string; mode?: string; maxActions?: number },
   blockLabel: 'inbound' | 'aged',
-  collect: (accessToken: string, map: FolderMap, limit: number) => Promise<{ records: EmailRecord[]; truncated: boolean }>
+  collect: (
+    accessToken: string,
+    map: FolderMap,
+    limit: number
+  ) => Promise<{ records: EmailRecord[]; truncated: boolean }>
 ): Promise<any> => {
   const mode = args.mode === 'live' ? 'live' : 'report'
   const maxActions = args.maxActions ?? 50
@@ -179,7 +203,9 @@ const runPass = async (
   const findings = lintRules(parsed, { requireFallbackIn: blockLabel === 'inbound' ? ['inbound'] : [] })
   const blocking = findings.filter((finding) => BLOCKING_CODES.has(finding.code))
   if (blocking.length > 0) {
-    return errorText(`Refusing to run — the rule file has ${blocking.length} blocking problem(s):\n${blocking.map(formatFinding).join('\n')}`)
+    return errorText(
+      `Refusing to run — the rule file has ${blocking.length} blocking problem(s):\n${blocking.map(formatFinding).join('\n')}`
+    )
   }
 
   const selected = selectBlock(parsed, blockLabel)
@@ -204,7 +230,12 @@ const runPass = async (
       continue
     }
     if (!hasExecutableActions(match.rule.actions)) continue
-    candidates.push({ record, rule: match.rule, ruleset: match.ruleset, destination: describeDestination(match.rule.actions) })
+    candidates.push({
+      record,
+      rule: match.rule,
+      ruleset: match.ruleset,
+      destination: describeDestination(match.rule.actions)
+    })
   }
 
   const batch = candidates.slice(0, maxActions)
@@ -213,7 +244,10 @@ const runPass = async (
   const routedAt = now.toISOString()
 
   for (const candidate of batch) {
-    const applied = mode === 'live' ? (await applyActions(ctx, accessToken, candidate.record, candidate.rule.actions, map)).applied : []
+    const applied =
+      mode === 'live'
+        ? (await applyActions(ctx, accessToken, candidate.record, candidate.rule.actions, map)).applied
+        : []
     items.push({
       subject: candidate.record.subject,
       from: candidate.record.from,
@@ -272,7 +306,10 @@ export const handleTriageRun = async (ctx: TriageContext, args: any): Promise<an
       const inboxId = map.idByPath.get('inbox')
       if (!inboxId) return { records: [], truncated: false }
       const messages = await listFolderMessages(ctx, accessToken, inboxId, limit)
-      return { records: messages.slice(0, limit - 1).map((message) => toEmailRecord(message)), truncated: messages.length >= limit }
+      return {
+        records: messages.slice(0, limit - 1).map((message) => toEmailRecord(message)),
+        truncated: messages.length >= limit
+      }
     })
   } catch (error) {
     return errorResult('running triage', error)
@@ -292,7 +329,8 @@ export const handleAgedRun = async (ctx: TriageContext, args: any): Promise<any>
         }
         const folderId = map.idByPath.get(folderPath.toLowerCase()) as string
         const messages = await listFolderMessages(ctx, accessToken, folderId, limit - records.length)
-        for (const message of messages) records.push(toEmailRecord(message, folderPath.slice(folderPath.lastIndexOf('/') + 1)))
+        for (const message of messages)
+          records.push(toEmailRecord(message, folderPath.slice(folderPath.lastIndexOf('/') + 1)))
       }
       if (records.length >= limit) {
         truncated = true
@@ -323,8 +361,12 @@ export const handleRulesLint = async (ctx: TriageContext, args: any): Promise<an
   const header =
     `Parsed blocks: ${blocks}. ` +
     `${findings.length} finding(s): ${counts.error ?? 0} error, ${counts.warning ?? 0} warning, ${counts.info ?? 0} info.` +
-    (knownFolders ? '' : '\nNote: no knownFolders supplied, so move targets were not checked against the folder taxonomy.')
+    (knownFolders
+      ? ''
+      : '\nNote: no knownFolders supplied, so move targets were not checked against the folder taxonomy.')
 
-  const detail = findings.map((finding) => `${formatFinding(finding)}${finding.source ? `\n    ${finding.source}` : ''}`)
+  const detail = findings.map(
+    (finding) => `${formatFinding(finding)}${finding.source ? `\n    ${finding.source}` : ''}`
+  )
   return { content: [{ type: 'text' as const, text: [header, ...detail].join('\n') }] }
 }

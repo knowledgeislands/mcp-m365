@@ -72,7 +72,10 @@ describe('handleListEvents', () => {
 
   it('rejects an invalid date range', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
-    const r = await handleListEvents(ctx, { startDateTime: '2026-05-10T00:00:00Z', endDateTime: '2026-05-01T00:00:00Z' })
+    const r = await handleListEvents(ctx, {
+      startDateTime: '2026-05-10T00:00:00Z',
+      endDateTime: '2026-05-01T00:00:00Z'
+    })
     expect(r.content[0].text).toMatch(/Invalid date range/)
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
   })
@@ -93,7 +96,9 @@ describe('handleListEvents', () => {
   it('formats events without timezone offsets and locations', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({
-      value: [{ id: 'e2', subject: 'Solo', start: '2026-05-09T09:00:00Z', end: '2026-05-09T09:30:00Z', bodyPreview: '' }]
+      value: [
+        { id: 'e2', subject: 'Solo', start: '2026-05-09T09:00:00Z', end: '2026-05-09T09:30:00Z', bodyPreview: '' }
+      ]
     })
     const r = await handleListEvents(ctx, {})
     expect(r.content[0].text).toContain('Location: No location')
@@ -145,7 +150,9 @@ describe('handleAcceptEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleAcceptEvent(ctx, { eventId: 'e1' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/accept', { comment: 'Accepted via API' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/accept', {
+      comment: 'Accepted via API'
+    })
     expect(r.content[0].text).toMatch(/successfully accepted/)
   })
 
@@ -153,7 +160,9 @@ describe('handleAcceptEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     await handleAcceptEvent(ctx, { eventId: 'e1', comment: 'see you' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/accept', { comment: 'see you' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/accept', {
+      comment: 'see you'
+    })
   })
 
   it('rejects when eventId is missing', async () => {
@@ -190,7 +199,9 @@ describe('handleCancelEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     await handleCancelEvent(ctx, { eventId: 'e1', comment: 'sick', dry_run: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/cancel', { comment: 'sick' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e1/cancel', {
+      comment: 'sick'
+    })
   })
 
   it('returns a [dry_run] preview without calling cancel by default', async () => {
@@ -199,7 +210,12 @@ describe('handleCancelEvent', () => {
     const r = await handleCancelEvent(ctx, { eventId: 'e1' })
     expect(r.content[0].text).toMatch(/^\[dry_run\] would cancel event e1: "Standup"/)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', expect.stringContaining('me/events/e1?'))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      expect.stringContaining('me/events/e1?')
+    )
   })
 
   it('rejects when eventId is missing', async () => {
@@ -237,7 +253,9 @@ describe('handleDeclineEvent', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     await handleDeclineEvent(ctx, { eventId: 'e2', comment: 'conflict', dry_run: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e2/decline', { comment: 'conflict' })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'POST', 'me/events/e2/decline', {
+      comment: 'conflict'
+    })
   })
 
   it('returns a [dry_run] preview without calling decline by default', async () => {
@@ -287,7 +305,12 @@ describe('handleDeleteEvent', () => {
     const r = await handleDeleteEvent(ctx, { eventId: 'e3' })
     expect(r.content[0].text).toMatch(/^\[dry_run\] would delete event e3: "Old"/)
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', expect.stringContaining('me/events/e3?'))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      expect.stringContaining('me/events/e3?')
+    )
   })
 
   it('rejects when eventId is missing', async () => {

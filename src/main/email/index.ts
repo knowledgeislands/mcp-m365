@@ -5,7 +5,13 @@
  */
 export { handleDeleteEmail } from './delete.js'
 export { handleDraftEmail } from './draft.js'
-export { fetchFoldersRecursive, getAllFolders, getFolderIdByName, resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
+export {
+  fetchFoldersRecursive,
+  getAllFolders,
+  getFolderIdByName,
+  resolveFolderPath,
+  WELL_KNOWN_FOLDERS
+} from './folder-utils.js'
 export { type EmailListResult, emailListResultSchema, handleListEmails } from './list.js'
 export { handleMarkAsRead } from './mark-as-read.js'
 export { handleReadEmail } from './read.js'

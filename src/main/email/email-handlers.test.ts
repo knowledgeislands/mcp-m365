@@ -154,7 +154,13 @@ describe('handleDraftEmail', () => {
   it('creates a draft with parsed recipient lists', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'd1', subject: 'Hi' })
-    const r = await handleDraftEmail(ctx, { to: 'a@x.com, b@x.com', cc: 'c@x.com', bcc: 'd@x.com', subject: 'Hi', body: 'plain' })
+    const r = await handleDraftEmail(ctx, {
+      to: 'a@x.com, b@x.com',
+      cc: 'c@x.com',
+      bcc: 'd@x.com',
+      subject: 'Hi',
+      body: 'plain'
+    })
     const callBody = mockCallGraphAPI.mock.calls[0][4]
     expect(callBody.toRecipients).toHaveLength(2)
     expect(callBody.ccRecipients).toHaveLength(1)
@@ -227,7 +233,10 @@ describe('handleSendEmail', () => {
     mockCallGraphAPI.mockResolvedValue({})
     await handleSendEmail(ctx, { to: 'a@x.com', cc: ' c@x.com , c2@x.com ', bcc: ' d@x.com ', subject: 's', body: 'b' })
     const msg = mockCallGraphAPI.mock.calls[0][4].message
-    expect(msg.ccRecipients).toEqual([{ emailAddress: { address: 'c@x.com' } }, { emailAddress: { address: 'c2@x.com' } }])
+    expect(msg.ccRecipients).toEqual([
+      { emailAddress: { address: 'c@x.com' } },
+      { emailAddress: { address: 'c2@x.com' } }
+    ])
     expect(msg.bccRecipients).toEqual([{ emailAddress: { address: 'd@x.com' } }])
   })
 
@@ -310,7 +319,12 @@ describe('handleDeleteEmail', () => {
     })
     const r = await handleDeleteEmail(ctx, { id: 'm1' })
     expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'GET', expect.stringContaining('me/messages/m1?'))
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(
+      GRAPH_API_ENDPOINT,
+      'tok',
+      'GET',
+      expect.stringContaining('me/messages/m1?')
+    )
     expect(r.content[0].text).toMatch(/^\[dry_run\] would move to Deleted Items: "Receipt" from biller@x/)
   })
 
@@ -359,7 +373,9 @@ describe('handleMarkAsRead', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleMarkAsRead(ctx, { id: 'm1' })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/messages/m1', { isRead: true })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/messages/m1', {
+      isRead: true
+    })
     expect(r.content[0].text).toMatch(/marked as read/)
   })
 
@@ -367,7 +383,9 @@ describe('handleMarkAsRead', () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})
     const r = await handleMarkAsRead(ctx, { id: 'm1', isRead: false })
-    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/messages/m1', { isRead: false })
+    expect(mockCallGraphAPI).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'tok', 'PATCH', 'me/messages/m1', {
+      isRead: false
+    })
     expect(r.content[0].text).toMatch(/marked as unread/)
   })
 

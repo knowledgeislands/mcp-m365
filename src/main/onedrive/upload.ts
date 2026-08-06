@@ -21,7 +21,9 @@ export const handleUpload = async (ctx: GraphContext, args: any): Promise<any> =
 
   const contentSize = Buffer.byteLength(content, 'utf8')
   if (contentSize > ONEDRIVE_UPLOAD_THRESHOLD) {
-    return errorText(`File is too large for simple upload (${formatSize(contentSize)}). Use onedrive-upload-large for files over 4MB.`)
+    return errorText(
+      `File is too large for simple upload (${formatSize(contentSize)}). Use onedrive-upload-large for files over 4MB.`
+    )
   }
 
   try {

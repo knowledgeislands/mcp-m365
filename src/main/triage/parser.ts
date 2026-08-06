@@ -118,10 +118,12 @@ const isPredicateKey = (key: string): key is PredicateKey => (PREDICATE_KEYS as 
 
 /** Enumerated-value validation. Returns an error message, or null when the value is acceptable for that key. */
 const validateValue = (key: PredicateKey, value: string): string | null => {
-  if (key === 'type' && !(TYPE_VALUES as readonly string[]).includes(value)) return `invalid type: "${value}" (expected ${TYPE_VALUES.join(', ')})`
+  if (key === 'type' && !(TYPE_VALUES as readonly string[]).includes(value))
+    return `invalid type: "${value}" (expected ${TYPE_VALUES.join(', ')})`
   if (key === 'importance' && !(IMPORTANCE_VALUES as readonly string[]).includes(value))
     return `invalid importance: "${value}" (expected ${IMPORTANCE_VALUES.join(', ')})`
-  if (key === 'status' && !(STATUS_VALUES as readonly string[]).includes(value)) return `invalid status: "${value}" (expected ${STATUS_VALUES.join(', ')})`
+  if (key === 'status' && !(STATUS_VALUES as readonly string[]).includes(value))
+    return `invalid status: "${value}" (expected ${STATUS_VALUES.join(', ')})`
   if (key === 'age' && !AGE_RE.test(value)) return `invalid age: "${value}" (expected Nd, e.g. 7d)`
   return null
 }
@@ -198,7 +200,8 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     if (!value) return { error: `empty value for "${kind}:"` }
 
     if (kind === 'mark') {
-      if (!(MARK_VALUES as readonly string[]).includes(value)) return { error: `invalid mark: "${value}" (expected ${MARK_VALUES.join(', ')})` }
+      if (!(MARK_VALUES as readonly string[]).includes(value))
+        return { error: `invalid mark: "${value}" (expected ${MARK_VALUES.join(', ')})` }
       actions.push({ kind: 'mark', value })
       continue
     }
@@ -243,7 +246,8 @@ export const assembleLines = (lines: string[], offset: number): { logical: Logic
     }
   })
 
-  if (buffer) errors.push({ line: bufferLine, message: 'rule has no `->` — expected `predicates -> actions`', source: buffer })
+  if (buffer)
+    errors.push({ line: bufferLine, message: 'rule has no `->` — expected `predicates -> actions`', source: buffer })
   return { logical, errors }
 }
 
@@ -257,8 +261,10 @@ export const parseRule = (logical: LogicalLine): { rule: Rule } | { error: Parse
 
   const predicateText = (halves[0] as string).trim()
   const actionText = (halves[1] as string).trim()
-  if (!predicateText) return { error: { line: logical.line, message: 'rule has no predicates before `->`', source: logical.text } }
-  if (!actionText) return { error: { line: logical.line, message: 'rule has no actions after `->`', source: logical.text } }
+  if (!predicateText)
+    return { error: { line: logical.line, message: 'rule has no predicates before `->`', source: logical.text } }
+  if (!actionText)
+    return { error: { line: logical.line, message: 'rule has no actions after `->`', source: logical.text } }
 
   const predicates = parsePredicates(predicateText)
   if ('error' in predicates) return { error: { line: logical.line, message: predicates.error, source: logical.text } }
@@ -315,7 +321,13 @@ const findFencedBlocks = (lines: string[]): RawBlock[] => {
     }
     const closed = index < lines.length
     index++
-    blocks.push({ label: heading || `block${blocks.length + 1}`, version: fence[1] as string, startLine, lines: body, closed })
+    blocks.push({
+      label: heading || `block${blocks.length + 1}`,
+      version: fence[1] as string,
+      startLine,
+      lines: body,
+      closed
+    })
   }
 
   return blocks
@@ -335,9 +347,20 @@ export const parseRules = (source: string): ParseResult => {
     const headerIndex = lines.findIndex((l) => l.trim() !== '')
     const header = headerIndex === -1 ? null : BARE_HEADER_RE.exec((lines[headerIndex] as string).trim())
     if (!header) {
-      return { blocks: [], errors: [{ line: 1, message: 'no ```rules block found and no `rules <version>` header line' }] }
+      return {
+        blocks: [],
+        errors: [{ line: 1, message: 'no ```rules block found and no `rules <version>` header line' }]
+      }
     }
-    raw = [{ label: 'default', version: header[1] as string, startLine: headerIndex + 1, lines: lines.slice(headerIndex + 1), closed: true }]
+    raw = [
+      {
+        label: 'default',
+        version: header[1] as string,
+        startLine: headerIndex + 1,
+        lines: lines.slice(headerIndex + 1),
+        closed: true
+      }
+    ]
   }
 
   const blocks: RuleBlock[] = []
@@ -347,11 +370,17 @@ export const parseRules = (source: string): ParseResult => {
     // and order is the entire specification. Refuse it rather than run a
     // partial rule set: `parse-error` is a blocking code for the mutating tools.
     if (!block.closed) {
-      errors.push({ line: block.startLine, message: 'unterminated ```rules block — no closing fence, so the rule list may be truncated' })
+      errors.push({
+        line: block.startLine,
+        message: 'unterminated ```rules block — no closing fence, so the rule list may be truncated'
+      })
       continue
     }
     if (block.version !== SUPPORTED_VERSION) {
-      errors.push({ line: block.startLine, message: `unsupported rules version "${block.version}" — this engine understands ${SUPPORTED_VERSION} only` })
+      errors.push({
+        line: block.startLine,
+        message: `unsupported rules version "${block.version}" — this engine understands ${SUPPORTED_VERSION} only`
+      })
       continue
     }
 

@@ -1,4 +1,12 @@
-import { classify, detectType, evaluateGroup, evaluatePredicate, evaluateTerm, matchesAddress, matchRule } from './matcher.js'
+import {
+  classify,
+  detectType,
+  evaluateGroup,
+  evaluatePredicate,
+  evaluateTerm,
+  matchesAddress,
+  matchRule
+} from './matcher.js'
 import { parseRules } from './parser.js'
 import type { AndGroup, EmailRecord, Matched, PredicateTerm, Rule } from './types.js'
 
@@ -94,17 +102,23 @@ describe('detectType', () => {
   })
 
   it('prefers the message class over a misleading subject', () => {
-    expect(detectType(record({ messageClass: 'IPM.Schedule.Meeting.Request', subject: 'Accepted: x' }))).toBe('calendar-invite')
+    expect(detectType(record({ messageClass: 'IPM.Schedule.Meeting.Request', subject: 'Accepted: x' }))).toBe(
+      'calendar-invite'
+    )
   })
 
   it('returns null for ordinary mail', () => {
-    expect(detectType(record({ subject: 'Hello', messageClass: 'IPM.Note', odataType: '#microsoft.graph.message' }))).toBeNull()
+    expect(
+      detectType(record({ subject: 'Hello', messageClass: 'IPM.Note', odataType: '#microsoft.graph.message' }))
+    ).toBeNull()
   })
 })
 
 describe('evaluatePredicate', () => {
   it('matches type via the detected calendar class', () => {
-    expect(evaluatePredicate(term('type:calendar-invite'), record({ messageClass: 'IPM.Schedule.Meeting.Request' }), ctx)).toBe(true)
+    expect(
+      evaluatePredicate(term('type:calendar-invite'), record({ messageClass: 'IPM.Schedule.Meeting.Request' }), ctx)
+    ).toBe(true)
   })
 
   it('matches party across From, To and CC', () => {
@@ -191,7 +205,13 @@ describe('matchRule', () => {
 })
 
 describe('classify', () => {
-  const rules = rulesOf(['sender:*@junk.com -> move:991 Junk', 'subject:"BFBS" -> move:111 Partner', '* -> move:000 Unknown, suggest'].join('\n'))
+  const rules = rulesOf(
+    [
+      'sender:*@junk.com -> move:991 Junk',
+      'subject:"BFBS" -> move:111 Partner',
+      '* -> move:000 Unknown, suggest'
+    ].join('\n')
+  )
 
   it('stops at the first match — order is the whole specification', () => {
     const result = classify(rules, record({ from: 'a@junk.com', subject: 'BFBS Follow up' }), ctx) as Matched
