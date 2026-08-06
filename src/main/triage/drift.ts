@@ -13,7 +13,9 @@
  * disagreeing is exactly the signal — not an inconsistency to repair.
  */
 import { z } from 'zod'
-import { errorResult } from '../../utils/results.js'
+import { errMessage } from '../../utils/errors.js'
+import { assertWithinRoots } from '../../utils/paths.js'
+import { errorResult, errorText } from '../../utils/results.js'
 import type { TriageContext } from './context.js'
 import { buildFolderMap, findMessage } from './graph-ops.js'
 import { entryKey, pruneOlderThan, readTracking, sweepPending, type TrackingEntry, writeTracking } from './tracking.js'
@@ -38,7 +40,9 @@ export const driftScanResultSchema = z
     reRouted: z.array(reRouteSchema),
     prunedMissing: z.number(),
     prunedExpired: z.number(),
-    trackedAfter: z.number()
+    trackedAfter: z.number(),
+    /** The tracking cache this scan used. */
+    trackingPath: z.string()
   })
   .loose()
 
@@ -49,7 +53,8 @@ const leafOf = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 const summarise = (result: DriftScanResult): string => {
   const lines = [
     `Scanned ${result.scanned} tracked message(s)${result.remaining > 0 ? `, ${result.remaining} still to examine in this sweep — call again` : ' — sweep complete'}.`,
-    `${result.reRouted.length} manual re-route(s); pruned ${result.prunedMissing} missing and ${result.prunedExpired} expired; ${result.trackedAfter} entries tracked.`
+    `${result.reRouted.length} manual re-route(s); pruned ${result.prunedMissing} missing and ${result.prunedExpired} expired; ${result.trackedAfter} entries tracked.`,
+    `Tracking: ${result.trackingPath}`
   ]
   for (const item of result.reRouted) {
     lines.push(`- "${item.subject}" <${item.from}> ${item.from_folder} → ${item.to_folder} (matched \`${item.ruleset}\`)`)
@@ -78,15 +83,38 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
   try {
     const maxEntries: number = args?.maxEntries ?? 50
     const now = new Date()
-    const tracking = await readTracking(ctx.trackingPath)
+
+    const candidate = args?.trackingPath?.trim() || ctx.trackingPath
+    if (!candidate) return errorText('No tracking cache configured — pass `trackingPath`, or set MCP_M365_TRIAGE_TRACKING_PATH.')
+    let trackingPath: string
+    try {
+      trackingPath = await assertWithinRoots(ctx.roots, candidate, 'tracking cache')
+    } catch (error) {
+      return errorText(errMessage(error))
+    }
+
+    const tracking = await readTracking(trackingPath)
+    // Unparseable is not the same as empty: pruning and rewriting from an
+    // assumed-empty cache would discard the entire routing history.
+    if (tracking === null) {
+      return errorText(`The tracking cache at ${trackingPath} exists but could not be parsed. Refusing to scan, so nothing is overwritten.`)
+    }
 
     const { kept, pruned: expired } = pruneOlderThan(tracking, RETENTION_DAYS, now)
     const { sweep, pending } = sweepPending(kept, now)
     const batch = pending.slice(0, maxEntries)
 
     if (batch.length === 0) {
-      if (expired.length > 0) await writeTracking(ctx.trackingPath, { ...kept, sweep })
-      return envelope({ scanned: 0, remaining: 0, reRouted: [], prunedMissing: 0, prunedExpired: expired.length, trackedAfter: kept.entries.length })
+      if (expired.length > 0) await writeTracking(trackingPath, { ...kept, sweep })
+      return envelope({
+        scanned: 0,
+        remaining: 0,
+        reRouted: [],
+        prunedMissing: 0,
+        prunedExpired: expired.length,
+        trackedAfter: kept.entries.length,
+        trackingPath
+      })
     }
 
     const accessToken = await ctx.ensureAuthenticated()
@@ -141,7 +169,7 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
       return outcome ? [outcome] : []
     })
 
-    await writeTracking(ctx.trackingPath, { entries: nextEntries, sweep })
+    await writeTracking(trackingPath, { entries: nextEntries, sweep })
 
     return envelope({
       scanned: batch.length,
@@ -149,7 +177,8 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
       reRouted,
       prunedMissing,
       prunedExpired: expired.length,
-      trackedAfter: nextEntries.length
+      trackedAfter: nextEntries.length,
+      trackingPath
     })
   } catch (error) {
     return errorResult('scanning for drift', error)

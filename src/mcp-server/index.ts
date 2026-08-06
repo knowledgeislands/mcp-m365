@@ -36,6 +36,11 @@ console.error(`${config.serverName} starting...`)
 console.error(`  SERVER_NAME=${config.serverName}`)
 console.error(`  MCP_M365_ACCESS_LEVEL=${config.accessLevel}`)
 console.error(`  MCP_M365_AUDIT_LOG=${config.auditLogMode}${config.auditLogMode === 'off' ? '' : ` (path: ${config.auditLogPath})`}`)
+// Print the engine's filesystem surface at boot, so a mistyped root or tracking
+// path is visible in the server log rather than at 06:00 in a scheduled run.
+console.error(`  MCP_M365_TRIAGE_ROOTS=${config.triageRoots.join(', ') || '(none — engine file access disabled)'}`)
+console.error(`  MCP_M365_TRIAGE_TRACKING_PATH=${config.triageTrackingPath || '(unset)'}`)
+console.error(`  MCP_M365_TRIAGE_RULES_PATH=${config.triageRulesPath || '(unset)'}`)
 
 // Construct the token storage once here from the loaded config, then derive the
 // auth gate and the GraphContext threaded into every Graph-calling tool group.
@@ -47,7 +52,12 @@ const ctx: GraphContext = {
 }
 // The routing engine additionally owns a tracking cache; its location is
 // configuration, never a tool parameter.
-const triageCtx: TriageContext = { ...ctx, trackingPath: config.triageTrackingPath }
+const triageCtx: TriageContext = {
+  ...ctx,
+  roots: config.triageRoots,
+  trackingPath: config.triageTrackingPath,
+  rulesPath: config.triageRulesPath
+}
 
 const server = new McpServer({
   name: config.serverName,

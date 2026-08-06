@@ -6,6 +6,7 @@ import {
   identityKey,
   parseTracking,
   pruneOlderThan,
+  quoteBareKeys,
   readTracking,
   relaxJson5,
   sweepPending,
@@ -79,7 +80,7 @@ describe('parseTracking', () => {
   })
 
   it('reads JSON5 conveniences', () => {
-    expect(parseTracking('{ // cache\n "entries": [], \n}').entries).toEqual([])
+    expect(parseTracking('{ // cache\n "entries": [], \n}')?.entries).toEqual([])
   })
 
   it('treats an empty file as an empty cache', () => {
@@ -90,8 +91,49 @@ describe('parseTracking', () => {
     expect(parseTracking('{"other": 1}')).toEqual({ entries: [] })
   })
 
-  it('treats unparseable content as empty rather than throwing mid-run', () => {
-    expect(parseTracking('{not json at all')).toEqual({ entries: [] })
+  it('returns null for content that is present but unparseable — never an empty cache', () => {
+    // Empty would be a lie the caller acts on by overwriting the real history.
+    expect(parseTracking('{not json at all')).toBeNull()
+  })
+
+  it('reads a JSON5 file with unquoted keys, as earlier generations were written', () => {
+    const legacy = `{
+      // Email triage tracking — maintained by email-route-drift automation
+      entries: [
+        { subject: "Hi", from: "a@b.com", received: "r", ruleset: "x", routed_to: "y", destination: "z", routed_at: "t", triage_folder: "y" },
+      ],
+    }`
+    expect(parseTracking(legacy)?.entries).toHaveLength(1)
+  })
+})
+
+describe('quoteBareKeys', () => {
+  it('quotes an unquoted key', () => {
+    expect(quoteBareKeys('{entries: []}')).toBe('{"entries": []}')
+  })
+
+  it('leaves an already-quoted key alone', () => {
+    expect(quoteBareKeys('{"entries": []}')).toBe('{"entries": []}')
+  })
+
+  it('does not touch a colon inside a string value', () => {
+    expect(quoteBareKeys('{a: "http://x/y"}')).toBe('{"a": "http://x/y"}')
+  })
+
+  it('does not mistake a word inside a string for a key', () => {
+    expect(quoteBareKeys('{"a": "no key: here"}')).toBe('{"a": "no key: here"}')
+  })
+
+  it('handles escapes inside strings', () => {
+    expect(quoteBareKeys('{a: "it\\"s"}')).toBe('{"a": "it\\"s"}')
+  })
+
+  it('quotes a key at the very start of the input, with nothing before it', () => {
+    expect(quoteBareKeys('entries: []')).toBe('"entries": []')
+  })
+
+  it('quotes nested keys', () => {
+    expect(quoteBareKeys('{a: {b: 1}}')).toBe('{"a": {"b": 1}}')
   })
 })
 
@@ -103,7 +145,13 @@ describe('readTracking', () => {
   it('reads what was written', async () => {
     const file = path.join(dir, 'tracking.json5')
     await writeTracking(file, { entries: [entry()] })
-    expect((await readTracking(file)).entries).toHaveLength(1)
+    expect((await readTracking(file))?.entries).toHaveLength(1)
+  })
+
+  it('returns null for a file that exists but will not parse, so a caller can refuse to overwrite it', async () => {
+    const file = path.join(dir, 'corrupt.json5')
+    await fs.writeFile(file, '{ this is not a cache')
+    expect(await readTracking(file)).toBeNull()
   })
 })
 
@@ -225,16 +273,16 @@ describe('sweep persistence', () => {
     const file = path.join(dir, 'tracking.json5')
     await writeTracking(file, { entries: [entry({ scanned_at: '2026-08-06T08:00:00Z' })], sweep: { started_at: '2026-08-06T07:00:00Z' } })
     const read = await readTracking(file)
-    expect(read.sweep).toEqual({ started_at: '2026-08-06T07:00:00Z' })
-    expect(read.entries[0]?.scanned_at).toBe('2026-08-06T08:00:00Z')
+    expect(read?.sweep).toEqual({ started_at: '2026-08-06T07:00:00Z' })
+    expect(read?.entries[0]?.scanned_at).toBe('2026-08-06T08:00:00Z')
   })
 
   it('tolerates a file written before the cursor existed', () => {
-    expect(parseTracking('{"entries":[]}').sweep).toBeUndefined()
+    expect(parseTracking('{"entries":[]}')?.sweep).toBeUndefined()
   })
 
   it('ignores a malformed sweep marker rather than trusting it', () => {
-    expect(parseTracking('{"entries":[],"sweep":{"started_at":42}}').sweep).toBeUndefined()
+    expect(parseTracking('{"entries":[],"sweep":{"started_at":42}}')?.sweep).toBeUndefined()
   })
 
   it('preserves the sweep across upsert and prune', () => {

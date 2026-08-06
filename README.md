@@ -56,7 +56,13 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 
 ### Email routing engine
 
-A deterministic triage engine: a flat, ordered, first-match-wins rule list in a small line DSL, executed mechanically rather than interpreted. Rules are supplied on every call — the server holds no rule state, so your rule file stays the single source of truth. Distinct from `m365_email_rule_*` above, which manage Outlook's own server-side inbox rules.
+A deterministic triage engine: a flat, ordered, first-match-wins rule list in a small line DSL, executed mechanically rather than interpreted. The server holds no rule state — your rule file stays the single source of truth. Distinct from `m365_email_rule_*` above, which manage Outlook's own server-side inbox rules.
+
+Rules reach the engine three ways, in precedence order: the `rules` argument (the document inline), the `rulesPath` argument, or `MCP_M365_TRIAGE_RULES_PATH`. Either path form is read at call time, freshly on each call, so editing the note takes effect without a restart.
+
+**Every path the engine touches — configured or passed in a call — must resolve inside `MCP_M365_TRIAGE_ROOTS`, or the call is refused.** That is what makes a caller-supplied path safe: the blast radius is the allowlisted directories and nothing else. The check is two-layer, lexical then `realpath`, so neither `..` traversal nor a symlink pointing out of a root gets through. With no roots configured the engine does no file access at all.
+
+The tracking cache follows the same rules, via `trackingPath` or `MCP_M365_TRIAGE_TRACKING_PATH`, and defaults to `<first root>/.mcp-m365/email-triage/tracking.json5` — beside the knowledge base it describes rather than in a hidden state directory. Add `.mcp-m365/` to that repository's `.gitignore`. Every run reports which tracking file it used, so a mistaken override shows up on the first run rather than the fifth.
 
 | Tool | Purpose |
 | --- | --- |
@@ -237,7 +243,9 @@ bun install
 | `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
 | `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
-| `MCP_M365_TRIAGE_TRACKING_PATH` | no | `~/.local/state/mcp-m365/email-triage/tracking.json5` | Where the email routing engine keeps its tracking cache. Configuration rather than a tool parameter, so no caller can redirect engine writes. |
+| `MCP_M365_TRIAGE_TRACKING_PATH` | no | `<first root>/.mcp-m365/email-triage/tracking.json5` | Default location of the routing engine's tracking cache. Overridable per call; always root-checked. |
+| `MCP_M365_TRIAGE_RULES_PATH` | no | — | Default path to the rule note. When set, the routing tools' `rules` argument becomes optional. Overridable per call; always root-checked. |
+| `MCP_M365_TRIAGE_ROOTS` | no | — | `PATH`-style list of directories the routing engine may read and write. Every configured or caller-supplied path must resolve inside one of them. Unset disables all engine file access. |
 | `NODE_ENV` | no | — | Dev convention. ‖ |
 
 † Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.

@@ -36,7 +36,24 @@ import { DESTRUCTIVE_ONESHOT_REMOTE, READ_ONLY } from '../../utils/annotations.j
 const rulesSchema = z
   .string()
   .max(500_000)
-  .describe('The rule file contents — either the whole knowledge-base note (rules are read from its ```rules fences) or a bare list headed `rules v1`.')
+  .optional()
+  .describe(
+    'The rule file contents — either the whole knowledge-base note (rules are read from its ```rules fences) or a bare list headed `rules v1`. Optional: when omitted the server reads the note configured as MCP_M365_TRIAGE_RULES_PATH, so a caller need not ship the whole document on every call.'
+  )
+
+const rulesPathSchema = z
+  .string()
+  .max(4096)
+  .optional()
+  .describe('Path to the rule note, overriding MCP_M365_TRIAGE_RULES_PATH. Must resolve inside MCP_M365_TRIAGE_ROOTS. Ignored when `rules` is supplied.')
+
+const trackingPathSchema = z
+  .string()
+  .max(4096)
+  .optional()
+  .describe(
+    'Path to the tracking cache, overriding MCP_M365_TRIAGE_TRACKING_PATH. Must resolve inside MCP_M365_TRIAGE_ROOTS. The result reports which file was used.'
+  )
 
 const modeSchema = z
   .enum(['live', 'report'])
@@ -59,7 +76,9 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     {
       description:
         'Applies the `aged` retention block across the _TRIAGE subfolders — archiving, marking read, deleting, or returning mail for re-evaluation. Same batch-bounded, resumable contract as m365_email_routing_triage. Defaults to report mode.',
-      inputSchema: z.object({ rules: rulesSchema, mode: modeSchema, maxActions: maxActionsSchema }).strict(),
+      inputSchema: z
+        .object({ rules: rulesSchema, rulesPath: rulesPathSchema, trackingPath: trackingPathSchema, mode: modeSchema, maxActions: maxActionsSchema })
+        .strict(),
       outputSchema: triageRunResultSchema,
       annotations: DESTRUCTIVE_ONESHOT_REMOTE
     },
@@ -73,6 +92,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
         'Compares every tracked message against its current folder, reporting messages the user has re-routed by hand and pruning entries that have gone or aged out. Returns the diff for rule induction; writes no suggestions. Batched: call again while `remaining` is above zero — it reaches zero when the sweep has covered every tracked message.',
       inputSchema: z
         .object({
+          trackingPath: trackingPathSchema,
           maxEntries: z
             .number()
             .int()
@@ -101,6 +121,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
       inputSchema: z
         .object({
           rules: rulesSchema,
+          rulesPath: rulesPathSchema,
           knownFolders: z
             .array(z.string())
             .max(1000)
@@ -118,7 +139,9 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     {
       description:
         'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
-      inputSchema: z.object({ rules: rulesSchema, mode: modeSchema, maxActions: maxActionsSchema }).strict(),
+      inputSchema: z
+        .object({ rules: rulesSchema, rulesPath: rulesPathSchema, trackingPath: trackingPathSchema, mode: modeSchema, maxActions: maxActionsSchema })
+        .strict(),
       outputSchema: triageRunResultSchema,
       annotations: DESTRUCTIVE_ONESHOT_REMOTE
     },

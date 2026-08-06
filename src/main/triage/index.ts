@@ -40,6 +40,7 @@ export {
   identityKey,
   parseTracking,
   pruneOlderThan,
+  quoteBareKeys,
   readTracking,
   relaxJson5,
   type Sweep,

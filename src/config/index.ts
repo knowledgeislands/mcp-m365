@@ -13,6 +13,7 @@
 import os from 'node:os'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { expandHome, parseRoots } from '../utils/paths.js'
 
 /**
  * Package root, resolved from this module's own URL — NOT `process.cwd()`,
@@ -134,11 +135,25 @@ export interface Config {
   auditLogMaxBytes: number
   auditLogKeep: number
   /**
-   * Where the email routing engine keeps its tracking cache. Configuration
-   * rather than a tool parameter: a caller-supplied path would let any prompt
-   * redirect engine writes to an arbitrary location on disk.
+   * Directories the routing engine may read from and write to. Every path that
+   * reaches the filesystem — configured or passed in a call — must resolve
+   * inside one of these. Empty disables all engine file access.
+   */
+  triageRoots: string[]
+  /**
+   * Default location of the tracking cache, inside the first root so it lives
+   * beside the knowledge base it describes rather than in a hidden state
+   * directory. Overridable per call, but always root-checked.
    */
   triageTrackingPath: string
+  /**
+   * Optional path to the rule note, so a caller need not pass the whole
+   * document on every call. Empty when unset, in which case `rules` is
+   * required. Configuration rather than a tool parameter for the mirror-image
+   * reason: a caller-supplied READ path would let any prompt point the engine
+   * at an arbitrary file and have its contents echoed back in the report.
+   */
+  triageRulesPath: string
 }
 
 const parseScopes = (raw: string | undefined): string[] => {
@@ -182,8 +197,24 @@ const parseNonNegativeInt = (raw: string | undefined, fallback: number, varName:
  * Load configuration from `env` (defaults to `process.env`, after attempting to
  * hydrate it from the package's `.env*` files). Throws if a value fails validation.
  */
+/**
+ * Where the tracking cache lives when it has not been configured explicitly:
+ * a predictable, namespaced directory inside the first root. Keeping it beside
+ * the knowledge base — rather than in `~/.local/state` — means the routing
+ * history sits with the data it describes and is obvious to find. Add
+ * `TRIAGE_STATE_DIR` to the repository's `.gitignore`.
+ *
+ * With no roots configured there is no default: the engine must be told where
+ * to write rather than inventing a location and silently starting a second
+ * history.
+ */
+export const TRIAGE_STATE_DIR = '.mcp-m365'
+const defaultTrackingPath = (roots: readonly string[]): string =>
+  roots.length > 0 ? path.join(roots[0] as string, TRIAGE_STATE_DIR, 'email-triage', 'tracking.json5') : ''
+
 export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   hydrateEnvFromFiles()
+  const triageRoots = parseRoots(env.MCP_M365_TRIAGE_ROOTS)
 
   const homeDir = env.HOME || env.USERPROFILE || os.homedir() || '/tmp'
   const authPort = Number.parseInt(env.MCP_M365_AUTH_PORT || '3333', 10)
@@ -215,8 +246,8 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
       : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
     auditLogMaxBytes: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_MAX_BYTES, 10 * 1024 * 1024, 'MCP_M365_AUDIT_LOG_MAX_BYTES'),
     auditLogKeep: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP'),
-    triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim()
-      ? path.resolve(env.MCP_M365_TRIAGE_TRACKING_PATH.trim())
-      : path.join(homeDir, '.local', 'state', 'mcp-m365', 'email-triage', 'tracking.json5')
+    triageRoots,
+    triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_TRACKING_PATH) : defaultTrackingPath(triageRoots),
+    triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : ''
   }
 }

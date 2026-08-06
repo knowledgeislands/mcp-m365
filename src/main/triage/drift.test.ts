@@ -45,15 +45,21 @@ const graphMessage = (over: Record<string, unknown> = {}) => ({
 })
 
 let dir: string
-let ctx: { graphApiEndpoint: string; ensureAuthenticated: Mock; trackingPath: string }
+let ctx: { graphApiEndpoint: string; ensureAuthenticated: Mock; roots: string[]; trackingPath: string; rulesPath: string }
 
 beforeEach(async () => {
   vi.clearAllMocks()
   vi.useFakeTimers()
   vi.setSystemTime(NOW)
   mockGetAllFolders.mockResolvedValue(FOLDERS)
-  dir = await fs.mkdtemp(path.join(os.tmpdir(), 'triage-drift-'))
-  ctx = { graphApiEndpoint: GRAPH_API_ENDPOINT, ensureAuthenticated: vi.fn().mockResolvedValue('token'), trackingPath: path.join(dir, 'tracking.json5') }
+  dir = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'triage-drift-')))
+  ctx = {
+    graphApiEndpoint: GRAPH_API_ENDPOINT,
+    ensureAuthenticated: vi.fn().mockResolvedValue('token'),
+    roots: [dir],
+    trackingPath: path.join(dir, 'tracking.json5'),
+    rulesPath: ''
+  }
 })
 
 afterEach(async () => {
@@ -93,7 +99,7 @@ describe('handleDriftScan', () => {
     mockCall.mockResolvedValue(graphMessage({ parentFolderId: 'bizdev-id' }))
 
     await handleDriftScan(ctx, {})
-    const { entries } = await readTracking(ctx.trackingPath)
+    const entries = (await readTracking(ctx.trackingPath))?.entries ?? []
     expect(entries[0]).toMatchObject({ ruleset: 'party:*@partner.example.com', triage_folder: '263 BizDev' })
   })
 
@@ -117,7 +123,7 @@ describe('handleDriftScan', () => {
     await writeTracking(ctx.trackingPath, { entries: [stale] })
     const result = await handleDriftScan(ctx, {})
     expect(result.structuredContent).toMatchObject({ prunedExpired: 1, scanned: 0, trackedAfter: 0 })
-    expect((await readTracking(ctx.trackingPath)).entries).toEqual([])
+    expect((await readTracking(ctx.trackingPath))?.entries).toEqual([])
   })
 
   it('keeps the retention window at three weeks', () => {
@@ -128,7 +134,7 @@ describe('handleDriftScan', () => {
     await writeTracking(ctx.trackingPath, { entries: [entry({ id: 'stale-id' })] })
     mockCall.mockRejectedValueOnce(new Error('404')).mockResolvedValueOnce({ value: [graphMessage({ id: 'reissued' })] })
     await handleDriftScan(ctx, {})
-    expect((await readTracking(ctx.trackingPath)).entries[0]?.id).toBe('reissued')
+    expect((await readTracking(ctx.trackingPath))?.entries[0]?.id).toBe('reissued')
   })
 
   it('searches by identity for an entry with no cached id', async () => {
@@ -143,7 +149,46 @@ describe('handleDriftScan', () => {
     mockCall.mockResolvedValue(graphMessage({ parentFolderId: 'somewhere-else' }))
     const result = await handleDriftScan(ctx, {})
     expect(result.structuredContent.reRouted).toEqual([])
-    expect((await readTracking(ctx.trackingPath)).entries[0]?.triage_folder).toBe('000 Unknown')
+    expect((await readTracking(ctx.trackingPath))?.entries[0]?.triage_folder).toBe('000 Unknown')
+  })
+
+  it('reports which tracking cache it scanned', async () => {
+    await writeTracking(ctx.trackingPath, { entries: [entry()] })
+    mockCall.mockResolvedValue(graphMessage())
+    const result = await handleDriftScan(ctx, {})
+    expect(result.structuredContent.trackingPath).toBe(ctx.trackingPath)
+    expect(result.content[0].text).toContain(`Tracking: ${ctx.trackingPath}`)
+  })
+
+  it('honours a trackingPath passed in the call', async () => {
+    const alternate = path.join(dir, 'alternate.json5')
+    await writeTracking(alternate, { entries: [entry()] })
+    mockCall.mockResolvedValue(graphMessage())
+    expect((await handleDriftScan(ctx, { trackingPath: alternate })).structuredContent).toMatchObject({ scanned: 1, trackingPath: alternate })
+  })
+
+  it('refuses a trackingPath outside the roots', async () => {
+    const elsewhere = await fs.realpath(await fs.mkdtemp(path.join(os.tmpdir(), 'drift-outside-')))
+    try {
+      const result = await handleDriftScan(ctx, { trackingPath: path.join(elsewhere, 'tracking.json5') })
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toMatch(/resolves outside the configured roots/)
+    } finally {
+      await fs.rm(elsewhere, { recursive: true, force: true })
+    }
+  })
+
+  it('refuses to scan a cache it could not parse, rather than pruning from an assumed-empty one', async () => {
+    await fs.writeFile(ctx.trackingPath, '{ truncated')
+    const result = await handleDriftScan(ctx, {})
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toMatch(/could not be parsed. Refusing to scan/)
+    expect(await fs.readFile(ctx.trackingPath, 'utf8')).toBe('{ truncated')
+  })
+
+  it('refuses to scan with no tracking cache configured', async () => {
+    ctx.trackingPath = ''
+    expect((await handleDriftScan(ctx, {})).content[0].text).toMatch(/No tracking cache configured/)
   })
 
   describe('resumability across calls', () => {
@@ -158,7 +203,7 @@ describe('handleDriftScan', () => {
       })
     }
 
-    const tracked = async () => (await readTracking(ctx.trackingPath)).entries.map((e) => e.subject)
+    const tracked = async () => ((await readTracking(ctx.trackingPath))?.entries ?? []).map((e) => e.subject)
 
     it('drives `remaining` to zero after exactly one full sweep, so a polling caller stops', async () => {
       // Regression: `remaining` was `total - maxEntries` on every call, a constant.

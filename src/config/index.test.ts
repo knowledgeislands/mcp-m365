@@ -3,6 +3,7 @@
  * env object, so each case passes a literal `NodeJS.ProcessEnv` slice rather
  * than mutating `process.env` and re-importing the module.
  */
+import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig, M365_DEFAULT_SCOPES } from './index.js'
 
@@ -132,12 +133,46 @@ describe('triageTrackingPath', () => {
     expect(cfg.triageTrackingPath.startsWith('/')).toBe(true)
   })
 
-  it('falls back to the default state path when the variable is blank', () => {
-    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_TRACKING_PATH: '   ' })).triageTrackingPath).toMatch(/\.local\/state\/mcp-m365\/email-triage\/tracking\.json5$/)
+  it('defaults to a predictable location inside the first root, beside the data it describes', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_TRIAGE_ROOTS: '/repo/kb' }))
+    expect(cfg.triageTrackingPath).toBe('/repo/kb/.mcp-m365/email-triage/tracking.json5')
   })
 
-  it('falls back to the default state path when the variable is unset', () => {
-    expect(loadConfig(baseEnv({})).triageTrackingPath).toMatch(/\.local\/state\/mcp-m365\/email-triage\/tracking\.json5$/)
+  it('uses that default when the variable is blank', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_TRIAGE_ROOTS: '/repo/kb', MCP_M365_TRIAGE_TRACKING_PATH: '   ' }))
+    expect(cfg.triageTrackingPath).toBe('/repo/kb/.mcp-m365/email-triage/tracking.json5')
+  })
+
+  it('has no default at all without roots, rather than inventing a hidden location', () => {
+    // Silently starting a second routing history somewhere unexpected is worse
+    // than refusing until told where the cache lives.
+    expect(loadConfig(baseEnv({})).triageTrackingPath).toBe('')
+  })
+})
+
+describe('triageRoots', () => {
+  it('parses a delimiter-separated list', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_ROOTS: ['/a', '/b'].join(path.delimiter) })).triageRoots).toEqual(['/a', '/b'])
+  })
+
+  it('is empty when unset, which disables engine file access', () => {
+    expect(loadConfig(baseEnv({})).triageRoots).toEqual([])
+  })
+})
+
+describe('triageRulesPath', () => {
+  it('resolves an explicit MCP_M365_TRIAGE_RULES_PATH to an absolute path', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_TRIAGE_RULES_PATH: 'kb/Email Routing Rules.md' }))
+    expect(cfg.triageRulesPath.endsWith('kb/Email Routing Rules.md')).toBe(true)
+    expect(cfg.triageRulesPath.startsWith('/')).toBe(true)
+  })
+
+  it('is empty when unset, so `rules` stays required', () => {
+    expect(loadConfig(baseEnv({})).triageRulesPath).toBe('')
+  })
+
+  it('is empty when blank', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_RULES_PATH: '   ' })).triageRulesPath).toBe('')
   })
 })
 

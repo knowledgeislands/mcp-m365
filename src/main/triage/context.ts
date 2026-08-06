@@ -10,6 +10,14 @@
 import type { GraphContext } from '../graph-client/index.js'
 
 export interface TriageContext extends GraphContext {
-  /** Absolute path to `tracking.json5`. From `MCP_M365_TRIAGE_TRACKING_PATH`. */
+  /** Directories the engine may touch. Every configured or caller-supplied path is checked against these. */
+  roots: readonly string[]
+  /** Default `tracking.json5` location. From `MCP_M365_TRIAGE_TRACKING_PATH`, or a path inside the first root. A call may override it. */
   trackingPath: string
+  /**
+   * Default rule-note location, or `''` when unset. From
+   * `MCP_M365_TRIAGE_RULES_PATH`. Read fresh on each call, so editing the note
+   * takes effect without restarting the server. A call may override it.
+   */
+  rulesPath: string
 }

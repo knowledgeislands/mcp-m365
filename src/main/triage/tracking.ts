@@ -75,6 +75,49 @@ export const identityKey = (record: Pick<EmailRecord, 'subject' | 'from' | 'rece
 export const entryKey = (entry: TrackingEntry): string => identityKey({ subject: entry.subject, from: entry.from, received: entry.received })
 
 /**
+ * Quote bare object keys (`entries:` → `"entries":`), string-aware so a colon
+ * inside a string literal is left alone. Earlier generations of the tracking
+ * file were written as true JSON5 with unquoted keys; without this they parse
+ * as nothing at all.
+ */
+export const quoteBareKeys = (text: string): string => {
+  let out = ''
+  let inString = false
+  let quote = ''
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i] as string
+
+    if (inString) {
+      out += ch
+      if (ch === '\\') {
+        /* v8 ignore next — a trailing backslash means truncated input; the tolerant parser simply drops it */
+        out += text[i + 1] ?? ''
+        i++
+      } else if (ch === quote) {
+        inString = false
+      }
+      continue
+    }
+
+    if (ch === '"' || ch === "'") {
+      inString = true
+      quote = ch
+      out += ch
+      continue
+    }
+
+    const key = /^([A-Za-z_$][\w$]*)(\s*:)/.exec(text.slice(i))
+    if (key && /[{,\s]/.test(out.at(-1) ?? '{')) {
+      out += `"${key[1]}"${key[2]}`
+      i += (key[0] as string).length - 1
+      continue
+    }
+    out += ch
+  }
+  return out
+}
+
+/**
  * Strip JSON5 conveniences (line/block comments, trailing commas) that strict
  * `JSON.parse` rejects, leaving string literals untouched.
  */
@@ -120,8 +163,15 @@ export const relaxJson5 = (text: string): string => {
   return out.replace(/,(\s*[}\]])/g, '$1')
 }
 
-/** Parse tracking content, tolerating JSON5 conveniences. Returns an empty file on unparseable input rather than throwing mid-run. */
-export const parseTracking = (text: string): TrackingFile => {
+/**
+ * Parse tracking content, tolerating JSON5 conveniences.
+ *
+ * Returns `null` when the content is present but cannot be parsed — NOT an
+ * empty cache. The distinction is load-bearing: a caller that mistook an
+ * unparseable file for an empty one would read nothing, append the current
+ * batch, and write the result back, destroying every earlier entry.
+ */
+export const parseTracking = (text: string): TrackingFile | null => {
   if (!text.trim()) return { entries: [] }
   const attempt = (candidate: string): TrackingFile | null => {
     try {
@@ -135,16 +185,25 @@ export const parseTracking = (text: string): TrackingFile => {
       return null
     }
   }
-  return attempt(text) ?? attempt(relaxJson5(text)) ?? { entries: [] }
+  const relaxed = relaxJson5(text)
+  return attempt(text) ?? attempt(relaxed) ?? attempt(quoteBareKeys(relaxed))
 }
 
-/** Read the tracking cache. A missing file is an empty cache, not an error — the first run has nothing to read. */
-export const readTracking = async (filePath: string): Promise<TrackingFile> => {
+/**
+ * Read the tracking cache.
+ *
+ * A missing file is an empty cache — the first run has nothing to read. A file
+ * that exists but will not parse returns `null`, and every caller must refuse
+ * to write rather than overwrite a history it could not understand.
+ */
+export const readTracking = async (filePath: string): Promise<TrackingFile | null> => {
+  let text: string
   try {
-    return parseTracking(await fs.readFile(filePath, 'utf8'))
+    text = await fs.readFile(filePath, 'utf8')
   } catch {
     return { entries: [] }
   }
+  return parseTracking(text)
 }
 
 /**

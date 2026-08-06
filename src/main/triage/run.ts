@@ -12,7 +12,10 @@
  * scanned, so re-invoking after a partial run or a timeout simply finds less
  * work. Nothing is scheduled, resumed from a cursor, or held in server state.
  */
+import fs from 'node:fs/promises'
 import { z } from 'zod'
+import { errMessage } from '../../utils/errors.js'
+import { assertWithinRoots } from '../../utils/paths.js'
 import { errorResult, errorText } from '../../utils/results.js'
 import type { TriageContext } from './context.js'
 import { resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
@@ -31,6 +34,58 @@ import type { Action, EmailRecord, Rule } from './types.js'
  * run at all.
  */
 const BLOCKING_CODES = new Set(['parse-error', 'missing-fallback', 'misplaced-fallback'])
+
+/** Largest rule document read from disk. The compiled rule file is ~35 KB; this is a sanity bound, not a target. */
+const MAX_RULES_BYTES = 1024 * 1024
+
+/**
+ * Where this call's rules come from.
+ *
+ * A caller may pass the document inline — the scheduled task does, having read
+ * the knowledge-base note itself. Otherwise the server reads the note from the
+ * path in its OWN configuration, freshly on each call, so editing the note
+ * takes effect without a restart.
+ *
+ * The path is never a tool parameter. A caller-supplied read path would let any
+ * prompt point the engine at an arbitrary file and have its contents echoed
+ * back in a lint finding's `source` line. Read failures report the failure and
+ * never the contents.
+ */
+const resolveRules = async (ctx: TriageContext, args: { rules?: string; rulesPath?: string }): Promise<{ rules: string } | { error: string }> => {
+  if (typeof args.rules === 'string' && args.rules.trim()) return { rules: args.rules }
+
+  const candidate = args.rulesPath?.trim() || ctx.rulesPath
+  if (!candidate) {
+    return { error: 'No rules supplied — pass `rules`, pass `rulesPath`, or set MCP_M365_TRIAGE_RULES_PATH to the rule note.' }
+  }
+
+  try {
+    const file = await assertWithinRoots(ctx.roots, candidate, 'rule file')
+    const { size } = await fs.stat(file)
+    if (size > MAX_RULES_BYTES) return { error: `The rule file is ${size} bytes, over the ${MAX_RULES_BYTES}-byte limit.` }
+    return { rules: await fs.readFile(file, 'utf8') }
+  } catch (error) {
+    return { error: `Could not read the rule file: ${errMessage(error)}` }
+  }
+}
+
+/**
+ * Where this call records what it routed. A caller may override the configured
+ * default, but the result always reports which file was used — a wrong-but-
+ * allowed path would otherwise fork the routing history silently, and that is
+ * the kind of mistake you notice a week late.
+ */
+const resolveTrackingPath = async (ctx: TriageContext, args: { trackingPath?: string }): Promise<{ path: string } | { error: string }> => {
+  const candidate = args.trackingPath?.trim() || ctx.trackingPath
+  if (!candidate) {
+    return { error: 'No tracking cache configured — pass `trackingPath`, or set MCP_M365_TRIAGE_TRACKING_PATH.' }
+  }
+  try {
+    return { path: await assertWithinRoots(ctx.roots, candidate, 'tracking cache') }
+  } catch (error) {
+    return { error: errMessage(error) }
+  }
+}
 
 // Not `.loose()`: unlike the raw Graph payloads elsewhere in this server, these
 // objects are constructed here and fully specified, so the inferred item types
@@ -56,6 +111,8 @@ export const triageRunResultSchema = z
     /** True when the folder held more messages than this batch examined. Loop while `remaining && acted > 0`. */
     remaining: z.boolean(),
     unmatched: z.number(),
+    /** The tracking cache this run used. Reported so a mistaken override is visible immediately. */
+    trackingPath: z.string(),
     items: z.array(triageItemSchema),
     warnings: z.array(z.string())
   })
@@ -86,7 +143,8 @@ interface Candidate {
 const summarise = (result: TriageRunResult): string => {
   const lines = [
     `${result.mode === 'report' ? '[report] would process' : 'Processed'} ${result.acted} of ${result.considered} message(s) in the "${result.block}" pass.` +
-      `${result.remaining ? ' More remain — call again.' : ''}`
+      `${result.remaining ? ' More remain — call again.' : ''}` +
+      `${result.mode === 'live' ? `\nTracking: ${result.trackingPath}` : ''}`
   ]
   if (result.unmatched > 0) lines.push(`${result.unmatched} message(s) matched no rule — check the fallback.`)
   for (const item of result.items) {
@@ -107,14 +165,17 @@ const envelope = (result: TriageRunResult) => ({
 /** Shared driver: everything except which folders are read and which block is used. */
 const runPass = async (
   ctx: TriageContext,
-  args: { rules?: string; mode?: string; maxActions?: number },
+  args: { rules?: string; rulesPath?: string; trackingPath?: string; mode?: string; maxActions?: number },
   blockLabel: 'inbound' | 'aged',
   collect: (accessToken: string, map: FolderMap, limit: number) => Promise<{ records: EmailRecord[]; truncated: boolean }>
 ): Promise<any> => {
   const mode = args.mode === 'live' ? 'live' : 'report'
   const maxActions = args.maxActions ?? 50
 
-  const parsed = parseRules(args.rules ?? '')
+  const source = await resolveRules(ctx, args)
+  if ('error' in source) return errorText(source.error)
+
+  const parsed = parseRules(source.rules)
   const findings = lintRules(parsed, { requireFallbackIn: blockLabel === 'inbound' ? ['inbound'] : [] })
   const blocking = findings.filter((finding) => BLOCKING_CODES.has(finding.code))
   if (blocking.length > 0) {
@@ -123,6 +184,11 @@ const runPass = async (
 
   const selected = selectBlock(parsed, blockLabel)
   if ('error' in selected) return errorText(`Error selecting rules: ${selected.error}`)
+
+  // Resolved before any mailbox work: a live run that could not record what it
+  // did would leave the drift scan blind to its own engine's actions.
+  const tracking = mode === 'live' ? await resolveTrackingPath(ctx, args) : { path: ctx.trackingPath }
+  if ('error' in tracking) return errorText(tracking.error)
 
   const accessToken = await ctx.ensureAuthenticated()
   const map = await buildFolderMap(ctx, accessToken)
@@ -174,8 +240,16 @@ const runPass = async (
   }
 
   if (entries.length > 0) {
-    const tracking = await readTracking(ctx.trackingPath)
-    await writeTracking(ctx.trackingPath, upsertEntries(tracking, entries))
+    const existing = await readTracking(tracking.path)
+    // A cache that exists but will not parse must never be overwritten: doing so
+    // would replace the whole routing history with just this batch.
+    if (existing === null) {
+      return errorText(
+        `Routed ${entries.length} message(s), but the tracking cache at ${tracking.path} exists and could not be parsed, so it was left untouched. ` +
+          'Repair or move it before the next run, or the history it holds will be lost.'
+      )
+    }
+    await writeTracking(tracking.path, upsertEntries(existing, entries))
   }
 
   return envelope({
@@ -183,6 +257,7 @@ const runPass = async (
     block: selected.block.label,
     considered: records.length,
     acted: batch.length,
+    trackingPath: tracking.path,
     remaining: truncated || candidates.length > batch.length,
     unmatched,
     items,
@@ -231,8 +306,11 @@ export const handleAgedRun = async (ctx: TriageContext, args: any): Promise<any>
 }
 
 /** Static rule-file checks. No mailbox access, so this is safe to run against a proposed edit before it is saved. */
-export const handleRulesLint = async (_ctx: TriageContext, args: any): Promise<any> => {
-  const parsed = parseRules(args?.rules ?? '')
+export const handleRulesLint = async (ctx: TriageContext, args: any): Promise<any> => {
+  const source = await resolveRules(ctx, args ?? {})
+  if ('error' in source) return errorText(source.error)
+
+  const parsed = parseRules(source.rules)
   const knownFolders: string[] | undefined = Array.isArray(args?.knownFolders) ? args.knownFolders : undefined
   const findings = lintRules(parsed, knownFolders ? { knownFolders } : {})
 
