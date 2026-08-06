@@ -68,6 +68,10 @@
       "types": "./dist/main/rules/index.d.ts",
       "import": "./dist/main/rules/index.js"
     },
+    "./triage": {
+      "types": "./dist/main/triage/index.d.ts",
+      "import": "./dist/main/triage/index.js"
+    },
     "./package.json": "./package.json"
   },
   "files": [

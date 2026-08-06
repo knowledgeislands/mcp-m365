@@ -44,7 +44,11 @@ const EXPECTED_TOOLS = [
   'm365_onedrive_items_list',
   'm365_onedrive_items_search',
   'm365_email_message_get',
-  'm365_email_messages_search'
+  'm365_email_messages_search',
+  'm365_email_routing_triage',
+  'm365_email_routing_aged',
+  'm365_email_routing_lint',
+  'm365_email_routing_drift'
 ] as const
 
 const die = (msg: string, detail?: unknown): never => {

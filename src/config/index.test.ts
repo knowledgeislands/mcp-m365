@@ -125,6 +125,22 @@ describe('auditLogPath', () => {
   })
 })
 
+describe('triageTrackingPath', () => {
+  it('resolves an explicit MCP_M365_TRIAGE_TRACKING_PATH to an absolute path', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_TRIAGE_TRACKING_PATH: 'tasks/email-triage/tracking.json5' }))
+    expect(cfg.triageTrackingPath.endsWith('tasks/email-triage/tracking.json5')).toBe(true)
+    expect(cfg.triageTrackingPath.startsWith('/')).toBe(true)
+  })
+
+  it('falls back to the default state path when the variable is blank', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_TRIAGE_TRACKING_PATH: '   ' })).triageTrackingPath).toMatch(/\.local\/state\/mcp-m365\/email-triage\/tracking\.json5$/)
+  })
+
+  it('falls back to the default state path when the variable is unset', () => {
+    expect(loadConfig(baseEnv({})).triageTrackingPath).toMatch(/\.local\/state\/mcp-m365\/email-triage\/tracking\.json5$/)
+  })
+})
+
 describe('parseNonNegativeInt (via auditLogMaxBytes)', () => {
   it('parses a valid integer', () => {
     expect(loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: '2048' })).auditLogMaxBytes).toBe(2048)

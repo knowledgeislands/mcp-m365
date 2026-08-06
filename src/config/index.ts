@@ -133,6 +133,12 @@ export interface Config {
   auditLogPath: string
   auditLogMaxBytes: number
   auditLogKeep: number
+  /**
+   * Where the email routing engine keeps its tracking cache. Configuration
+   * rather than a tool parameter: a caller-supplied path would let any prompt
+   * redirect engine writes to an arbitrary location on disk.
+   */
+  triageTrackingPath: string
 }
 
 const parseScopes = (raw: string | undefined): string[] => {
@@ -208,6 +214,9 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
       ? path.resolve(env.MCP_M365_AUDIT_LOG_PATH.trim())
       : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
     auditLogMaxBytes: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_MAX_BYTES, 10 * 1024 * 1024, 'MCP_M365_AUDIT_LOG_MAX_BYTES'),
-    auditLogKeep: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP')
+    auditLogKeep: parseNonNegativeInt(env.MCP_M365_AUDIT_LOG_KEEP, 5, 'MCP_M365_AUDIT_LOG_KEEP'),
+    triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim()
+      ? path.resolve(env.MCP_M365_TRIAGE_TRACKING_PATH.trim())
+      : path.join(homeDir, '.local', 'state', 'mcp-m365', 'email-triage', 'tracking.json5')
   }
 }

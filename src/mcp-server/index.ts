@@ -18,7 +18,16 @@ import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from '../config/index.js'
 import { createTokenStorage, makeEnsureAuthenticated } from '../main/auth/index.js'
 import type { GraphContext } from '../main/graph-client/index.js'
-import { registerAuthTools, registerCalendarTools, registerEmailTools, registerFolderTools, registerOnedriveTools, registerRulesTools } from '../tools/index.js'
+import type { TriageContext } from '../main/triage/index.js'
+import {
+  registerAuthTools,
+  registerCalendarTools,
+  registerEmailTools,
+  registerFolderTools,
+  registerOnedriveTools,
+  registerRulesTools,
+  registerTriageTools
+} from '../tools/index.js'
 import { makeAccessGatedRegister } from '../utils/access-level.js'
 
 const config = loadConfig()
@@ -36,6 +45,9 @@ const ctx: GraphContext = {
   graphApiEndpoint: config.graphApiEndpoint,
   ensureAuthenticated: makeEnsureAuthenticated(tokenStorage)
 }
+// The routing engine additionally owns a tracking cache; its location is
+// configuration, never a tool parameter.
+const triageCtx: TriageContext = { ...ctx, trackingPath: config.triageTrackingPath }
 
 const server = new McpServer({
   name: config.serverName,
@@ -54,6 +66,7 @@ registerEmailTools(server, ctx)
 registerFolderTools(server, ctx)
 registerOnedriveTools(server, ctx)
 registerRulesTools(server, ctx)
+registerTriageTools(server, triageCtx)
 
 process.on('SIGTERM', () => {
   console.error('SIGTERM received but staying alive')

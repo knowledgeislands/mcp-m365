@@ -54,6 +54,36 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 
 † Searches by `query` and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID.
 
+### Email routing engine
+
+A deterministic triage engine: a flat, ordered, first-match-wins rule list in a small line DSL, executed mechanically rather than interpreted. Rules are supplied on every call — the server holds no rule state, so your rule file stays the single source of truth. Distinct from `m365_email_rule_*` above, which manage Outlook's own server-side inbox rules.
+
+| Tool | Purpose |
+| --- | --- |
+| `m365_email_routing_triage` | Classify Inbox mail against the `inbound` rule block and apply the first matching rule's actions. ‡ |
+| `m365_email_routing_aged` | Apply the `aged` retention block across the `_TRIAGE` subfolders. ‡ |
+| `m365_email_routing_lint` | Static checks over a rule file — parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets. No mailbox access. |
+| `m365_email_routing_drift` | Report messages the user has re-routed by hand and prune the tracking cache. Returns the diff; writes no suggestions. |
+
+‡ Both default to `mode: "report"` — the engine's equivalent of the `dry_run: true` default the destructive tools carry. Nothing is mutated until you pass `mode: "live"`.
+
+Both run tools are **batch-bounded and resumable**: a call acts on at most `maxActions` messages (default 50) and reports `remaining`. Loop while `remaining` is true and `acted` is above zero. This keeps every call comfortably inside a client's request timeout without needing long-running calls or server-side cursors — re-invoking after a partial run or a timeout is always safe, because classification moves a message out of the folder being scanned.
+
+The engine keeps one piece of state, a tracking cache recording what it routed where, at `MCP_M365_TRIAGE_TRACKING_PATH`. Message identity is subject + sender + received timestamp, never the Graph id, because Graph reissues ids on folder moves.
+
+#### Rule DSL (v1)
+
+One rule per logical line, `predicates -> actions [# comment]`, in a fenced ` ```rules v1 ` block. Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything (valid only as the mandatory final fallback). Predicates: `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`. Actions: `move:`, `tag:`, `mark:`, `delete`, `suggest`.
+
+```rules v1
+sender:*@vendor.example.com !subject:sign  -> move:981 Delete   # keep signature requests visible
+party:*@partner.example.com                         -> move:111 Partner
+subject:"NTN Forum" | subject:NTN-Forum -> move:111 Partner
+*                                      -> move:000 Unknown, suggest
+```
+
+`move:` targets are `_TRIAGE`-relative unless they contain a `/` or are quoted (`move:"Junk Email"`). Address patterns match exact addresses (`noreply@code.example.net`), any local part at a domain (`*@partner.example.com`), a local-part wildcard (`receipts+*@payments.example.net`), or a domain and its subdomains (`*@*.cloud.example.net`). A bare `*@domain` deliberately does **not** reach subdomains — otherwise a broad disposal rule would silently swallow a later, more specific subdomain rule.
+
 #### Email folder targeting
 
 For `m365_email_messages_list` and `m365_email_messages_search` you can target mail folders in two ways:
@@ -203,6 +233,7 @@ bun install
 | `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
 | `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
+| `MCP_M365_TRIAGE_TRACKING_PATH` | no | `~/.local/state/mcp-m365/email-triage/tracking.json5` | Where the email routing engine keeps its tracking cache. Configuration rather than a tool parameter, so no caller can redirect engine writes. |
 | `NODE_ENV` | no | — | Dev convention. ‖ |
 
 † Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
