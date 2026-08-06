@@ -37,10 +37,22 @@ export interface TrackingEntry {
   routed_at: string
   /** Where the message sits now. Updated by the drift scan when the user re-routes it by hand. */
   triage_folder: string
+  /** When the drift scan last examined this entry. Absent means never — see {@link sweepPending}. */
+  scanned_at?: string
+}
+
+/**
+ * A single pass of the drift scan over the whole corpus. Persisted so that a
+ * batched scan can tell "not yet examined in THIS pass" from "examined", which
+ * is the only way `remaining` can reach zero and a polling caller can stop.
+ */
+export interface Sweep {
+  started_at: string
 }
 
 export interface TrackingFile {
   entries: TrackingEntry[]
+  sweep?: Sweep
 }
 
 /**
@@ -113,8 +125,12 @@ export const parseTracking = (text: string): TrackingFile => {
   if (!text.trim()) return { entries: [] }
   const attempt = (candidate: string): TrackingFile | null => {
     try {
-      const parsed = JSON.parse(candidate) as { entries?: unknown }
-      return Array.isArray(parsed.entries) ? { entries: parsed.entries as TrackingEntry[] } : { entries: [] }
+      const parsed = JSON.parse(candidate) as { entries?: unknown; sweep?: unknown }
+      if (!Array.isArray(parsed.entries)) return { entries: [] }
+      const file: TrackingFile = { entries: parsed.entries as TrackingEntry[] }
+      const startedAt = (parsed.sweep as Sweep | undefined)?.started_at
+      if (typeof startedAt === 'string') file.sweep = { started_at: startedAt }
+      return file
     } catch {
       return null
     }
@@ -154,7 +170,7 @@ export const writeTracking = async (filePath: string, file: TrackingFile): Promi
 export const upsertEntries = (file: TrackingFile, entries: readonly TrackingEntry[]): TrackingFile => {
   const byKey = new Map(file.entries.map((entry) => [entryKey(entry), entry]))
   for (const entry of entries) byKey.set(entryKey(entry), entry)
-  return { entries: [...byKey.values()] }
+  return { ...file, entries: [...byKey.values()] }
 }
 
 /** Drop entries routed more than `days` ago. Keeps the cache bounded; the drift scan is the only caller. */
@@ -167,5 +183,28 @@ export const pruneOlderThan = (file: TrackingFile, days: number, now: Date): { k
     if (!Number.isNaN(routedAt) && routedAt < cutoff) pruned.push(entry)
     else kept.push(entry)
   }
-  return { kept: { entries: kept }, pruned }
+  return { kept: { ...file, entries: kept }, pruned }
+}
+
+/**
+ * The entries still to be examined in the current sweep, and the sweep they
+ * belong to.
+ *
+ * A batched scan needs to distinguish "not yet examined in this pass" from
+ * "examined", or `remaining` is just `total - batchSize` on every call and a
+ * caller told to loop while `remaining > 0` never terminates. Each entry
+ * records when it was last scanned; anything last scanned before the current
+ * sweep began is still outstanding.
+ *
+ * When nothing is outstanding the previous sweep is complete, so a fresh one
+ * begins here — which is what makes `remaining` fall to zero at the end of a
+ * pass and rise again on the next invocation.
+ */
+export const sweepPending = (file: TrackingFile, now: Date): { sweep: Sweep; pending: TrackingEntry[] } => {
+  const startedAt = file.sweep?.started_at
+  if (startedAt) {
+    const pending = file.entries.filter((entry) => !entry.scanned_at || entry.scanned_at < startedAt)
+    if (pending.length > 0) return { sweep: { started_at: startedAt }, pending }
+  }
+  return { sweep: { started_at: now.toISOString() }, pending: file.entries }
 }

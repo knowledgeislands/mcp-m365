@@ -16,7 +16,7 @@ import { z } from 'zod'
 import { errorResult } from '../../utils/results.js'
 import type { TriageContext } from './context.js'
 import { buildFolderMap, findMessage } from './graph-ops.js'
-import { pruneOlderThan, readTracking, type TrackingEntry, writeTracking } from './tracking.js'
+import { entryKey, pruneOlderThan, readTracking, sweepPending, type TrackingEntry, writeTracking } from './tracking.js'
 
 /** Entries routed longer ago than this are dropped; the corpus stays a rolling window, not an archive. */
 export const RETENTION_DAYS = 21
@@ -48,7 +48,7 @@ const leafOf = (path: string): string => path.slice(path.lastIndexOf('/') + 1)
 
 const summarise = (result: DriftScanResult): string => {
   const lines = [
-    `Scanned ${result.scanned} tracked message(s)${result.remaining > 0 ? `, ${result.remaining} not yet examined — call again` : ''}.`,
+    `Scanned ${result.scanned} tracked message(s)${result.remaining > 0 ? `, ${result.remaining} still to examine in this sweep — call again` : ' — sweep complete'}.`,
     `${result.reRouted.length} manual re-route(s); pruned ${result.prunedMissing} missing and ${result.prunedExpired} expired; ${result.trackedAfter} entries tracked.`
   ]
   for (const item of result.reRouted) {
@@ -69,18 +69,23 @@ const summarise = (result: DriftScanResult): string => {
  *
  * Bounded by `maxEntries` for the same reason the triage pass is: one Graph
  * round trip per entry against a corpus of several hundred would not finish
- * inside the client timeout.
+ * inside the client timeout. Progress is tracked by a persisted sweep cursor
+ * rather than by position, so `remaining` counts what is left in THIS pass and
+ * falls to zero when the pass completes — a caller looping while `remaining`
+ * is above zero terminates after exactly one full scan.
  */
 export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<any> => {
   try {
     const maxEntries: number = args?.maxEntries ?? 50
+    const now = new Date()
     const tracking = await readTracking(ctx.trackingPath)
 
-    const { kept, pruned: expired } = pruneOlderThan(tracking, RETENTION_DAYS, new Date())
-    const batch = kept.entries.slice(0, maxEntries)
+    const { kept, pruned: expired } = pruneOlderThan(tracking, RETENTION_DAYS, now)
+    const { sweep, pending } = sweepPending(kept, now)
+    const batch = pending.slice(0, maxEntries)
 
     if (batch.length === 0) {
-      if (expired.length > 0) await writeTracking(ctx.trackingPath, kept)
+      if (expired.length > 0) await writeTracking(ctx.trackingPath, { ...kept, sweep })
       return envelope({ scanned: 0, remaining: 0, reRouted: [], prunedMissing: 0, prunedExpired: expired.length, trackedAfter: kept.entries.length })
     }
 
@@ -88,7 +93,9 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
     const map = await buildFolderMap(ctx, accessToken)
 
     const reRouted: DriftScanResult['reRouted'] = []
-    const survivors: TrackingEntry[] = []
+    // Keyed by identity: an updated entry, or null where the message has gone.
+    const outcomes = new Map<string, TrackingEntry | null>()
+    const scannedAt = now.toISOString()
     let prunedMissing = 0
 
     for (const entry of batch) {
@@ -103,12 +110,13 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
       })
       if (!message) {
         prunedMissing++
+        outcomes.set(entryKey(entry), null)
         continue
       }
 
       const currentPath = map.pathById.get(String(message.parentFolderId)) ?? ''
       const currentLeaf = leafOf(currentPath)
-      const updated: TrackingEntry = { ...entry, id: String(message.id) }
+      const updated: TrackingEntry = { ...entry, id: String(message.id), scanned_at: scannedAt }
 
       if (currentLeaf && currentLeaf !== entry.triage_folder) {
         reRouted.push({
@@ -121,19 +129,23 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
         })
         updated.triage_folder = currentLeaf
       }
-      survivors.push(updated)
+      outcomes.set(entryKey(entry), updated)
     }
 
-    // Rotate: the entries this call did not examine go to the FRONT, the ones it
-    // just checked to the back. Writing survivors first would make the next call
-    // re-slice the same window and rescan the same entries forever while still
-    // reporting `remaining > 0` — the batch would never advance.
-    const nextEntries = [...kept.entries.slice(maxEntries), ...survivors]
-    await writeTracking(ctx.trackingPath, { entries: nextEntries })
+    // Rebuild in the original order — the cursor tracks progress, so entries
+    // never need reshuffling and the file stays diffable.
+    const nextEntries = kept.entries.flatMap((entry) => {
+      const key = entryKey(entry)
+      if (!outcomes.has(key)) return [entry]
+      const outcome = outcomes.get(key)
+      return outcome ? [outcome] : []
+    })
+
+    await writeTracking(ctx.trackingPath, { entries: nextEntries, sweep })
 
     return envelope({
       scanned: batch.length,
-      remaining: Math.max(0, kept.entries.length - maxEntries),
+      remaining: pending.length - batch.length,
       reRouted,
       prunedMissing,
       prunedExpired: expired.length,

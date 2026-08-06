@@ -42,6 +42,8 @@ export {
   pruneOlderThan,
   readTracking,
   relaxJson5,
+  type Sweep,
+  sweepPending,
   type TrackingEntry,
   type TrackingFile,
   upsertEntries,

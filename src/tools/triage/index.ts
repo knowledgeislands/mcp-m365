@@ -31,7 +31,7 @@ import {
   type TriageContext,
   triageRunResultSchema
 } from '../../main/triage/index.js'
-import { DESTRUCTIVE_ONESHOT_REMOTE, READ_ONLY, WRITE_IDEMPOTENT_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_ONESHOT_REMOTE, READ_ONLY } from '../../utils/annotations.js'
 
 const rulesSchema = z
   .string()
@@ -70,7 +70,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     'm365_email_routing_drift',
     {
       description:
-        'Compares every tracked message against its current folder, reporting messages the user has re-routed by hand and pruning entries that have gone or aged out. Returns the diff for rule induction; writes no suggestions.',
+        'Compares every tracked message against its current folder, reporting messages the user has re-routed by hand and pruning entries that have gone or aged out. Returns the diff for rule induction; writes no suggestions. Batched: call again while `remaining` is above zero — it reaches zero when the sweep has covered every tracked message.',
       inputSchema: z
         .object({
           maxEntries: z
@@ -79,11 +79,16 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
             .positive()
             .max(200)
             .optional()
-            .describe('Maximum tracked entries examined in this call (default 50). Call again while `remaining` is above zero.')
+            .describe(
+              'Maximum tracked entries examined in this call (default 50). Call again while `remaining` is above zero; it falls to zero at the end of a full sweep.'
+            )
         })
         .strict(),
       outputSchema: driftScanResultSchema,
-      annotations: WRITE_IDEMPOTENT_REMOTE
+      // One-shot, not idempotent: each call advances the sweep cursor and may
+      // prune tracked history, so a repeat does different work rather than
+      // converging on the same end state.
+      annotations: DESTRUCTIVE_ONESHOT_REMOTE
     },
     (args) => handleDriftScan(ctx, args)
   )

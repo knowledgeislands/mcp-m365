@@ -1,7 +1,18 @@
 import fs from 'node:fs/promises'
 import os from 'node:os'
 import path from 'node:path'
-import { entryKey, identityKey, parseTracking, pruneOlderThan, readTracking, relaxJson5, type TrackingEntry, upsertEntries, writeTracking } from './tracking.js'
+import {
+  entryKey,
+  identityKey,
+  parseTracking,
+  pruneOlderThan,
+  readTracking,
+  relaxJson5,
+  sweepPending,
+  type TrackingEntry,
+  upsertEntries,
+  writeTracking
+} from './tracking.js'
 
 const entry = (over: Partial<TrackingEntry> = {}): TrackingEntry => ({
   subject: 'Subject',
@@ -168,5 +179,67 @@ describe('pruneOlderThan', () => {
     const { kept, pruned } = pruneOlderThan({ entries: [entry({ routed_at: 'whenever' })] }, 21, now)
     expect(pruned).toEqual([])
     expect(kept.entries).toHaveLength(1)
+  })
+})
+
+describe('sweepPending', () => {
+  const now = new Date('2026-08-06T09:00:00Z')
+  const earlier = '2026-08-06T08:00:00Z'
+
+  it('treats a corpus with no scan history as entirely outstanding', () => {
+    // The pre-existing tracking file has no `scanned_at` on any entry.
+    const { sweep, pending } = sweepPending({ entries: [entry({ subject: 'a' }), entry({ subject: 'b' })] }, now)
+    expect(pending).toHaveLength(2)
+    expect(sweep.started_at).toBe(now.toISOString())
+  })
+
+  it('carries an in-progress sweep forward and reports only what is left', () => {
+    const file = {
+      entries: [entry({ subject: 'done', scanned_at: now.toISOString() }), entry({ subject: 'todo' })],
+      sweep: { started_at: earlier }
+    }
+    const { sweep, pending } = sweepPending(file, now)
+    expect(sweep.started_at).toBe(earlier)
+    expect(pending.map((e) => e.subject)).toEqual(['todo'])
+  })
+
+  it('counts an entry scanned before the current sweep began as outstanding', () => {
+    const file = { entries: [entry({ scanned_at: '2026-08-01T00:00:00Z' })], sweep: { started_at: earlier } }
+    expect(sweepPending(file, now).pending).toHaveLength(1)
+  })
+
+  it('begins a fresh sweep once every entry has been examined', () => {
+    const file = { entries: [entry({ scanned_at: now.toISOString() })], sweep: { started_at: earlier } }
+    const { sweep, pending } = sweepPending(file, now)
+    expect(sweep.started_at).toBe(now.toISOString())
+    expect(pending).toHaveLength(1)
+  })
+
+  it('handles an empty corpus without claiming work', () => {
+    expect(sweepPending({ entries: [] }, now).pending).toEqual([])
+  })
+})
+
+describe('sweep persistence', () => {
+  it('round-trips the sweep marker through the file', async () => {
+    const file = path.join(dir, 'tracking.json5')
+    await writeTracking(file, { entries: [entry({ scanned_at: '2026-08-06T08:00:00Z' })], sweep: { started_at: '2026-08-06T07:00:00Z' } })
+    const read = await readTracking(file)
+    expect(read.sweep).toEqual({ started_at: '2026-08-06T07:00:00Z' })
+    expect(read.entries[0]?.scanned_at).toBe('2026-08-06T08:00:00Z')
+  })
+
+  it('tolerates a file written before the cursor existed', () => {
+    expect(parseTracking('{"entries":[]}').sweep).toBeUndefined()
+  })
+
+  it('ignores a malformed sweep marker rather than trusting it', () => {
+    expect(parseTracking('{"entries":[],"sweep":{"started_at":42}}').sweep).toBeUndefined()
+  })
+
+  it('preserves the sweep across upsert and prune', () => {
+    const file = { entries: [entry()], sweep: { started_at: 'S' } }
+    expect(upsertEntries(file, [entry({ subject: 'new' })]).sweep).toEqual({ started_at: 'S' })
+    expect(pruneOlderThan(file, 21, new Date('2026-08-06T09:00:00Z')).kept.sweep).toEqual({ started_at: 'S' })
   })
 })

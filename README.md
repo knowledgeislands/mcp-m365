@@ -63,13 +63,15 @@ A deterministic triage engine: a flat, ordered, first-match-wins rule list in a 
 | `m365_email_routing_triage` | Classify Inbox mail against the `inbound` rule block and apply the first matching rule's actions. ‡ |
 | `m365_email_routing_aged` | Apply the `aged` retention block across the `_TRIAGE` subfolders. ‡ |
 | `m365_email_routing_lint` | Static checks over a rule file — parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets. No mailbox access. |
-| `m365_email_routing_drift` | Report messages the user has re-routed by hand and prune the tracking cache. Returns the diff; writes no suggestions. |
+| `m365_email_routing_drift` | Report messages the user has re-routed by hand and prune the tracking cache. Returns the diff; writes no suggestions. Batched — see below. |
 
 ‡ Both default to `mode: "report"` — the engine's equivalent of the `dry_run: true` default the destructive tools carry. Nothing is mutated until you pass `mode: "live"`.
 
 Both run tools are annotated `DESTRUCTIVE_ONESHOT_REMOTE` — destructive and explicitly _not_ idempotent, because repeating a call advances to the next batch rather than converging on the same end state.
 
 Both run tools are **batch-bounded and resumable**: a call acts on at most `maxActions` messages (default 50) and reports `remaining`. Loop while `remaining` is true and `acted` is above zero. This keeps every call comfortably inside a client's request timeout without needing long-running calls or server-side cursors — re-invoking after a partial run or a timeout is always safe, because classification moves a message out of the folder being scanned.
+
+`m365_email_routing_drift` is batched the same way, but over the tracking cache rather than a mail folder: call again while `remaining` is above zero. Progress is held in a **persisted sweep cursor** — each entry records when it was last examined, and the file records when the current sweep began — so `remaining` counts what is left in _this_ pass and reaches zero once the pass has covered every tracked message. A caller polling on `remaining` terminates after exactly one full scan; the next invocation starts a fresh sweep. It carries the same `DESTRUCTIVE_ONESHOT_REMOTE` annotation, since each call advances the cursor and may prune entries.
 
 The engine keeps one piece of state, a tracking cache recording what it routed where, at `MCP_M365_TRIAGE_TRACKING_PATH`. Message identity is subject + sender + received timestamp, never the Graph id, because Graph reissues ids on folder moves.
 

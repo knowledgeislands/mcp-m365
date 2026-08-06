@@ -160,27 +160,62 @@ describe('handleDriftScan', () => {
 
     const tracked = async () => (await readTracking(ctx.trackingPath)).entries.map((e) => e.subject)
 
-    it('examines a different entry on each successive call rather than rescanning the same window', async () => {
-      // Regression: writing the just-checked entries back to the FRONT made every
-      // call re-slice the same first `maxEntries`, so the scan reported
-      // `remaining > 0` forever while never reaching the rest of the corpus.
+    it('drives `remaining` to zero after exactly one full sweep, so a polling caller stops', async () => {
+      // Regression: `remaining` was `total - maxEntries` on every call, a constant.
+      // A caller told to loop while `remaining > 0` would never terminate, however
+      // many entries it had already examined.
       await seed()
-      const examined: string[] = []
+      const remaining: number[] = []
 
       for (let call = 0; call < SUBJECTS.length; call++) {
-        const head = (await tracked())[0] as string
         const result = await handleDriftScan(ctx, { maxEntries: 1 })
-        expect(result.structuredContent).toMatchObject({ scanned: 1, prunedMissing: 0 })
-        examined.push(head)
+        expect(result.structuredContent.scanned).toBe(1)
+        remaining.push(result.structuredContent.remaining)
       }
+
+      expect(remaining).toEqual([2, 1, 0])
+    })
+
+    it('examines a different entry on each call, in file order', async () => {
+      await seed()
+      const examined: string[] = []
+      mockCall.mockImplementation(async (_e: string, _t: string, _m: string, apiPath: string) => {
+        const id = apiPath.replace('me/messages/', '')
+        examined.push(id.replace('msg-', ''))
+        return graphMessage({ id, subject: id.replace('msg-', '') })
+      })
+
+      for (let call = 0; call < SUBJECTS.length; call++) await handleDriftScan(ctx, { maxEntries: 1 })
 
       expect(examined).toEqual(SUBJECTS)
     })
 
-    it('preserves every entry across a full rotation', async () => {
+    it('starts a fresh sweep once the previous one has completed', async () => {
       await seed()
       for (let call = 0; call < SUBJECTS.length; call++) await handleDriftScan(ctx, { maxEntries: 1 })
-      expect((await tracked()).sort()).toEqual([...SUBJECTS].sort())
+
+      // The sweep is done; the next invocation begins another and has work again.
+      const next = await handleDriftScan(ctx, { maxEntries: 1 })
+      expect(next.structuredContent).toMatchObject({ scanned: 1, remaining: 2 })
+    })
+
+    it('leaves the entries in their original order — the cursor tracks progress, not position', async () => {
+      await seed()
+      for (let call = 0; call < SUBJECTS.length; call++) await handleDriftScan(ctx, { maxEntries: 1 })
+      expect(await tracked()).toEqual(SUBJECTS)
+    })
+
+    it('reports the sweep as complete in the text summary', async () => {
+      await seed()
+      const result = await handleDriftScan(ctx, { maxEntries: 50 })
+      expect(result.content[0].text).toContain('sweep complete')
+    })
+
+    it('covers a corpus with no scan history in a single pass', async () => {
+      // The existing 316-entry file predates the cursor: every entry is outstanding.
+      await seed()
+      const result = await handleDriftScan(ctx, { maxEntries: 50 })
+      expect(result.structuredContent).toMatchObject({ scanned: 3, remaining: 0 })
     })
   })
 
@@ -190,7 +225,7 @@ describe('handleDriftScan', () => {
 
     const result = await handleDriftScan(ctx, { maxEntries: 1 })
     expect(result.structuredContent).toMatchObject({ scanned: 1, remaining: 2, prunedMissing: 1, trackedAfter: 2 })
-    expect(result.content[0].text).toContain('2 not yet examined — call again')
+    expect(result.content[0].text).toContain('2 still to examine in this sweep — call again')
   })
 
   it('surfaces a failure as an error envelope', async () => {
