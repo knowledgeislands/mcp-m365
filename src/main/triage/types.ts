@@ -25,8 +25,6 @@ export const STATUS_VALUES = ['flagged', 'unflagged', 'complete', 'unread', 'rep
 export const MARK_VALUES = ['read', 'unread', 'flagged', 'unflagged'] as const
 
 export type TypeValue = (typeof TYPE_VALUES)[number]
-export type StatusValue = (typeof STATUS_VALUES)[number]
-export type MarkValue = (typeof MARK_VALUES)[number]
 
 /** A single `key:value` test, optionally negated with `!`. */
 export interface PredicateTerm {

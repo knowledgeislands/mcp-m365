@@ -69,6 +69,18 @@ describe('parseRules — structure', () => {
     expect(parsed.errors[0]?.message).toMatch(/unsupported rules version "v2"/)
   })
 
+  it('rejects an unterminated fence rather than running a possibly truncated rule list', () => {
+    // Order is the entire specification, so a rule list that may have been cut
+    // short cannot be trusted even if every rule in it parses.
+    const parsed = parseRules('## Inbound\n\n```rules v1\nsender:a@b.com -> move:X\n* -> delete')
+    expect(parsed.errors[0]?.message).toMatch(/unterminated ```rules block/)
+    expect(parsed.blocks).toHaveLength(0)
+  })
+
+  it('accepts a closed fence with the same content', () => {
+    expect(parseRules('## Inbound\n\n```rules v1\nsender:a@b.com -> move:X\n```').errors).toEqual([])
+  })
+
   it('treats blank and comment lines as formatting only', () => {
     const parsed = parseRules(block('# a section header\n\nsender:a@b.com -> move:X\n\n# trailing note'))
     expect(parsed.blocks[0]?.rules).toHaveLength(1)

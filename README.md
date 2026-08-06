@@ -67,6 +67,8 @@ A deterministic triage engine: a flat, ordered, first-match-wins rule list in a 
 
 ‡ Both default to `mode: "report"` — the engine's equivalent of the `dry_run: true` default the destructive tools carry. Nothing is mutated until you pass `mode: "live"`.
 
+Both run tools are annotated `DESTRUCTIVE_ONESHOT_REMOTE` — destructive and explicitly _not_ idempotent, because repeating a call advances to the next batch rather than converging on the same end state.
+
 Both run tools are **batch-bounded and resumable**: a call acts on at most `maxActions` messages (default 50) and reports `remaining`. Loop while `remaining` is true and `acted` is above zero. This keeps every call comfortably inside a client's request timeout without needing long-running calls or server-side cursors — re-invoking after a partial run or a timeout is always safe, because classification moves a message out of the folder being scanned.
 
 The engine keeps one piece of state, a tracking cache recording what it routed where, at `MCP_M365_TRIAGE_TRACKING_PATH`. Message identity is subject + sender + received timestamp, never the Graph id, because Graph reissues ids on folder moves.

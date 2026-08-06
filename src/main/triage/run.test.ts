@@ -169,6 +169,12 @@ describe('handleTriageRun — refusals', () => {
     expect(result.content[0].text).toContain('unknown predicate key "theme"')
   })
 
+  it('refuses to run a rule file whose fence was never closed', async () => {
+    const result = await handleTriageRun(ctx, { rules: '## Inbound\n\n```rules v1\nsender:*@x.com -> move:A\n* -> move:000 Unknown, suggest' })
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('unterminated ```rules block')
+  })
+
   it('refuses to run without a fallback, so no message can be silently unclassified', async () => {
     const result = await handleTriageRun(ctx, { rules: '## Inbound\n\n```rules v1\nsender:*@x.com -> move:A\n```' })
     expect(result.content[0].text).toContain('missing-fallback')

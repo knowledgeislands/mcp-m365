@@ -31,7 +31,7 @@ import {
   type TriageContext,
   triageRunResultSchema
 } from '../../main/triage/index.js'
-import { DESTRUCTIVE_REMOTE, READ_ONLY, WRITE_IDEMPOTENT_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_ONESHOT_REMOTE, READ_ONLY, WRITE_IDEMPOTENT_REMOTE } from '../../utils/annotations.js'
 
 const rulesSchema = z
   .string()
@@ -55,27 +55,37 @@ const maxActionsSchema = z
 
 export const registerTriageTools = (server: McpServer, ctx: TriageContext): void => {
   server.registerTool(
-    'm365_email_routing_triage',
-    {
-      description:
-        'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
-      inputSchema: z.object({ rules: rulesSchema, mode: modeSchema, maxActions: maxActionsSchema }).strict(),
-      outputSchema: triageRunResultSchema,
-      annotations: DESTRUCTIVE_REMOTE
-    },
-    (args) => handleTriageRun(ctx, args)
-  )
-
-  server.registerTool(
     'm365_email_routing_aged',
     {
       description:
         'Applies the `aged` retention block across the _TRIAGE subfolders — archiving, marking read, deleting, or returning mail for re-evaluation. Same batch-bounded, resumable contract as m365_email_routing_triage. Defaults to report mode.',
       inputSchema: z.object({ rules: rulesSchema, mode: modeSchema, maxActions: maxActionsSchema }).strict(),
       outputSchema: triageRunResultSchema,
-      annotations: DESTRUCTIVE_REMOTE
+      annotations: DESTRUCTIVE_ONESHOT_REMOTE
     },
     (args) => handleAgedRun(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_routing_drift',
+    {
+      description:
+        'Compares every tracked message against its current folder, reporting messages the user has re-routed by hand and pruning entries that have gone or aged out. Returns the diff for rule induction; writes no suggestions.',
+      inputSchema: z
+        .object({
+          maxEntries: z
+            .number()
+            .int()
+            .positive()
+            .max(200)
+            .optional()
+            .describe('Maximum tracked entries examined in this call (default 50). Call again while `remaining` is above zero.')
+        })
+        .strict(),
+      outputSchema: driftScanResultSchema,
+      annotations: WRITE_IDEMPOTENT_REMOTE
+    },
+    (args) => handleDriftScan(ctx, args)
   )
 
   server.registerTool(
@@ -99,24 +109,14 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
   )
 
   server.registerTool(
-    'm365_email_routing_drift',
+    'm365_email_routing_triage',
     {
       description:
-        'Compares every tracked message against its current folder, reporting messages the user has re-routed by hand and pruning entries that have gone or aged out. Returns the diff for rule induction; writes no suggestions.',
-      inputSchema: z
-        .object({
-          maxEntries: z
-            .number()
-            .int()
-            .positive()
-            .max(200)
-            .optional()
-            .describe('Maximum tracked entries examined in this call (default 50). Call again while `remaining` is above zero.')
-        })
-        .strict(),
-      outputSchema: driftScanResultSchema,
-      annotations: WRITE_IDEMPOTENT_REMOTE
+        'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
+      inputSchema: z.object({ rules: rulesSchema, mode: modeSchema, maxActions: maxActionsSchema }).strict(),
+      outputSchema: triageRunResultSchema,
+      annotations: DESTRUCTIVE_ONESHOT_REMOTE
     },
-    (args) => handleDriftScan(ctx, args)
+    (args) => handleTriageRun(ctx, args)
   )
 }

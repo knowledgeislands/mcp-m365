@@ -50,7 +50,11 @@ const REDACT_FIELDS = new Set([
   'fileContent',
   // OAuth flow secrets
   'code',
-  'state'
+  'state',
+  // Rule documents passed to policy/routing tools — a whole document of
+  // addresses, correspondent names and free-text commentary, logged verbatim
+  // on every scheduled run otherwise.
+  'rules'
 ])
 
 /**

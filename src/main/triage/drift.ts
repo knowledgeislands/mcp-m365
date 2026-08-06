@@ -124,7 +124,11 @@ export const handleDriftScan = async (ctx: TriageContext, args: any): Promise<an
       survivors.push(updated)
     }
 
-    const nextEntries = [...survivors, ...kept.entries.slice(maxEntries)]
+    // Rotate: the entries this call did not examine go to the FRONT, the ones it
+    // just checked to the back. Writing survivors first would make the next call
+    // re-slice the same window and rescan the same entries forever while still
+    // reporting `remaining > 0` — the batch would never advance.
+    const nextEntries = [...kept.entries.slice(maxEntries), ...survivors]
     await writeTracking(ctx.trackingPath, { entries: nextEntries })
 
     return envelope({

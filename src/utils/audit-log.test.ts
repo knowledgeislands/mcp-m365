@@ -44,6 +44,16 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(event.args).toEqual({ id: 'm1' })
   })
 
+  it('redacts a rule document, which would otherwise be logged verbatim on every scheduled routing run', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_routing_triage', 'destructive', async () => ({ content: [{ type: 'text', text: 'ok' }] }))
+    await wrapped({ mode: 'live', rules: '```rules v1\nparty:*@partner.example -> move:111 Project   # commercially sensitive\n```' })
+    await flushAsync()
+    const event = JSON.parse((await fs.readFile(logPath, 'utf-8')).trim())
+    expect(event.args.rules).toMatch(/^\[redacted \d+B\]$/)
+    expect(event.args.mode).toBe('live')
+  })
+
   it('redacts body / htmlBody / content / data / fileContent / OAuth code+state fields', async () => {
     const { withAuditLog } = await import('./audit-log.js')
     const wrapped = withAuditLog(auditCfg(), 'm365_email_message_send', 'write', async () => ({ content: [{ type: 'text', text: 'ok' }] }))

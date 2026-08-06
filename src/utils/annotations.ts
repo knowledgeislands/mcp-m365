@@ -24,9 +24,13 @@
  *   DESTRUCTIVE_REMOTE      — open-world destructive (idempotent end state)
  *   DESTRUCTIVE_ONESHOT     — closed-world destructive, NON-idempotent
  *                             (effect depends on current state — e.g. prune)
+ *   DESTRUCTIVE_ONESHOT_REMOTE — open-world destructive, NON-idempotent
+ *                             (each repeat advances through more work — e.g. a
+ *                             batch-bounded pass that processes the next batch)
  */
 export const READ_ONLY = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: false } as const
 export const READ_ONLY_REMOTE = { readOnlyHint: true, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
 export const WRITE_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: true } as const
 export const WRITE_IDEMPOTENT_REMOTE = { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true } as const
 export const DESTRUCTIVE_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true } as const
+export const DESTRUCTIVE_ONESHOT_REMOTE = { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true } as const

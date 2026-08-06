@@ -146,6 +146,44 @@ describe('handleDriftScan', () => {
     expect((await readTracking(ctx.trackingPath)).entries[0]?.triage_folder).toBe('000 Unknown')
   })
 
+  describe('resumability across calls', () => {
+    const SUBJECTS = ['one', 'two', 'three']
+
+    /** Three distinct tracked messages, each resolvable by its own id. */
+    const seed = async () => {
+      await writeTracking(ctx.trackingPath, { entries: SUBJECTS.map((subject) => entry({ id: `msg-${subject}`, subject })) })
+      mockCall.mockImplementation(async (_e: string, _t: string, _m: string, apiPath: string) => {
+        const id = apiPath.replace('me/messages/', '')
+        return graphMessage({ id, subject: id.replace('msg-', '') })
+      })
+    }
+
+    const tracked = async () => (await readTracking(ctx.trackingPath)).entries.map((e) => e.subject)
+
+    it('examines a different entry on each successive call rather than rescanning the same window', async () => {
+      // Regression: writing the just-checked entries back to the FRONT made every
+      // call re-slice the same first `maxEntries`, so the scan reported
+      // `remaining > 0` forever while never reaching the rest of the corpus.
+      await seed()
+      const examined: string[] = []
+
+      for (let call = 0; call < SUBJECTS.length; call++) {
+        const head = (await tracked())[0] as string
+        const result = await handleDriftScan(ctx, { maxEntries: 1 })
+        expect(result.structuredContent).toMatchObject({ scanned: 1, prunedMissing: 0 })
+        examined.push(head)
+      }
+
+      expect(examined).toEqual(SUBJECTS)
+    })
+
+    it('preserves every entry across a full rotation', async () => {
+      await seed()
+      for (let call = 0; call < SUBJECTS.length; call++) await handleDriftScan(ctx, { maxEntries: 1 })
+      expect((await tracked()).sort()).toEqual([...SUBJECTS].sort())
+    })
+  })
+
   it('bounds the batch and reports how many entries are left', async () => {
     await writeTracking(ctx.trackingPath, { entries: [entry({ subject: 'one' }), entry({ subject: 'two' }), entry({ subject: 'three' })] })
     mockCall.mockResolvedValue({ value: [] })

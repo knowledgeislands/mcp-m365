@@ -277,6 +277,8 @@ interface RawBlock {
   version: string
   startLine: number
   lines: string[]
+  /** Whether a closing fence was found. An unterminated block may be truncated, so its rules are not trusted. */
+  closed: boolean
 }
 
 /**
@@ -311,8 +313,9 @@ const findFencedBlocks = (lines: string[]): RawBlock[] => {
       body.push(lines[index] as string)
       index++
     }
+    const closed = index < lines.length
     index++
-    blocks.push({ label: heading || `block${blocks.length + 1}`, version: fence[1] as string, startLine, lines: body })
+    blocks.push({ label: heading || `block${blocks.length + 1}`, version: fence[1] as string, startLine, lines: body, closed })
   }
 
   return blocks
@@ -334,11 +337,19 @@ export const parseRules = (source: string): ParseResult => {
     if (!header) {
       return { blocks: [], errors: [{ line: 1, message: 'no ```rules block found and no `rules <version>` header line' }] }
     }
-    raw = [{ label: 'default', version: header[1] as string, startLine: headerIndex + 1, lines: lines.slice(headerIndex + 1) }]
+    raw = [{ label: 'default', version: header[1] as string, startLine: headerIndex + 1, lines: lines.slice(headerIndex + 1), closed: true }]
   }
 
   const blocks: RuleBlock[] = []
   for (const block of raw) {
+    // A block with no closing fence may have been truncated mid-list, so the
+    // rules that ARE present cannot be trusted to be the whole ordered list —
+    // and order is the entire specification. Refuse it rather than run a
+    // partial rule set: `parse-error` is a blocking code for the mutating tools.
+    if (!block.closed) {
+      errors.push({ line: block.startLine, message: 'unterminated ```rules block — no closing fence, so the rule list may be truncated' })
+      continue
+    }
     if (block.version !== SUPPORTED_VERSION) {
       errors.push({ line: block.startLine, message: `unsupported rules version "${block.version}" — this engine understands ${SUPPORTED_VERSION} only` })
       continue
