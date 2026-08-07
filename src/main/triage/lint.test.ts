@@ -198,7 +198,9 @@ describe('lintRules — hygiene', () => {
   })
 
   it('flags an address predicate with no @', () => {
-    expect(find(`sender:db.example.net -> move:A\n${FALLBACK}`, 'malformed-address')?.message).toMatch(/will never match/)
+    expect(find(`sender:db.example.net -> move:A\n${FALLBACK}`, 'malformed-address')?.message).toMatch(
+      /will never match/
+    )
   })
 
   it('checks move targets against a supplied folder list', () => {

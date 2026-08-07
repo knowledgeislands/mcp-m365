@@ -42,7 +42,7 @@ describe('matchesAddress', () => {
     ['receipts+*@payments.example.net', 'billing@payments.example.net', false],
     ['*@*.cloud.example.net', 'no-reply@sns.cloud.example.net', true],
     ['*@*.cloud.example.net', 'no-reply@cloud.example.net', true],
-    ['*@*.cloud.example.net', 'no-reply@cloud.example.net.evil.net', false]
+    ['*@*.cloud.example.net', 'no-reply@cloud.example.net.evil.invalid', false]
   ])('%s vs %s → %s', (pattern, address, expected) => {
     expect(matchesAddress(pattern, address)).toBe(expected)
   })
@@ -206,11 +206,9 @@ describe('matchRule', () => {
 
 describe('classify', () => {
   const rules = rulesOf(
-    [
-      'sender:*@junk.com -> move:991 Junk',
-      'subject:"BFBS" -> move:111 Partner',
-      '* -> move:000 Unknown, suggest'
-    ].join('\n')
+    ['sender:*@junk.com -> move:991 Junk', 'subject:"BFBS" -> move:111 Partner', '* -> move:000 Unknown, suggest'].join(
+      '\n'
+    )
   )
 
   it('stops at the first match — order is the whole specification', () => {
