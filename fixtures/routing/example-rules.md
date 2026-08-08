@@ -1,35 +1,29 @@
 # Example Routing Rules
 
-A **synthetic** rule file used by the test suite. Every address here uses a
-domain reserved by RFC 2606 / RFC 6761 (`example.com`, `example.net`,
-`example.org`, `.invalid`, `.test`), and every folder name is generic. Nothing
-in this file describes a real mailbox, correspondent, or filing taxonomy.
+A **synthetic** rule file used by the test suite. Every address here uses a domain reserved by RFC 2606 / RFC 6761 (`example.com`, `example.net`, `example.org`, `.invalid`, `.test`), and every folder name is generic. Nothing in this file describes a real mailbox, correspondent, or filing taxonomy.
 
-It is deliberately small — around forty rules rather than a real file's several
-hundred — but it exercises every construct in the grammar and every ordering
-hazard the engine is meant to catch. The suite asserts behaviour classes, not
-anybody's routing table.
+It is deliberately small — around forty rules rather than a real file's several hundred — but it exercises every construct in the grammar and every ordering hazard the engine is meant to catch. The suite asserts behaviour classes, not anybody's routing table.
 
 Constructs covered, and where to find them below:
 
-| Construct                              | Rule                                                 |
-| -------------------------------------- | ---------------------------------------------------- |
-| Absolute override, marked collision    | `status:flagged` (rule 1)                            |
-| Broad rule hoisted above specific ones | `type:calendar-invite`                               |
-| Carve-out above the rule it escapes    | `sender:noreply@example.com subject:"Payment Receipt"` |
-| AND by juxtaposition                   | `party:*@partner.example.com subject:renewal`        |
-| OR across AND-groups                   | `subject:widget \| subject:widgets \| body:widget`   |
-| Negation                               | `sender:*@notify.example.net !subject:security`      |
-| Exact address                          | `billing@vendor.example.com`                         |
-| Any local part at a domain             | `*@partner.example.com`                              |
-| Local-part wildcard                    | `receipts+*@vendor.example.com`                      |
-| Domain **and** subdomains              | `*@*.cloud.example.net`                              |
-| Bare wildcard does *not* reach subdomains | `*@example.org` vs `*@lists.example.org`          |
-| Recipient predicates                   | `to:`, `cc:`                                         |
-| Importance                             | `importance:high`                                    |
-| Quoted values with spaces              | `subject:"Payment Receipt"`                          |
-| Mandatory fallback                     | `*` (last rule)                                      |
-| Retention by age                       | the `aged` block                                     |
+| Construct                                 | Rule                                                   |
+| ----------------------------------------- | ------------------------------------------------------ |
+| Absolute override, marked collision       | `status:flagged` (rule 1)                              |
+| Broad rule hoisted above specific ones    | `type:calendar-invite`                                 |
+| Carve-out above the rule it escapes       | `sender:noreply@example.com subject:"Payment Receipt"` |
+| AND by juxtaposition                      | `party:*@partner.example.com subject:renewal`          |
+| OR across AND-groups                      | `subject:widget \| subject:widgets \| body:widget`     |
+| Negation                                  | `sender:*@notify.example.net !subject:security`        |
+| Exact address                             | `billing@vendor.example.com`                           |
+| Any local part at a domain                | `*@partner.example.com`                                |
+| Local-part wildcard                       | `receipts+*@vendor.example.com`                        |
+| Domain **and** subdomains                 | `*@*.cloud.example.net`                                |
+| Bare wildcard does _not_ reach subdomains | `*@example.org` vs `*@lists.example.org`               |
+| Recipient predicates                      | `to:`, `cc:`                                           |
+| Importance                                | `importance:high`                                      |
+| Quoted values with spaces                 | `subject:"Payment Receipt"`                            |
+| Mandatory fallback                        | `*` (last rule)                                        |
+| Retention by age                          | the `aged` block                                       |
 
 ---
 
