@@ -1,6 +1,6 @@
 ---
-id: MCP-M365-TOOL-006
-title: Add mailbox triage helpers
+id: MCP-M365-005
+title: Add scheduling helpers
 theme: tool-surface
 horizon: future
 status: draft
@@ -12,11 +12,11 @@ baseline-ref: null
 
 ## Goal
 
-Achieve the stated outcome: Add mailbox triage helpers.
+Achieve the stated outcome: Add scheduling helpers.
 
 ## Context
 
-Add mailbox triage helpers.
+Add free/busy lookup and scheduling assistance.
 
 ## Boundary
 

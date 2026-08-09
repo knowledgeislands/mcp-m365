@@ -1,5 +1,5 @@
 ---
-id: MCP-M365-TOOL-003
+id: MCP-M365-003
 title: Support email attachments
 theme: tool-surface
 horizon: next
