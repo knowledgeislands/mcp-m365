@@ -6,7 +6,7 @@ repository = "https://github.com/knowledgeislands/mcp-m365"
 title = "mcp-m365"
 description = "MCP for Microsoft 365 (Outlook, OneDrive) access via the Microsoft Graph API"
 repo_code = "MCP-M365"
-supported_runtimes = ["claude-code", "chatgpt-codex"]
+supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
 visibility = "public"
 
 [skills.ki-authoring]
