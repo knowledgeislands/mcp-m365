@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-006
+id: MCP-M365-TOOL-006
+area: TOOL
 title: Add mailbox triage helpers
 theme: tool-surface
 horizon: future

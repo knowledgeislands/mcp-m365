@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-002
+id: MCP-M365-TOOL-002
+area: TOOL
 title: Add forward email
 theme: tool-surface
 horizon: next

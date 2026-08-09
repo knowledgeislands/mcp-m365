@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-007
+id: MCP-M365-TOOL-001
+area: TOOL
 title: Add reply support
 theme: tool-surface
 horizon: next

@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-005
+id: MCP-M365-TOOL-005
+area: TOOL
 title: Add scheduling helpers
 theme: tool-surface
 horizon: future

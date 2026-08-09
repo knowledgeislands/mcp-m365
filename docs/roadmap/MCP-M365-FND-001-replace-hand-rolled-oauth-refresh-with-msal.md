@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-001
+id: MCP-M365-FND-001
+area: FND
 title: Use MSAL refresh
 theme: foundation-tooling
 horizon: soon

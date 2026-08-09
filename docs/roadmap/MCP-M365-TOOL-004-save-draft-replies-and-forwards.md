@@ -1,5 +1,6 @@
 ---
-id: MCP-M365-004
+id: MCP-M365-TOOL-004
+area: TOOL
 title: Save draft replies
 theme: tool-surface
 horizon: next
