@@ -6,8 +6,8 @@ theme: tool-surface
 horizon: next
 status: draft
 blocks: []
-blocked-by: []
-baseline-ref: null
+blocked_by: []
+baseline_ref: null
 ---
 
 ## Goal
