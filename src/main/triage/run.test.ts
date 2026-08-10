@@ -475,7 +475,7 @@ describe('handleTriageRun — reporting', () => {
     // The aged block has no fallback by design, so route an unmatched message through it.
     mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
       if (method === 'GET' && apiPath === 'me/mailFolders/junk-id/messages')
-        return { value: [message({ parentFolderId: 'junk-id' })] }
+        return { value: [message({ parentFolderId: 'junk-id', flag: { flagStatus: 'flagged' } })] }
       if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
       return {}
     })

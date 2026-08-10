@@ -16,7 +16,7 @@
  * table is a map of its owner's correspondents. Behaviour classes are what is
  * worth regression-testing; a particular person's address list is not.
  *
- * A real file is validated by running `ki:lint:rules` against it in place.
+ * A real file is validated with the `m365_email_routing_lint` MCP tool.
  */
 import { readFileSync } from 'node:fs'
 import { resolveMoveTarget } from './folders.js'
