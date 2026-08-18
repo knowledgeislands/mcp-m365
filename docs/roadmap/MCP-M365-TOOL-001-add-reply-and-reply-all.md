@@ -52,6 +52,24 @@ Keep the work limited to the stated surface.
 
 This item is not blocked and its frontmatter records no dependency. It is the first of the mail-composition set (TOOL-001 to TOOL-004) and establishes the message-scoped composition pattern — an existing message ID plus a comment body — that forwarding and the draft variants reuse. Sequencing it first is a preference, not a hard constraint: nothing in the current code makes the other three items unimplementable on their own.
 
+## Documentation impact
+
+### Decision Records
+
+None.
+
+### Specifications
+
+None.
+
+### Guides
+
+Update the README tool catalogue with reply and reply-all behaviour.
+
+### Roadmap
+
+No additional roadmap impact.
+
 ## Discussion
 
 ### Letting Graph own the threading

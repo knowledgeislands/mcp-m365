@@ -52,6 +52,24 @@ Keep the work limited to the stated surface.
 
 This item is not blocked and its frontmatter records no dependency. It is the draft-producing counterpart to TOOL-001 and TOOL-002 over the same Graph message actions, so implementing it after them lets the two share one decision about which caller fields override Graph's prefill. It is independently implementable: the `createReply`/`createForward` actions do not require the send-side `reply`/`forward` actions to exist.
 
+## Documentation impact
+
+### Decision Records
+
+None.
+
+### Specifications
+
+None.
+
+### Guides
+
+Update the README tool catalogue with draft reply and forward behaviour.
+
+### Roadmap
+
+No additional roadmap impact.
+
 ## Discussion
 
 ### Draft-first is the safer default

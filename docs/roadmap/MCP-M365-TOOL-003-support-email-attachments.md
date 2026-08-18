@@ -56,6 +56,24 @@ Attachments are visible but inaccessible. `src/main/email/read.ts` selects `EMAI
 
 This item is not blocked and its frontmatter records no dependency. It touches the same composition handlers as TOOL-001, TOOL-002, and TOOL-004, so landing it after those keeps the attachment payload change confined to one shape rather than being retrofitted into each new handler in turn. Nothing in the code forces that order.
 
+## Documentation impact
+
+### Decision Records
+
+None.
+
+### Specifications
+
+None.
+
+### Guides
+
+Update the README with attachment support and its operational limits.
+
+### Roadmap
+
+No additional roadmap impact.
+
 ## Discussion
 
 ### Where the bytes come from is the open question

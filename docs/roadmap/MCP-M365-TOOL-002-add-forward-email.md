@@ -53,6 +53,24 @@ No forwarding path exists. Graph's `me/messages/{id}/forward` action is not call
 
 This item is not blocked and its frontmatter records no dependency. It belongs to the same mail-composition set as TOOL-001 and shares its message-scoped shape, so doing it after TOOL-001 avoids inventing the recipient-parsing helper twice. The relationship is a sequencing preference only; forwarding does not require reply to exist.
 
+## Documentation impact
+
+### Decision Records
+
+None.
+
+### Specifications
+
+None.
+
+### Guides
+
+Update the README tool catalogue with forward-email behaviour.
+
+### Roadmap
+
+No additional roadmap impact.
+
 ## Discussion
 
 ### Recipient parsing is the real shared surface
