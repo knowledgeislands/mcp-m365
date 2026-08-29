@@ -211,6 +211,17 @@ const parseNonNegativeInt = (raw: string | undefined, fallback: number, varName:
  * history.
  */
 export const TRIAGE_STATE_DIR = '.mcp-m365'
+
+export const resolveXdgStateHome = (env: NodeJS.ProcessEnv, homeDir: string): string => {
+  const configured = env.XDG_STATE_HOME?.trim()
+  if (configured) {
+    if (!path.isAbsolute(configured)) {
+      throw new Error('XDG_STATE_HOME must be an absolute path')
+    }
+    return configured
+  }
+  return path.join(homeDir, '.local', 'state')
+}
 const defaultTrackingPath = (roots: readonly string[]): string =>
   roots.length > 0 ? path.join(roots[0] as string, TRIAGE_STATE_DIR, 'email-triage', 'tracking.json5') : ''
 
@@ -219,6 +230,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   const triageRoots = parseRoots(env.MCP_M365_TRIAGE_ROOTS)
 
   const homeDir = env.HOME || env.USERPROFILE || os.homedir() || '/tmp'
+  const stateDir = path.join(resolveXdgStateHome(env, homeDir), 'ki', 'mcp-m365')
   const authPort = Number.parseInt(env.MCP_M365_AUTH_PORT || '3333', 10)
   const tenantId = env.MCP_M365_TENANT_ID || 'common'
   const authorityHost = (env.MCP_M365_AUTHORITY_HOST || 'https://login.microsoftonline.com').replace(/\/+$/, '')
@@ -228,7 +240,9 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     clientSecret: env.MCP_M365_CLIENT_SECRET || '',
     redirectUri: env.MCP_M365_REDIRECT_URI || `http://localhost:${authPort}/auth/callback`,
     scopes: parseScopes(env.MCP_M365_SCOPES),
-    tokenStorePath: path.join(homeDir, '.mcp-m365-tokens.json'),
+    tokenStorePath: env.MCP_M365_TOKEN_PATH?.trim()
+      ? path.resolve(env.MCP_M365_TOKEN_PATH.trim())
+      : path.join(stateDir, 'oauth-tokens.json'),
     authServerPort: authPort,
     authServerUrl: `http://localhost:${authPort}`,
     tenantId,
@@ -245,7 +259,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     auditLogMode: parseAuditLogMode(env.MCP_M365_AUDIT_LOG),
     auditLogPath: env.MCP_M365_AUDIT_LOG_PATH?.trim()
       ? path.resolve(env.MCP_M365_AUDIT_LOG_PATH.trim())
-      : path.join(homeDir, '.local', 'state', 'mcp-m365', 'audit.jsonl'),
+      : path.join(stateDir, 'audit.jsonl'),
     auditLogMaxBytes: parseNonNegativeInt(
       env.MCP_M365_AUDIT_LOG_MAX_BYTES,
       10 * 1024 * 1024,

@@ -5,7 +5,7 @@ import os from 'node:os'
 import path from 'node:path'
 import querystring from 'node:querystring'
 import type { Config } from '../../config/index.js'
-import { M365_DEFAULT_SCOPES } from '../../config/index.js'
+import { M365_DEFAULT_SCOPES, resolveXdgStateHome } from '../../config/index.js'
 
 export interface TokenStorageConfig {
   tokenStorePath?: string
@@ -44,7 +44,12 @@ class TokenStorage {
 
     this.config = {
       /* v8 ignore next — os.homedir() always returns a path on supported platforms; '' is a defensive fallback */
-      tokenStorePath: path.join(os.homedir() || '', '.mcp-m365-tokens.json'),
+      tokenStorePath: path.join(
+        resolveXdgStateHome(process.env, os.homedir() || '/tmp'),
+        'ki',
+        'mcp-m365',
+        'oauth-tokens.json'
+      ),
       clientId: '',
       clientSecret: '',
       redirectUri: '',

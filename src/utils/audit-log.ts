@@ -6,7 +6,7 @@
  * annotated `readOnlyHint: true`) or `all` (every tool, including read).
  * Level is derived from each tool's MCP annotations by `makeAccessGatedRegister`.
  * Path is configurable via MCP_M365_AUDIT_LOG_PATH; defaults to
- * `~/.local/state/mcp-m365/audit.jsonl`.
+ * `~/.local/state/ki/mcp-m365/audit.jsonl`.
  *
  * The mode/path/size config is passed in as an `AuditConfig` (the audit slice
  * of the loaded `Config`), keeping this util MCP-agnostic — nothing here reads

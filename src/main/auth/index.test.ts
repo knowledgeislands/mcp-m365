@@ -18,6 +18,7 @@ vi.mock('https')
 
 const mockHomeDir = '/mock/home'
 process.env.HOME = mockHomeDir
+process.env.XDG_STATE_HOME = path.join(mockHomeDir, '.local', 'state')
 
 const baseConfig = {
   clientId: 'test-client-id',
@@ -29,7 +30,7 @@ const baseConfig = {
 
 describe('TokenStorage', () => {
   let tokenStorage: TokenStorage
-  const tokenStorePath = path.join(mockHomeDir, '.mcp-m365-tokens.json')
+  const tokenStorePath = path.join(mockHomeDir, '.local', 'state', 'ki', 'mcp-m365', 'oauth-tokens.json')
 
   beforeEach(() => {
     vi.resetAllMocks()
@@ -669,7 +670,7 @@ describe('TokenStorage', () => {
       const ts = createTokenStorage(cfg)
       expect(ts.config.clientId).toBe('cid')
       expect(ts.config.clientSecret).toBe('sec')
-      expect(ts.config.tokenStorePath).toBe('/mock/home/.mcp-m365-tokens.json')
+      expect(ts.config.tokenStorePath).toBe('/mock/home/.local/state/ki/mcp-m365/oauth-tokens.json')
       expect(ts.config.scopes).toEqual(cfg.auth.scopes)
       expect(ts.config.tokenEndpoint).toBe(cfg.auth.tokenEndpoint)
     })

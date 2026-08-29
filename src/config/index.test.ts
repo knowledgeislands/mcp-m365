@@ -35,12 +35,12 @@ describe('parseScopes (via auth.scopes)', () => {
 describe('homeDir fallback chain (HOME || USERPROFILE || os.homedir() || "/tmp")', () => {
   it('uses HOME when set (token path under $HOME)', () => {
     const cfg = loadConfig(baseEnv({ HOME: '/home/alice', USERPROFILE: undefined }))
-    expect(cfg.auth.tokenStorePath).toBe('/home/alice/.mcp-m365-tokens.json')
+    expect(cfg.auth.tokenStorePath).toBe('/home/alice/.local/state/ki/mcp-m365/oauth-tokens.json')
   })
 
   it('falls back to USERPROFILE when HOME is unset (Windows-style)', () => {
     const cfg = loadConfig(baseEnv({ HOME: undefined, USERPROFILE: 'C:\\Users\\bob' }))
-    expect(cfg.auth.tokenStorePath.endsWith('.mcp-m365-tokens.json')).toBe(true)
+    expect(cfg.auth.tokenStorePath.endsWith('.local/state/ki/mcp-m365/oauth-tokens.json')).toBe(true)
   })
 
   it('falls back to os.homedir() when both HOME and USERPROFILE are unset', async () => {
@@ -51,7 +51,7 @@ describe('homeDir fallback chain (HOME || USERPROFILE || os.homedir() || "/tmp")
     })
     const { loadConfig: loadFresh } = await import('./index.js')
     const cfg = loadFresh(baseEnv({ HOME: undefined, USERPROFILE: undefined }))
-    expect(cfg.auth.tokenStorePath).toBe('/fake/homedir/.mcp-m365-tokens.json')
+    expect(cfg.auth.tokenStorePath).toBe('/fake/homedir/.local/state/ki/mcp-m365/oauth-tokens.json')
     vi.doUnmock('node:os')
     vi.resetModules()
   })
@@ -64,7 +64,7 @@ describe('homeDir fallback chain (HOME || USERPROFILE || os.homedir() || "/tmp")
     })
     const { loadConfig: loadFresh } = await import('./index.js')
     const cfg = loadFresh(baseEnv({ HOME: undefined, USERPROFILE: undefined }))
-    expect(cfg.auth.tokenStorePath).toBe('/tmp/.mcp-m365-tokens.json')
+    expect(cfg.auth.tokenStorePath).toBe('/tmp/.local/state/ki/mcp-m365/oauth-tokens.json')
     vi.doUnmock('node:os')
     vi.resetModules()
   })
@@ -125,7 +125,7 @@ describe('auditLogPath', () => {
 
   it('falls back to the default state path when MCP_M365_AUDIT_LOG_PATH is blank', () => {
     const cfg = loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_PATH: '   ' }))
-    expect(cfg.auditLogPath).toMatch(/\.local\/state\/mcp-m365\/audit\.jsonl$/)
+    expect(cfg.auditLogPath).toMatch(/\.local\/state\/ki\/mcp-m365\/audit\.jsonl$/)
   })
 })
 
@@ -216,5 +216,25 @@ describe('hydrateEnvFromFiles (via loadConfig)', () => {
       if (original === undefined) delete process.env.NODE_ENV
       else process.env.NODE_ENV = original
     }
+  })
+})
+
+describe('XDG state paths', () => {
+  it('uses an absolute XDG_STATE_HOME for OAuth and audit state', () => {
+    const cfg = loadConfig(baseEnv({ XDG_STATE_HOME: '/state' }))
+
+    expect(cfg.auth.tokenStorePath).toBe('/state/ki/mcp-m365/oauth-tokens.json')
+    expect(cfg.auditLogPath).toBe('/state/ki/mcp-m365/audit.jsonl')
+  })
+
+  it('honours an explicit token path', () => {
+    const cfg = loadConfig(baseEnv({ MCP_M365_TOKEN_PATH: '/private/tokens.json' }))
+    expect(cfg.auth.tokenStorePath).toBe('/private/tokens.json')
+  })
+
+  it('rejects a relative XDG_STATE_HOME', () => {
+    expect(() => loadConfig(baseEnv({ XDG_STATE_HOME: 'relative/state' }))).toThrow(
+      /XDG_STATE_HOME must be an absolute path/
+    )
   })
 })

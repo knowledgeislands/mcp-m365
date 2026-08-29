@@ -148,7 +148,7 @@ When both are provided, `folderId` takes precedence and is used directly.
 4. **Build**: `bun run build`.
 5. **Configure Claude Desktop** with `dist/mcp-server/index.js` and your `MCP_M365_CLIENT_ID`/`MCP_M365_CLIENT_SECRET` (see [Configuration](#configuration)).
 6. **Start the auth server**: `bun run ki:server:auth:dev` (separate process; handles OAuth on `localhost:3333`).
-7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.mcp-m365-tokens.json`.
+7. **Authenticate** — use the `m365_auth_start` tool in Claude, follow the URL, sign in. Tokens are saved to `~/.local/state/ki/mcp-m365/oauth-tokens.json`.
 
 ## Example Conversations
 
@@ -236,11 +236,13 @@ bun install
 | `MCP_M365_AUTHORITY_HOST` | no | [host][login-host] | OAuth authority host. Override for sovereign clouds (US Gov, China, etc.). |
 | `MCP_M365_REDIRECT_URI` | no | `http://localhost:3333/auth/callback` | OAuth redirect URI. Must match the value registered in Azure. |
 | `MCP_M365_AUTH_PORT` | no | `3333` | Port the auth server listens on. Must match the redirect URI port. |
+| `MCP_M365_TOKEN_PATH` | no | `~/.local/state/ki/mcp-m365/oauth-tokens.json` | OAuth token location. |
+| `XDG_STATE_HOME` | no | `$HOME/.local/state` | Absolute base directory for default OAuth and audit state paths. |
 | `MCP_M365_SCOPES` | no | † | Space-separated OAuth scopes requested for the access token. |
 | `MCP_M365_TOKEN_ENDPOINT` | no | § | Full token endpoint URL. Override only if your authority uses a non-standard path. |
 | `MCP_M365_ACCESS_LEVEL` | no | `read` | Maximum tool access level to register. ¶ |
 | `MCP_M365_AUDIT_LOG` | no | `writes` | Audit-log scope. ※ |
-| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
+| `MCP_M365_AUDIT_LOG_PATH` | no | `~/.local/state/ki/mcp-m365/audit.jsonl` | Path to the JSONL audit log. |
 | `MCP_M365_AUDIT_LOG_MAX_BYTES` | no | `10485760` (10 MiB) | Size-based rotation threshold in bytes. Set to `0` to disable rotation. |
 | `MCP_M365_AUDIT_LOG_KEEP` | no | `5` | Number of rotated audit-log files to retain. |
 | `MCP_M365_TRIAGE_TRACKING_PATH` | no | `<first root>/.mcp-m365/email-triage/tracking.json5` | Default location of the routing engine's tracking cache. Overridable per call; always root-checked. |
@@ -305,10 +307,10 @@ The OAuth flow runs out-of-band via the standalone auth server:
 1. Start the auth server: `bun run ki:server:auth:dev` (listens on `http://localhost:3333`).
 2. In Claude, call the `m365_auth_start` tool — it returns a sign-in URL.
 3. Open the URL, sign in, and grant the requested scopes.
-4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.mcp-m365-tokens.json`.
+4. Tokens (including a refresh token thanks to `offline_access`) are saved to `~/.local/state/ki/mcp-m365/oauth-tokens.json`.
 5. The MCP server reads that file and refreshes tokens transparently when they expire.
 
-To force re-authentication, delete `~/.mcp-m365-tokens.json` and re-run the `m365_auth_start` tool.
+To force re-authentication, delete `~/.local/state/ki/mcp-m365/oauth-tokens.json` and re-run the `m365_auth_start` tool.
 
 ## Development
 
@@ -328,7 +330,7 @@ ki repo audit --skill ki-authoring --repo .  # rumdl check for authored Markdown
 ## Security Model
 
 - Secrets (`MCP_M365_CLIENT_SECRET`) come from env vars only; never committed. `.env*` files are gitignored except `.env*.example` templates.
-- OAuth tokens live in `~/.mcp-m365-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
+- OAuth tokens live in `~/.local/state/ki/mcp-m365/oauth-tokens.json` (mode 0600 when written). The MCP server reads, refreshes, and rewrites this file but never logs token values.
 - The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
 - Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them.
 - Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
@@ -388,7 +390,7 @@ Use the secret **VALUE** from "Certificates & secrets", not the Secret ID.
 
 **`Authentication required`**
 
-Delete `~/.mcp-m365-tokens.json` and re-authenticate via the `m365_auth_start` tool.
+Delete `~/.local/state/ki/mcp-m365/oauth-tokens.json` and re-authenticate via the `m365_auth_start` tool.
 
 ## Extending the Server
 
