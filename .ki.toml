@@ -16,6 +16,9 @@ visibility = "public"
 
 [skills.ki-engineering]
 
+dependency_holds = ["zod — 4.5.4 is incompatible with @modelcontextprotocol/sdk 1.30.0 schema types"]
+script_exclusions = ["ki:server:auth:dev", "ki:server:auth:start", "ki:test:record", "ki:test:replay"]
+
 [skills.ki-repo-project]
 
 [skills.ki-repo-mcp]
