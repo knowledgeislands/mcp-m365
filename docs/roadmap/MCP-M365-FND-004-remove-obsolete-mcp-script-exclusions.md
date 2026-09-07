@@ -4,10 +4,10 @@ area: FND
 title: Remove MCP exclusions
 theme: foundation-tooling
 horizon: next
-status: ready
+status: in-progress
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8ef38932649b2f1325624a33b33071e7f886196c
 ---
 
 ## Goal
@@ -28,9 +28,9 @@ The selected local adapter is `roadmap`, the central claim prerequisite has land
 
 ## Steps
 
-- [ ] Remove the exact `script_exclusions` key while preserving `dependency_holds` and every other `.ki.toml` value.
-- [ ] Prove the four package script names and bodies remain unchanged.
-- [ ] Run the required focused audits, TypeScript check, tests, TOML parse, and diff check.
+- [x] Remove the exact `script_exclusions` key while preserving `dependency_holds` and every other `.ki.toml` value.
+- [x] Prove the four package script names and bodies remain unchanged.
+- [x] Run the required focused audits, TypeScript check, tests, TOML parse, and diff check.
 - [ ] Record the canonical review packet and bound batch-run evidence, then stop at `awaiting-review`.
 
 ## Files touched
