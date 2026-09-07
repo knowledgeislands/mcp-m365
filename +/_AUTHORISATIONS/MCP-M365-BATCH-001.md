@@ -50,3 +50,10 @@ The item stops at `awaiting-review` with the canonical six-heading review packet
 ## Run ledger
 
 <!-- ki-batch-run: MCP-M365-BATCH-001-RUN-001 207482c2511a8522e04bf7f4623d441b7d1f13248e5463ead9a2ffffbbe20db2 -->
+
+## Run outcome
+
+- `MCP-M365-FND-004` began Ready at immutable baseline `8ef38932649b2f1325624a33b33071e7f886196c` and reached `awaiting-review` after implementation commit `bb5a01969340a27c6ee3fa86913c9714c93b1aff`.
+- Focused `ki-engineering` and roadmap audits passed; the focused MCP audit retained one pre-existing `CFG-1` warning and no failures. TypeScript passed; 30 test files and 947 tests passed; TOML parsing, package-script equality, Markdown, and diff checks passed.
+- No decision beyond the locked four-exclusion removal was taken, no delegation was used, and no external command, push, release, closure, or prune occurred.
+- Next action is human review through `ki-accept`; this authorisation grants no closure authority. The existing MCP warning remains receiver-owned follow-up outside this run.
