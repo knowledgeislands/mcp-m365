@@ -529,10 +529,27 @@ describe('handleAgedRun', () => {
     expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'DELETE', 'me/messages/msg-1')
   })
 
+  it('reads only the subfolders the aged block names, each with its own window', async () => {
+    const listed: string[] = []
+    mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
+      if (method === 'GET' && apiPath.endsWith('/messages')) {
+        listed.push(apiPath)
+        // Every folder is fuller than the window; only the named one may set `truncated`.
+        return { value: [message(), message({ id: 'msg-2' })] }
+      }
+      return {}
+    })
+    const result = await handleAgedRun(ctx, { rules: RULES, maxActions: 1 })
+    expect(listed).toEqual(['me/mailFolders/junk-id/messages'])
+    expect(result.structuredContent).toMatchObject({ considered: 1, remaining: true })
+  })
+
   it('stops collecting once the batch is full and reports that more remain', async () => {
     mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
       if (method === 'GET' && apiPath.endsWith('/messages')) {
-        return { value: [message({ receivedDateTime: '2020-01-01T00:00:00Z', flag: { flagStatus: 'notFlagged' } })] }
+        const aged = (id: string) =>
+          message({ id, receivedDateTime: '2020-01-01T00:00:00Z', flag: { flagStatus: 'notFlagged' } })
+        return { value: [aged('msg-1'), aged('msg-2')] }
       }
       return {}
     })

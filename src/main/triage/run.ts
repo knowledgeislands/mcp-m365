@@ -190,7 +190,8 @@ const runPass = async (
   collect: (
     accessToken: string,
     map: FolderMap,
-    limit: number
+    limit: number,
+    rules: Rule[]
   ) => Promise<{ records: EmailRecord[]; truncated: boolean }>
 ): Promise<any> => {
   const mode = args.mode === 'live' ? 'live' : 'report'
@@ -218,7 +219,7 @@ const runPass = async (
 
   const accessToken = await ctx.ensureAuthenticated()
   const map = await buildFolderMap(ctx, accessToken)
-  const { records, truncated } = await collect(accessToken, map, maxActions + 1)
+  const { records, truncated } = await collect(accessToken, map, maxActions + 1, selected.block.rules)
 
   const now = new Date()
   const candidates: Candidate[] = []
@@ -316,25 +317,42 @@ export const handleTriageRun = async (ctx: TriageContext, args: any): Promise<an
   }
 }
 
-/** Apply the retention policy in the `aged` block across every `_TRIAGE` subfolder. */
+/**
+ * `_TRIAGE` subfolder leaf names the block's `folder:` predicates name, lower-cased.
+ * Empty when no rule constrains the folder, in which case every subfolder is walked.
+ */
+const referencedFolders = (rules: Rule[]): Set<string> => {
+  const names = new Set<string>()
+  for (const rule of rules)
+    for (const group of rule.groups)
+      for (const term of group.terms)
+        if (term.kind === 'predicate' && term.key === 'folder' && !term.negated) names.add(term.value.toLowerCase())
+  return names
+}
+
+/**
+ * Apply the retention policy in the `aged` block across the `_TRIAGE` subfolders.
+ *
+ * Only folders the block actually names are read, and each gets its own window
+ * of `limit` messages (oldest first). A single cumulative window across every
+ * subfolder in alphabetical order stalled in production: `000 Unknown` and
+ * `101 Do` alone held more mail than the window, none of it subject to any
+ * aged rule, so `981 Delete` and `991 Junk` were never reached and the pass
+ * reported "more remain" with nothing acted on, forever.
+ */
 export const handleAgedRun = async (ctx: TriageContext, args: any): Promise<any> => {
   try {
-    return await runPass(ctx, args, 'aged', async (accessToken, map, limit) => {
+    return await runPass(ctx, args, 'aged', async (accessToken, map, limit, rules) => {
       const records: EmailRecord[] = []
       let truncated = false
+      const wanted = referencedFolders(rules)
       for (const folderPath of childPaths(map, TRIAGE_ROOT)) {
-        if (records.length >= limit) {
-          truncated = true
-          break
-        }
+        const leaf = leafOf(folderPath)
+        if (wanted.size > 0 && !wanted.has(leaf.toLowerCase())) continue
         const folderId = map.idByPath.get(folderPath.toLowerCase()) as string
-        const messages = await listFolderMessages(ctx, accessToken, folderId, limit - records.length)
-        for (const message of messages)
-          records.push(toEmailRecord(message, folderPath.slice(folderPath.lastIndexOf('/') + 1)))
-      }
-      if (records.length >= limit) {
-        truncated = true
-        records.length = limit - 1
+        const messages = await listFolderMessages(ctx, accessToken, folderId, limit)
+        if (messages.length >= limit) truncated = true
+        for (const message of messages.slice(0, limit - 1)) records.push(toEmailRecord(message, leaf))
       }
       return { records, truncated }
     })
