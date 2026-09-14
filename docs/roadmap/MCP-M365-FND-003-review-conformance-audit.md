@@ -9,6 +9,8 @@ candidate: true
 blocks: []
 blocked_by: []
 baseline_ref: null
+created_at: 2026-09-04T08:54:20Z
+updated_at: 2026-09-04T08:54:20Z
 ---
 
 ## Goal
