@@ -91,6 +91,15 @@ export const listFolderMessages = async (
   return Array.isArray(response?.value) ? response.value : []
 }
 
+/** `[received, received + 1s)` as Graph datetime literals, or null when the timestamp will not parse. */
+const receivedWindow = (received: string): { from: string; to: string } | null => {
+  const start = new Date(received)
+  if (Number.isNaN(start.getTime())) return null
+  const from = new Date(Math.floor(start.getTime() / 1000) * 1000)
+  const to = new Date(from.getTime() + 1000)
+  return { from: from.toISOString(), to: to.toISOString() }
+}
+
 const sameMessage = (record: EmailRecord, candidate: any): boolean =>
   identityKey(record) === identityKey(toEmailRecord(candidate))
 
@@ -124,9 +133,15 @@ export const findMessage = async (ctx: GraphContext, accessToken: string, record
 
   if (!record.received) return null
 
+  // Graph keeps receivedDateTime to sub-second precision but serialises it to
+  // whole seconds, so an exact `eq` against the value it handed back never
+  // matches. A one-second window does, and the identity match narrows it.
+  const window = receivedWindow(record.received)
+  if (!window) return null
+
   try {
     const response: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', 'me/messages', null, {
-      $filter: `receivedDateTime eq ${record.received}`,
+      $filter: `receivedDateTime ge ${window.from} and receivedDateTime lt ${window.to}`,
       $select: IDENTITY_SELECT,
       $top: 50
     })

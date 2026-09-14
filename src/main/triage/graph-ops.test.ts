@@ -119,7 +119,9 @@ describe('findMessage — identity, not id', () => {
       'GET',
       'me/messages',
       null,
-      expect.objectContaining({ $filter: 'receivedDateTime eq 2026-08-01T09:00:00Z' })
+      expect.objectContaining({
+        $filter: 'receivedDateTime ge 2026-08-01T09:00:00.000Z and receivedDateTime lt 2026-08-01T09:00:01.000Z'
+      })
     )
   })
 
