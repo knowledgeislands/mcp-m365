@@ -7,6 +7,7 @@
  * owns, and its location is configuration, not something a caller may choose —
  * a caller-supplied path would let any prompt redirect writes anywhere on disk.
  */
+import type { AttachmentSaver } from '../attachments/save.js'
 import type { GraphContext } from '../graph-client/index.js'
 
 export interface TriageContext extends GraphContext {
@@ -20,4 +21,13 @@ export interface TriageContext extends GraphContext {
    * takes effect without restarting the server. A call may override it.
    */
   rulesPath: string
+  /**
+   * Destination names a `save-attachments:` action may use, mapped to their
+   * paths. Configuration, not rule data: a rule line names a destination, never
+   * a path, so editing the rule note cannot redirect writes. Absent when none
+   * is configured, which makes the lint reject any rule that saves.
+   */
+  attachmentDestinations?: Readonly<Record<string, string>>
+  /** Carries out `save-attachments:`. Absent when no destination is configured, which makes the action fail loudly. */
+  saveAttachments?: AttachmentSaver
 }

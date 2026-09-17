@@ -3,6 +3,7 @@
  * env object, so each case passes a literal `NodeJS.ProcessEnv` slice rather
  * than mutating `process.env` and re-importing the module.
  */
+import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig, M365_DEFAULT_SCOPES } from './index.js'
@@ -182,32 +183,56 @@ describe('triageRulesPath', () => {
   })
 })
 
-describe('receipts harvest', () => {
+describe('attachment saving', () => {
   it('parses its own roots, independent of the engine roots', () => {
     const cfg = loadConfig(
-      baseEnv({ MCP_M365_TRIAGE_ROOTS: '/repo/kb', MCP_M365_RECEIPTS_ROOTS: '/drive/Exec/Receipts' })
+      baseEnv({ MCP_M365_TRIAGE_ROOTS: '/repo/kb', MCP_M365_ATTACHMENT_ROOTS: '/drive/Exec/Receipts' })
     )
-    expect(cfg.receiptsRoots).toEqual(['/drive/Exec/Receipts'])
-    // Neither root widens the other: the engine cannot write to the receipts
-    // folder and the harvest cannot write to the rule note.
+    expect(cfg.attachmentRoots).toEqual(['/drive/Exec/Receipts'])
+    // Neither root widens the other: the engine cannot write into the
+    // attachment destination and the saver cannot write to the rule note.
     expect(cfg.triageRoots).toEqual(['/repo/kb'])
   })
 
-  it('defaults the destination to the first root', () => {
-    expect(loadConfig(baseEnv({ MCP_M365_RECEIPTS_ROOTS: '/drive/Receipts' })).receiptsDir).toBe('/drive/Receipts')
-  })
-
-  it('resolves an explicit destination, which must still sit inside a root at call time', () => {
+  it('reads one destination per environment variable, keyed by the name a rule uses', () => {
     const cfg = loadConfig(
-      baseEnv({ MCP_M365_RECEIPTS_ROOTS: '/drive/Exec', MCP_M365_RECEIPTS_DIR: '/drive/Exec/Receipts' })
+      baseEnv({
+        MCP_M365_ATTACHMENT_ROOTS: '/drive/Exec',
+        MCP_M365_ATTACHMENT_DEST_RECEIPTS: '/drive/Exec/Receipts',
+        MCP_M365_ATTACHMENT_DEST_SIGNED_CONTRACTS: '/drive/Exec/Contracts'
+      })
     )
-    expect(cfg.receiptsDir).toBe('/drive/Exec/Receipts')
+    // Underscores become hyphens so the name matches the rule grammar.
+    expect(cfg.attachmentDestinations).toEqual({
+      receipts: '/drive/Exec/Receipts',
+      'signed-contracts': '/drive/Exec/Contracts'
+    })
   })
 
-  it('is empty when unset, which disables the harvest', () => {
+  it('expands a leading ~ in a destination', () => {
+    // `expandHome` uses the real home directory, not `env.HOME` — the same as
+    // every other configured path.
+    const cfg = loadConfig(baseEnv({ MCP_M365_ATTACHMENT_DEST_RECEIPTS: '~/Receipts' }))
+    expect(cfg.attachmentDestinations.receipts).toBe(path.join(os.homedir(), 'Receipts'))
+  })
+
+  it('ignores a destination set to whitespace rather than mapping a name to nothing', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_ATTACHMENT_DEST_RECEIPTS: '   ' })).attachmentDestinations).toEqual({})
+  })
+
+  it('rejects a name that could not appear in a rule', () => {
+    // The grammar admits `[a-z0-9][a-z0-9-]*`, so a name that cannot survive
+    // the round trip is a configuration error, not a destination nobody can
+    // reach.
+    expect(() => loadConfig(baseEnv({ 'MCP_M365_ATTACHMENT_DEST_bad name': '/drive/x' }))).toThrow(
+      /must be A-Z, 0-9 and underscores/
+    )
+  })
+
+  it('is empty when unset, which disables saving attachments', () => {
     const cfg = loadConfig(baseEnv({}))
-    expect(cfg.receiptsRoots).toEqual([])
-    expect(cfg.receiptsDir).toBe('')
+    expect(cfg.attachmentRoots).toEqual([])
+    expect(cfg.attachmentDestinations).toEqual({})
   })
 
   it('defaults pdftotext to the Homebrew path and honours an override', () => {

@@ -41,6 +41,13 @@ export interface LintOptions {
    * folder state, so the caller passes the taxonomy it considers canonical.
    */
   knownFolders?: readonly string[]
+  /**
+   * Attachment destination names configured on the server. When supplied, every
+   * `save-attachments:` target is checked against it. A rule naming a
+   * destination the server does not have would otherwise fail at apply time,
+   * one message at a time, after the pass had already started.
+   */
+  knownDestinations?: readonly string[]
   /** Block labels that must end in a `*` fallback rule. Defaults to `['inbound']`. */
   requireFallbackIn?: readonly string[]
 }
@@ -301,6 +308,27 @@ const checkFolders = (rules: readonly Rule[], known: readonly string[], findings
   }
 }
 
+const checkDestinations = (rules: readonly Rule[], known: readonly string[], findings: LintFinding[]): void => {
+  const normalised = new Set(known.map((d) => d.toLowerCase()))
+  for (const rule of rules) {
+    for (const action of rule.actions) {
+      if (action.kind !== 'save-attachments') continue
+      const target = String(action.value)
+      if (normalised.has(target.toLowerCase())) continue
+      findings.push({
+        severity: 'error',
+        code: 'unknown-destination',
+        line: rule.line,
+        message:
+          known.length === 0
+            ? `save-attachments target "${target}" but no attachment destinations are configured`
+            : `save-attachments target "${target}" is not among ${known.length} configured destinations`,
+        source: rule.source
+      })
+    }
+  }
+}
+
 /** Run every static check over a parsed rule source. Findings are ordered by line. */
 export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintFinding[] => {
   const findings: LintFinding[] = parsed.errors.map((error) => ({
@@ -321,6 +349,7 @@ export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintF
     checkPartyConsolidation(block.rules, findings)
     checkAddressPatterns(block.rules, findings)
     if (options.knownFolders) checkFolders(block.rules, options.knownFolders, findings)
+    if (options.knownDestinations) checkDestinations(block.rules, options.knownDestinations, findings)
   }
 
   return findings.sort((a, b) => a.line - b.line)

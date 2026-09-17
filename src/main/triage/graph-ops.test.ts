@@ -279,6 +279,105 @@ describe('applyActions', () => {
     })
   })
 
+  it('saves attachments, then lets the disposal that follows run', async () => {
+    const saveAttachments = vi.fn().mockResolvedValue({
+      ok: true,
+      files: [{ filename: '2026-08-13_anthropic_5.14.pdf', source: 'receipt.pdf', amount: '5.14', written: true }]
+    })
+    mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ id: 'msg-after-move' })
+
+    const { applied } = await applyActions(
+      { ...ctx, saveAttachments },
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [
+        { kind: 'save-attachments', value: 'receipts' },
+        { kind: 'move', value: '111 Partner' }
+      ],
+      await withMap()
+    )
+
+    expect(saveAttachments).toHaveBeenCalledWith({
+      accessToken: TOKEN,
+      messageId: 'msg-1',
+      record: record({ id: 'msg-1' }),
+      destination: 'receipts'
+    })
+    expect(applied).toEqual([
+      { action: 'save-attachments:receipts', ok: true, detail: '2026-08-13_anthropic_5.14.pdf' },
+      { action: 'move:_TRIAGE/111 Partner', ok: true }
+    ])
+  })
+
+  it('reports a message that had no PDF on it, and still disposes of it', async () => {
+    const saveAttachments = vi.fn().mockResolvedValue({ ok: true, files: [] })
+    mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ id: 'msg-after-move' })
+    const { applied } = await applyActions(
+      { ...ctx, saveAttachments },
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [
+        { kind: 'save-attachments', value: 'receipts' },
+        { kind: 'move', value: '111 Partner' }
+      ],
+      await withMap()
+    )
+    expect(applied[0]).toEqual({ action: 'save-attachments:receipts', ok: true, detail: 'no PDF attachments' })
+    expect(applied).toHaveLength(2)
+  })
+
+  it('blocks the disposal that follows a failed save', async () => {
+    // This is the whole gate: the mail stays where it is, and the next run
+    // retries it, rather than being filed away with its receipt lost.
+    const saveAttachments = vi.fn().mockResolvedValue({ ok: false, files: [], detail: 'disk full' })
+    mockCall.mockResolvedValueOnce(graphMessage())
+    const { applied } = await applyActions(
+      { ...ctx, saveAttachments },
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [
+        { kind: 'save-attachments', value: 'receipts' },
+        { kind: 'move', value: '111 Partner' }
+      ],
+      await withMap()
+    )
+    expect(applied).toEqual([{ action: 'save-attachments:receipts', ok: false, detail: 'disk full' }])
+  })
+
+  it('reports a failure with no detail of its own', async () => {
+    const saveAttachments = vi.fn().mockResolvedValue({ ok: false, files: [] })
+    mockCall.mockResolvedValueOnce(graphMessage())
+    const { applied } = await applyActions(
+      { ...ctx, saveAttachments },
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [{ kind: 'save-attachments', value: 'receipts' }],
+      await withMap()
+    )
+    expect(applied[0]?.detail).toBe('saving attachments failed')
+  })
+
+  it('fails loudly when the server has no saver, rather than silently not saving', async () => {
+    mockCall.mockResolvedValueOnce(graphMessage())
+    const { applied } = await applyActions(
+      ctx,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [
+        { kind: 'save-attachments', value: 'receipts' },
+        { kind: 'move', value: '111 Partner' }
+      ],
+      await withMap()
+    )
+    expect(applied).toEqual([
+      {
+        action: 'save-attachments:receipts',
+        ok: false,
+        detail: 'no attachment destination is configured on this server'
+      }
+    ])
+  })
+
   it('deletes', async () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({})
     const { applied } = await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'delete' }], await withMap())

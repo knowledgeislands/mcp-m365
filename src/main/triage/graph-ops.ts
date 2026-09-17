@@ -12,6 +12,7 @@
  *   threaded into any remaining actions for that message.
  */
 import { errMessage } from '../../utils/errors.js'
+import type { AttachmentSaver } from '../attachments/save.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import type { GraphContext } from '../graph-client/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
@@ -162,6 +163,15 @@ export const resolveMessageId = async (
   return message ? String(message.id) : null
 }
 
+/**
+ * What applying actions needs: Graph access, plus the saver when a rule uses
+ * `save-attachments:`. Narrower than `TriageContext` so a caller holding only a
+ * Graph client — the folder helpers, the tests — still satisfies it.
+ */
+export interface ActionContext extends GraphContext {
+  saveAttachments?: AttachmentSaver
+}
+
 export interface AppliedAction {
   action: string
   ok: boolean
@@ -175,12 +185,41 @@ const isExecutable = (action: Action): boolean => action.kind !== 'suggest'
 export const hasExecutableActions = (actions: readonly Action[]): boolean => actions.some(isExecutable)
 
 const applyOne = async (
-  ctx: GraphContext,
+  ctx: ActionContext,
   accessToken: string,
   messageId: string,
   action: Action,
-  map: FolderMap
+  map: FolderMap,
+  record: EmailRecord
 ): Promise<{ result: AppliedAction; nextId: string }> => {
+  if (action.kind === 'save-attachments') {
+    const label = `save-attachments:${action.value}`
+    // Absent saver is a failure, not a no-op: the actions after this one
+    // dispose of the mail, and the engine stops the chain on failure.
+    if (!ctx.saveAttachments)
+      return {
+        result: { action: label, ok: false, detail: 'no attachment destination is configured on this server' },
+        nextId: messageId
+      }
+    const outcome = await ctx.saveAttachments({
+      accessToken,
+      messageId,
+      record,
+      destination: String(action.value)
+    })
+    const saved = outcome.files.map((file) => file.filename).join(', ')
+    return {
+      result: {
+        action: label,
+        ok: outcome.ok,
+        ...(outcome.ok
+          ? { detail: outcome.files.length === 0 ? 'no PDF attachments' : saved }
+          : { detail: outcome.detail ?? 'saving attachments failed' })
+      },
+      nextId: messageId
+    }
+  }
+
   if (action.kind === 'move') {
     const target = resolveMoveTarget(action)
     const destinationId = map.idByPath.get(target.toLowerCase())
@@ -233,7 +272,7 @@ const applyOne = async (
  * message's current folder.
  */
 export const applyActions = async (
-  ctx: GraphContext,
+  ctx: ActionContext,
   accessToken: string,
   record: EmailRecord,
   actions: readonly Action[],
@@ -251,7 +290,7 @@ export const applyActions = async (
   for (const action of actions) {
     if (!isExecutable(action)) continue
     try {
-      const outcome = await applyOne(ctx, accessToken, messageId, action, map)
+      const outcome = await applyOne(ctx, accessToken, messageId, action, map, record)
       applied.push(outcome.result)
       messageId = outcome.nextId
       if (!outcome.result.ok) break

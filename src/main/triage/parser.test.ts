@@ -198,7 +198,8 @@ describe('parseRules — diagnostics', () => {
     ['type:meeting -> move:X', /invalid type/],
     ['importance:urgent -> move:X', /invalid importance/],
     ['status:starred -> move:X', /invalid status/],
-    ['age:7 -> move:X', /invalid age/]
+    ['age:7 -> move:X', /invalid age/],
+    ['has:pdf -> move:X', /invalid has/]
   ])('rejects an invalid enumerated value in %s', (body, expected) => {
     expect(errorsFor(body)[0]).toMatch(expected)
   })
@@ -229,6 +230,17 @@ describe('parseRules — diagnostics', () => {
 
   it('reports an empty action value', () => {
     expect(errorsFor('sender:a@b.com -> move:')[0]).toMatch(/empty value for "move:"/)
+  })
+
+  it('rejects a save-attachments target that looks like a path', () => {
+    // A rule names a configured destination, never a path. Rules are data read
+    // from a note, so a path here would make editing that note a way to write
+    // anywhere the server can reach.
+    expect(errorsFor('sender:a@b.com -> save-attachments:/tmp/anywhere')[0]).toMatch(
+      /expected a configured name, not a path/
+    )
+    expect(errorsFor('sender:a@b.com -> save-attachments:../escape')[0]).toMatch(/not a path/)
+    expect(errorsFor('sender:a@b.com -> save-attachments:Receipts')[0]).toMatch(/not a path/)
   })
 
   it('reports an invalid mark value', () => {

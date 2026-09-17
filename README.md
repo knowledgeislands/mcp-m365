@@ -81,21 +81,23 @@ Both run tools are **batch-bounded and resumable**: a call acts on at most `maxA
 
 The engine keeps one piece of state, a tracking cache recording what it routed where, at `MCP_M365_TRIAGE_TRACKING_PATH`. Message identity is subject + sender + received timestamp, never the Graph id, because Graph reissues ids on folder moves.
 
-### Receipt harvesting
+### Saving attachments
 
-| Tool | Purpose |
-| --- | --- |
-| `m365_email_receipts_harvest` | Save the receipt and invoice PDFs attached to mail in a finance folder as `YYYY-MM-DD_vendor_amount.pdf`, then archive the mail. Report mode by default. |
+A rule may lift the attachments out of a message before disposing of it:
 
-Downstream of the routing engine: the rules put vendor receipts in one folder, and this takes the PDFs out of them and into the folder the bookkeeping process reads. Deliberately one narrow tool rather than a general `attachment_save` — a general one would be a prompt-controlled write of attacker-supplied bytes to a caller-chosen path. This writes only receipt-like PDFs, only under `MCP_M365_RECEIPTS_DIR`, and names them itself.
+```rules
+folder:"282 HNR Finance" has:attachment subject:receipt -> save-attachments:receipts, move:_ARCHIVE/Internal/Finance, mark:read
+```
 
-Three properties make it safe to run unattended:
+`save-attachments:<name>` writes the message's PDF attachments into a configured destination, naming each `YYYY-MM-DD_vendor_amount.pdf` from the received date, the subject, and the transaction total read out of the document.
 
-- **Selection is conservative.** Only mail whose subject _and_ whose attachment names look like a receipt qualifies; everything else is reported and left where it is. A finance folder legitimately holds other correspondence, and a blanket sweep would file, say, a forwarded debtor-chase letter as a receipt.
-- **Disposal is an archive, never a delete, and never unconditional.** A message moves only once every one of its attachments is confirmed written. A partial write leaves the mail in place for the next run to retry.
-- **The amount is read from the PDF, never from the email body.** Receipt mail routinely quotes several money values, and the transaction total is not reliably the first or the largest. Text extraction shells out to `pdftotext` (`MCP_M365_PDFTOTEXT_PATH`); a document it cannot read is filed as `no-amount` rather than given a plausible wrong figure.
+This is a rule action rather than a tool of its own because of where the policy lives:
 
-Batch-bounded and resumable like the routing passes — at most `maxMessages` per call (default 20, lower because each message costs an attachment download and a PDF extraction), looping while `remaining` is true.
+- **Which mail, and what becomes of it afterwards, is policy** — so it sits in the rule note with the rest of the routing and is reviewed the same way. A rule selects (`folder:`, `subject:`, `has:attachment`) and disposes (`move:`, `mark:`), and the engine supplies the gate for free: a rule's actions run in written order and stop at the first failure, so a save that fails takes the `move:` with it and the mail is left for the next run to retry.
+- **Where the bytes land is not** — a rule names `receipts`, never a path. Rules are data read from a file and attachments are attacker-supplied bytes, so a rule that could name a path would make editing that note a way to write anywhere this process can reach. The grammar admits only `[a-z0-9][a-z0-9-]*`; the name must resolve through `MCP_M365_ATTACHMENT_DEST_*`, and the path it resolves to must sit inside `MCP_M365_ATTACHMENT_ROOTS`. A rule naming an unconfigured destination is a blocking lint error, so it fails the whole run rather than one message at a time.
+- **The amount is read from the PDF, never from the email body.** Receipt mail routinely quotes several money values, and the transaction total is not reliably the first or the largest. Text extraction shells out to `pdftotext` (`MCP_M365_PDFTOTEXT_PATH`); a document that cannot be read is filed `no-amount` rather than given a plausible wrong figure.
+
+Only non-inline `.pdf` attachments are saved, each capped at 25 MB, and an existing filename is never overwritten — a clash gains `-2`, `-3`. A message carrying no PDF is a success rather than a failure: `has:attachment` is true of an inline signature image too, and failing would wedge that mail in the triage folder on every subsequent run. A part-written message is rolled back, so the retry cannot duplicate the files that had already been written.
 
 #### Rule DSL (v1)
 
@@ -264,9 +266,9 @@ bun install
 | `MCP_M365_TRIAGE_TRACKING_PATH` | no | `<first root>/.mcp-m365/email-triage/tracking.json5` | Default location of the routing engine's tracking cache. Overridable per call; always root-checked. |
 | `MCP_M365_TRIAGE_RULES_PATH` | no | — | Default path to the rule note. When set, the routing tools' `rules` argument becomes optional. Overridable per call; always root-checked. |
 | `MCP_M365_TRIAGE_ROOTS` | no | — | `PATH`-style list of directories the routing engine may read and write. Every configured or caller-supplied path must resolve inside one of them. Unset disables all engine file access. |
-| `MCP_M365_RECEIPTS_ROOTS` | no | — | `PATH`-style list of directories the receipt harvest may write into. Separate from `MCP_M365_TRIAGE_ROOTS` so neither widens the other. Unset disables the harvest. |
-| `MCP_M365_RECEIPTS_DIR` | no | `<first receipts root>` | Where harvested receipts land. Must resolve inside `MCP_M365_RECEIPTS_ROOTS`. A call may name a subdirectory of it, never a different path. |
-| `MCP_M365_PDFTOTEXT_PATH` | no | `/opt/homebrew/bin/pdftotext` | Path to the poppler `pdftotext` binary used to read a receipt's total. |
+| `MCP_M365_ATTACHMENT_ROOTS` | no | — | `PATH`-style list of directories a `save-attachments:` action may write into. Separate from `MCP_M365_TRIAGE_ROOTS` so neither widens the other. Unset disables attachment saving. |
+| `MCP_M365_ATTACHMENT_DEST_<NAME>` | no | — | One per destination: the path `save-attachments:<name>` writes to, where `<name>` is the variable suffix lowercased with `_` as `-` (`MCP_M365_ATTACHMENT_DEST_RECEIPTS` → `save-attachments:receipts`). Must resolve inside `MCP_M365_ATTACHMENT_ROOTS`. |
+| `MCP_M365_PDFTOTEXT_PATH` | no | `/opt/homebrew/bin/pdftotext` | Path to the poppler `pdftotext` binary used to read a saved PDF's transaction total. |
 | `NODE_ENV` | no | — | Dev convention. ‖ |
 
 † Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
@@ -376,7 +378,6 @@ ki repo audit --skill ki-authoring --repo .  # rumdl check for authored Markdown
 │   │   ├── email/                   # Email tools
 │   │   ├── folder/                  # Mail folder tools
 │   │   ├── rules/                   # Inbox rules tools
-│   │   ├── receipts/               # Receipt attachment harvest
 │   │   └── onedrive/                # OneDrive tools
 │   └── utils/
 │       ├── access-level.ts          # Access-level gate (registers tools ≤ MCP_M365_ACCESS_LEVEL)

@@ -18,9 +18,6 @@
  *    invoice takes an `_invoice` suffix.
  */
 
-/** Non-inline PDFs whose name or subject looks like a receipt rather than general correspondence. */
-export const RECEIPT_PATTERN = /receipt|invoice|payment/i
-
 /**
  * Company-form suffixes stripped before slugging, so `Anthropic, PBC` and
  * `Linear Orbit, Inc.` become `anthropic` and `linear-orbit` rather than

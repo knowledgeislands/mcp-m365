@@ -54,6 +54,8 @@ let ctx: {
   roots: string[]
   trackingPath: string
   rulesPath: string
+  attachmentDestinations?: Record<string, string>
+  saveAttachments?: Mock
 }
 
 beforeEach(async () => {
@@ -564,11 +566,103 @@ describe('handleAgedRun', () => {
   })
 })
 
+describe('handleAgedRun — save-attachments', () => {
+  const agedWithAttachment = (over: Record<string, unknown> = {}) =>
+    message({
+      receivedDateTime: '2020-01-01T00:00:00Z',
+      flag: { flagStatus: 'notFlagged' },
+      hasAttachments: true,
+      ...over
+    })
+
+  const savingRules = (actions: string) =>
+    [
+      '## Inbound',
+      '',
+      '```rules v1',
+      '* -> move:000 Unknown, suggest',
+      '```',
+      '',
+      '## Aged',
+      '',
+      '```rules v1',
+      `folder:"991 Junk" age:7d has:attachment -> ${actions}`,
+      '```'
+    ].join('\n')
+
+  const stubAgedFolder = () => {
+    mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
+      if (method === 'GET' && apiPath === 'me/mailFolders/junk-id/messages') return { value: [agedWithAttachment()] }
+      if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
+      if (method === 'GET') return agedWithAttachment()
+      if (method === 'POST') return { id: 'msg-moved' }
+      return {}
+    })
+  }
+
+  beforeEach(() => {
+    ctx.attachmentDestinations = { receipts: path.join(dir, 'Receipts') }
+    ctx.saveAttachments = vi.fn().mockResolvedValue({
+      ok: true,
+      files: [{ filename: '2020-01-01_vendor_5.14.pdf', source: 'receipt.pdf', amount: '5.14', written: true }]
+    })
+  })
+
+  it('saves, then archives, and reports both in the destination', async () => {
+    stubAgedFolder()
+    const result = await handleAgedRun(ctx, {
+      rules: savingRules('save-attachments:receipts, move:111 Partner'),
+      mode: 'live'
+    })
+
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: 'save-attachments:receipts + _TRIAGE/111 Partner',
+      applied: [
+        { action: 'save-attachments:receipts', ok: true, detail: '2020-01-01_vendor_5.14.pdf' },
+        { action: 'move:_TRIAGE/111 Partner', ok: true }
+      ]
+    })
+  })
+
+  it('describes a save with no move and a save that deletes', async () => {
+    stubAgedFolder()
+    const saveOnly = await handleAgedRun(ctx, { rules: savingRules('save-attachments:receipts') })
+    expect(saveOnly.structuredContent.items[0].destination).toBe('save-attachments:receipts')
+
+    stubAgedFolder()
+    const saveThenDelete = await handleAgedRun(ctx, { rules: savingRules('save-attachments:receipts, delete') })
+    expect(saveThenDelete.structuredContent.items[0].destination).toBe('save-attachments:receipts + (deleted)')
+  })
+
+  it('writes nothing in report mode', async () => {
+    stubAgedFolder()
+    const result = await handleAgedRun(ctx, { rules: savingRules('save-attachments:receipts, move:111 Partner') })
+    expect(result.structuredContent.items[0].applied).toEqual([])
+    expect(ctx.saveAttachments).not.toHaveBeenCalled()
+  })
+
+  it('refuses the whole run when the rule names a destination the server does not have', async () => {
+    // Blocking, not per-message: a typo would otherwise be discovered one
+    // message at a time, after the pass had already started moving mail.
+    ctx.attachmentDestinations = { receipts: path.join(dir, 'Receipts') }
+    stubAgedFolder()
+    const result = await handleAgedRun(ctx, { rules: savingRules('save-attachments:invoices, move:111 Partner') })
+    expect(result.content[0].text).toContain('unknown-destination')
+    expect(ctx.saveAttachments).not.toHaveBeenCalled()
+  })
+})
+
 describe('handleRulesLint', () => {
   it('summarises the blocks and finding counts', async () => {
     const result = await handleRulesLint(ctx, { rules: RULES })
     expect(result.content[0].text).toContain('Parsed blocks: inbound (3 rules), aged (1 rules)')
     expect(result.content[0].text).toContain('0 error, 0 warning, 0 info')
+  })
+
+  it('flags a save-attachments destination this server cannot honour', async () => {
+    const rules = ['## Inbound', '', '```rules v1', '* -> save-attachments:receipts', '```'].join('\n')
+    const result = await handleRulesLint({ ...ctx, attachmentDestinations: { invoices: dir } }, { rules })
+    expect(result.content[0].text).toContain('unknown-destination')
   })
 
   it('notes when no folder taxonomy was supplied', async () => {

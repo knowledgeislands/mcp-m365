@@ -212,6 +212,40 @@ describe('lintRules — hygiene', () => {
     )
   })
 
+  it('checks save-attachments targets against the configured destinations', () => {
+    // A rule naming a destination the server does not have would otherwise
+    // fail at apply time, one message at a time, after the pass had started.
+    const findings = lint(`sender:*@x.com -> save-attachments:invoices, move:000 Unknown\n${FALLBACK}`, {
+      knownDestinations: ['receipts']
+    })
+    expect(findings.find((f) => f.code === 'unknown-destination')?.message).toMatch(
+      /"invoices" is not among 1 configured destinations/
+    )
+  })
+
+  it('says so when no destination is configured at all', () => {
+    const findings = lint(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`, {
+      knownDestinations: []
+    })
+    expect(findings.find((f) => f.code === 'unknown-destination')?.message).toMatch(
+      /no attachment destinations are configured/
+    )
+  })
+
+  it('accepts a configured destination', () => {
+    expect(
+      codes(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`, {
+        knownDestinations: ['receipts']
+      })
+    ).not.toContain('unknown-destination')
+  })
+
+  it('skips the destination check when no destinations are supplied', () => {
+    expect(codes(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`)).not.toContain(
+      'unknown-destination'
+    )
+  })
+
   it('skips the folder check when no taxonomy is supplied', () => {
     expect(codes(`sender:*@x.com -> move:Nowhere\n${FALLBACK}`)).not.toContain('unknown-folder')
   })

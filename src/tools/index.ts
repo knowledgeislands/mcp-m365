@@ -7,7 +7,6 @@ import { registerCalendarTools } from './calendar/index.js'
 import { registerEmailTools } from './email/index.js'
 import { registerFolderTools } from './folder/index.js'
 import { registerOnedriveTools } from './onedrive/index.js'
-import { registerReceiptsTools } from './receipts/index.js'
 import { registerRulesTools } from './rules/index.js'
 import { registerTriageTools } from './triage/index.js'
 
@@ -17,7 +16,6 @@ export {
   registerEmailTools,
   registerFolderTools,
   registerOnedriveTools,
-  registerReceiptsTools,
   registerRulesTools,
   registerTriageTools
 }

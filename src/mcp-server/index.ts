@@ -16,10 +16,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
 import { loadConfig } from '../config/index.js'
+import { makePdftotextExtractor } from '../main/attachments/pdf-text.js'
+import { makeAttachmentSaver } from '../main/attachments/save.js'
 import { createTokenStorage, makeEnsureAuthenticated } from '../main/auth/index.js'
 import type { GraphContext } from '../main/graph-client/index.js'
-import type { ReceiptsContext } from '../main/receipts/index.js'
-import { makePdftotextExtractor } from '../main/receipts/index.js'
 import type { TriageContext } from '../main/triage/index.js'
 import {
   registerAuthTools,
@@ -27,7 +27,6 @@ import {
   registerEmailTools,
   registerFolderTools,
   registerOnedriveTools,
-  registerReceiptsTools,
   registerRulesTools,
   registerTriageTools
 } from '../tools/index.js'
@@ -46,8 +45,16 @@ console.error(
 console.error(`  MCP_M365_TRIAGE_ROOTS=${config.triageRoots.join(', ') || '(none — engine file access disabled)'}`)
 console.error(`  MCP_M365_TRIAGE_TRACKING_PATH=${config.triageTrackingPath || '(unset)'}`)
 console.error(`  MCP_M365_TRIAGE_RULES_PATH=${config.triageRulesPath || '(unset)'}`)
-console.error(`  MCP_M365_RECEIPTS_ROOTS=${config.receiptsRoots.join(', ') || '(none — receipt harvest disabled)'}`)
-console.error(`  MCP_M365_RECEIPTS_DIR=${config.receiptsDir || '(unset)'}`)
+console.error(
+  `  MCP_M365_ATTACHMENT_ROOTS=${config.attachmentRoots.join(', ') || '(none — save-attachments disabled)'}`
+)
+console.error(
+  `  attachment destinations=${
+    Object.entries(config.attachmentDestinations)
+      .map(([name, target]) => `${name} -> ${target}`)
+      .join(', ') || '(none)'
+  }`
+)
 
 // Construct the token storage once here from the loaded config, then derive the
 // auth gate and the GraphContext threaded into every Graph-calling tool group.
@@ -59,19 +66,26 @@ const ctx: GraphContext = {
 }
 // The routing engine additionally owns a tracking cache; its location is
 // configuration, never a tool parameter.
+// It also carries out `save-attachments:`, which writes outside the knowledge
+// base — so the saver gets its own roots rather than borrowing the engine's,
+// and is left off entirely when no destination is configured, which makes the
+// action fail loudly instead of silently doing nothing.
+const destinations = config.attachmentDestinations
 const triageCtx: TriageContext = {
   ...ctx,
   roots: config.triageRoots,
   trackingPath: config.triageTrackingPath,
-  rulesPath: config.triageRulesPath
-}
-// The harvest writes outside the knowledge base, so it gets its own roots
-// rather than borrowing the engine's.
-const receiptsCtx: ReceiptsContext = {
-  ...ctx,
-  roots: config.receiptsRoots,
-  destination: config.receiptsDir,
-  extractPdfText: makePdftotextExtractor(config.pdftotextPath)
+  rulesPath: config.triageRulesPath,
+  attachmentDestinations: destinations,
+  ...(Object.keys(destinations).length > 0
+    ? {
+        saveAttachments: makeAttachmentSaver(ctx, {
+          roots: config.attachmentRoots,
+          destinations,
+          extractPdfText: makePdftotextExtractor(config.pdftotextPath)
+        })
+      }
+    : {})
 }
 
 const server = new McpServer({
@@ -92,7 +106,6 @@ registerFolderTools(server, ctx)
 registerOnedriveTools(server, ctx)
 registerRulesTools(server, ctx)
 registerTriageTools(server, triageCtx)
-registerReceiptsTools(server, receiptsCtx)
 
 process.on('SIGTERM', () => {
   console.error('SIGTERM received but staying alive')

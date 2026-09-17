@@ -19,7 +19,8 @@ export const PREDICATE_KEYS = [
   'importance',
   'status',
   'age',
-  'folder'
+  'folder',
+  'has'
 ] as const
 export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 
@@ -32,6 +33,7 @@ export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 export const BROAD_KEYS: readonly PredicateKey[] = ['type', 'status', 'importance', 'age'] as const
 
 export const TYPE_VALUES = ['calendar-invite', 'calendar-response', 'calendar-update'] as const
+export const HAS_VALUES = ['attachment'] as const
 export const IMPORTANCE_VALUES = ['high', 'low'] as const
 export const STATUS_VALUES = ['flagged', 'unflagged', 'complete', 'unread', 'replied'] as const
 export const MARK_VALUES = ['read', 'unread', 'flagged', 'unflagged'] as const
@@ -60,11 +62,11 @@ export interface AndGroup {
   terms: Term[]
 }
 
-export type ActionKind = 'move' | 'tag' | 'mark' | 'delete' | 'suggest'
+export type ActionKind = 'move' | 'tag' | 'mark' | 'delete' | 'suggest' | 'save-attachments'
 
 export interface Action {
   kind: ActionKind
-  /** Absent for `delete` / `suggest`. */
+  /** Absent for `delete` / `suggest`. For `save-attachments`, the configured destination name. */
   value?: string
   /** Whether the value was double-quoted — a quoted `move:` target is an absolute folder name, not `_TRIAGE`-relative. */
   quoted?: boolean
@@ -134,6 +136,8 @@ export interface EmailRecord {
   odataType?: string
   /** The `_TRIAGE` subfolder the message currently sits in. Only populated for the aged pass. */
   folder?: string
+  /** Graph `hasAttachments`. Tested by `has:attachment`; true for inline images too, so pair it with a subject or filename test. */
+  hasAttachments?: boolean
 }
 
 /** Nothing matched. Only reachable in a block with no fallback rule. */

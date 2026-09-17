@@ -4,7 +4,6 @@ import {
   composeFilename,
   deconflict,
   documentKind,
-  RECEIPT_PATTERN,
   slugifyVendor,
   stripReplyPrefixes,
   vendorFromSubject
@@ -154,14 +153,5 @@ describe('deconflict', () => {
     expect(deconflict('2026-09-13_anthropic_347.23.pdf', new Set(['2026-09-13_anthropic_347.23.pdf']))).toBe(
       '2026-09-13_anthropic_347.23-2.pdf'
     )
-  })
-})
-
-describe('RECEIPT_PATTERN', () => {
-  it('accepts receipt mail and rejects other finance correspondence', () => {
-    expect(RECEIPT_PATTERN.test('Your receipt from Granola')).toBe(true)
-    expect(RECEIPT_PATTERN.test('Invoice-A41B-0001.pdf')).toBe(true)
-    // The message that made a blanket sweep unsafe.
-    expect(RECEIPT_PATTERN.test('Sales Ledger Debtors Letters.pdf')).toBe(false)
   })
 })

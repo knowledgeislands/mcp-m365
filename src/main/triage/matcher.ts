@@ -132,6 +132,8 @@ export const evaluatePredicate = (term: PredicateTerm, record: EmailRecord, ctx:
       return record.importance === term.value
     case 'status':
       return evaluateStatus(term.value, record)
+    case 'has':
+      return record.hasAttachments === true
     case 'age': {
       const days = Number.parseInt(term.value, 10)
       const received = Date.parse(record.received)

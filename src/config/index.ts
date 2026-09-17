@@ -157,21 +157,28 @@ export interface Config {
    */
   triageRulesPath: string
   /**
-   * Directories the receipt harvest may write into. Separate from
-   * {@link triageRoots} because the destination is a OneDrive bookkeeping
-   * folder rather than the knowledge base, and the two should not widen each
-   * other: the routing engine has no business writing to the receipts folder,
-   * and the harvest has none writing to the rule note. Empty disables the tool.
+   * Directories a `save-attachments:` action may write into. Separate from
+   * {@link triageRoots} because an attachment destination is a working folder
+   * elsewhere on disk rather than the knowledge base, and the two should not
+   * widen each other: saving attachments has no business writing to the rule
+   * note, and the rule engine none writing into the destination. Empty disables
+   * attachment saving outright.
    */
-  receiptsRoots: string[]
+  attachmentRoots: string[]
   /**
-   * Where harvested receipts land. From `MCP_M365_RECEIPTS_DIR`; must resolve
-   * inside {@link receiptsRoots}. Configuration rather than a tool parameter —
-   * attachments are attacker-supplied bytes, and a caller-chosen destination
-   * would let any prompt place them anywhere the process can reach.
+   * The destination names a rule may write to, mapped to their paths. From
+   * `MCP_M365_ATTACHMENT_DEST_<NAME>`; each path must resolve inside
+   * {@link attachmentRoots}.
+   *
+   * The split matters. *Which* mail has its attachments saved, and what becomes
+   * of the mail afterwards, is policy, and policy lives in the rule note. The
+   * path is not policy: rules are data read from a file, and attachments are
+   * attacker-supplied bytes, so a rule that could name a path would make
+   * editing the note a way to write anywhere this process can reach. A rule
+   * names `receipts`; only this config says where that is.
    */
-  receiptsDir: string
-  /** Path to the `pdftotext` binary the harvest uses to read a receipt's total. */
+  attachmentDestinations: Record<string, string>
+  /** Path to the `pdftotext` binary used to read a transaction total out of a saved PDF. */
   pdftotextPath: string
 }
 
@@ -239,13 +246,38 @@ export const resolveXdgStateHome = (env: NodeJS.ProcessEnv, homeDir: string): st
   }
   return path.join(homeDir, '.local', 'state')
 }
+/** `MCP_M365_ATTACHMENT_DEST_SCANNED_IN` declares the destination a rule calls `scanned-in`. */
+const DESTINATION_ENV_PREFIX = 'MCP_M365_ATTACHMENT_DEST_'
+
+/**
+ * Collect the destination map from the environment.
+ *
+ * One variable per destination rather than one packed variable: the name is
+ * then visible in the process environment, and a path containing the list
+ * delimiter or an `=` cannot break the parse.
+ */
+const parseDestinations = (env: NodeJS.ProcessEnv): Record<string, string> => {
+  const destinations: Record<string, string> = {}
+  for (const [key, value] of Object.entries(env)) {
+    if (!key.startsWith(DESTINATION_ENV_PREFIX) || !value?.trim()) continue
+    const suffix = key.slice(DESTINATION_ENV_PREFIX.length)
+    if (!/^[A-Z0-9][A-Z0-9_]*$/.test(suffix)) {
+      throw new Error(`Invalid ${key} — the part after ${DESTINATION_ENV_PREFIX} must be A-Z, 0-9 and underscores.`)
+    }
+    // Underscores become hyphens, so the rule-facing name matches the rest of
+    // the grammar (`save-attachments:scanned-in`, never `scanned_in`).
+    destinations[suffix.toLowerCase().replace(/_/g, '-')] = expandHome(value)
+  }
+  return destinations
+}
+
 const defaultTrackingPath = (roots: readonly string[]): string =>
   roots.length > 0 ? path.join(roots[0] as string, TRIAGE_STATE_DIR, 'email-triage', 'tracking.json5') : ''
 
 export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   hydrateEnvFromFiles()
   const triageRoots = parseRoots(env.MCP_M365_TRIAGE_ROOTS)
-  const receiptsRoots = parseRoots(env.MCP_M365_RECEIPTS_ROOTS)
+  const attachmentRoots = parseRoots(env.MCP_M365_ATTACHMENT_ROOTS)
 
   const homeDir = env.HOME || env.USERPROFILE || os.homedir() || '/tmp'
   const stateDir = path.join(resolveXdgStateHome(env, homeDir), 'ki', 'mcp-m365')
@@ -289,10 +321,8 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
       ? expandHome(env.MCP_M365_TRIAGE_TRACKING_PATH)
       : defaultTrackingPath(triageRoots),
     triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : '',
-    receiptsRoots,
-    receiptsDir: env.MCP_M365_RECEIPTS_DIR?.trim()
-      ? expandHome(env.MCP_M365_RECEIPTS_DIR)
-      : ((receiptsRoots[0] as string) ?? ''),
+    attachmentRoots,
+    attachmentDestinations: parseDestinations(env),
     pdftotextPath: env.MCP_M365_PDFTOTEXT_PATH?.trim()
       ? expandHome(env.MCP_M365_PDFTOTEXT_PATH)
       : '/opt/homebrew/bin/pdftotext'

@@ -145,6 +145,14 @@ describe('evaluatePredicate', () => {
     expect(evaluatePredicate(term('body:Lighthouse'), record({ body: 'unrelated' }), ctx)).toBe(false)
   })
 
+  it('matches has:attachment against the flag Graph reports', () => {
+    // True of an inline signature image too — the saver treats a message with
+    // no PDF on it as a no-op rather than a failure.
+    expect(evaluatePredicate(term('has:attachment'), record({ hasAttachments: true }), ctx)).toBe(true)
+    expect(evaluatePredicate(term('has:attachment'), record({ hasAttachments: false }), ctx)).toBe(false)
+    expect(evaluatePredicate(term('has:attachment'), record(), ctx)).toBe(false)
+  })
+
   it('matches importance', () => {
     expect(evaluatePredicate(term('importance:high'), record({ importance: 'high' }), ctx)).toBe(true)
     expect(evaluatePredicate(term('importance:low'), record({ importance: 'normal' }), ctx)).toBe(false)

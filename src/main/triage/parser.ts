@@ -23,6 +23,7 @@
 import {
   type Action,
   type AndGroup,
+  HAS_VALUES,
   IMPORTANCE_VALUES,
   MARK_VALUES,
   type ParseError,
@@ -125,6 +126,8 @@ const validateValue = (key: PredicateKey, value: string): string | null => {
   if (key === 'status' && !(STATUS_VALUES as readonly string[]).includes(value))
     return `invalid status: "${value}" (expected ${STATUS_VALUES.join(', ')})`
   if (key === 'age' && !AGE_RE.test(value)) return `invalid age: "${value}" (expected Nd, e.g. 7d)`
+  if (key === 'has' && !(HAS_VALUES as readonly string[]).includes(value))
+    return `invalid has: "${value}" (expected ${HAS_VALUES.join(', ')})`
   return null
 }
 
@@ -177,6 +180,15 @@ const parsePredicates = (text: string): { groups: AndGroup[] } | { error: string
 }
 
 /**
+ * A `save-attachments:` value names a destination configured on the server, so
+ * the grammar admits only a bare name. Rules are data read from a knowledge-base
+ * note; if a rule could name a filesystem path, editing that note would be a
+ * way to write anywhere the server process can reach, and attachments are
+ * attacker-supplied bytes.
+ */
+const DESTINATION_NAME_RE = /^[a-z0-9][a-z0-9-]*$/
+
+/**
  * Parse the action side of a rule. Action values are read up to the next
  * comma rather than tokenised, because folder names carry spaces unquoted
  * (`move:111 Partner`).
@@ -193,7 +205,10 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     }
 
     const colon = chunk.indexOf(':')
-    if (colon <= 0) return { error: `expected an action of the form move:/tag:/mark:/delete/suggest, got "${chunk}"` }
+    if (colon <= 0)
+      return {
+        error: `expected an action of the form move:/tag:/mark:/save-attachments:/delete/suggest, got "${chunk}"`
+      }
 
     const kind = chunk.slice(0, colon)
     const { value, quoted } = unquote(chunk.slice(colon + 1).trim())
@@ -207,6 +222,12 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     }
     if (kind === 'move' || kind === 'tag') {
       actions.push({ kind, value, quoted })
+      continue
+    }
+    if (kind === 'save-attachments') {
+      if (!DESTINATION_NAME_RE.test(value))
+        return { error: `invalid save-attachments destination "${value}" — expected a configured name, not a path` }
+      actions.push({ kind, value })
       continue
     }
     return { error: `unknown action "${kind}"` }

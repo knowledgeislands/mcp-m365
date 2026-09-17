@@ -40,7 +40,7 @@ import type { Action, EmailRecord, Rule } from './types.js'
  * file that will not parse, or that can leave a message unclassified, does not
  * run at all.
  */
-const BLOCKING_CODES = new Set(['parse-error', 'missing-fallback', 'misplaced-fallback'])
+const BLOCKING_CODES = new Set(['parse-error', 'missing-fallback', 'misplaced-fallback', 'unknown-destination'])
 
 /** Largest rule document read from disk. The compiled rule file is ~35 KB; this is a sanity bound, not a target. */
 const MAX_RULES_BYTES = 1024 * 1024
@@ -138,10 +138,12 @@ export type TriageRunResult = z.infer<typeof triageRunResultSchema>
 
 /** Destination described by a rule's actions, for the report and the tracking entry. */
 const describeDestination = (actions: readonly Action[]): string => {
+  const save = actions.find((action) => action.kind === 'save-attachments')
+  const saved = save ? `save-attachments:${save.value} + ` : ''
   const move = actions.find((action) => action.kind === 'move')
-  if (move) return resolveMoveTarget(move)
-  if (actions.some((action) => action.kind === 'delete')) return '(deleted)'
-  return '(no move)'
+  if (move) return `${saved}${resolveMoveTarget(move)}`
+  if (actions.some((action) => action.kind === 'delete')) return `${saved}(deleted)`
+  return saved ? saved.replace(/ \+ $/, '') : '(no move)'
 }
 
 const leafOf = (destination: string): string => destination.slice(destination.lastIndexOf('/') + 1)
@@ -201,7 +203,10 @@ const runPass = async (
   if ('error' in source) return errorText(source.error)
 
   const parsed = parseRules(source.rules)
-  const findings = lintRules(parsed, { requireFallbackIn: blockLabel === 'inbound' ? ['inbound'] : [] })
+  const findings = lintRules(parsed, {
+    requireFallbackIn: blockLabel === 'inbound' ? ['inbound'] : [],
+    knownDestinations: Object.keys(ctx.attachmentDestinations ?? {})
+  })
   const blocking = findings.filter((finding) => BLOCKING_CODES.has(finding.code))
   if (blocking.length > 0) {
     return errorText(
@@ -368,7 +373,12 @@ export const handleRulesLint = async (ctx: TriageContext, args: any): Promise<an
 
   const parsed = parseRules(source.rules)
   const knownFolders: string[] | undefined = Array.isArray(args?.knownFolders) ? args.knownFolders : undefined
-  const findings = lintRules(parsed, knownFolders ? { knownFolders } : {})
+  // Destinations come from the server, not the call: linting a proposed edit
+  // should catch a destination this server cannot honour before the edit lands.
+  const findings = lintRules(parsed, {
+    ...(knownFolders ? { knownFolders } : {}),
+    knownDestinations: Object.keys(ctx.attachmentDestinations ?? {})
+  })
 
   const counts = findings.reduce<Record<string, number>>((acc, finding) => {
     acc[finding.severity] = (acc[finding.severity] ?? 0) + 1
