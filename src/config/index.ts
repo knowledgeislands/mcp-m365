@@ -156,6 +156,23 @@ export interface Config {
    * at an arbitrary file and have its contents echoed back in the report.
    */
   triageRulesPath: string
+  /**
+   * Directories the receipt harvest may write into. Separate from
+   * {@link triageRoots} because the destination is a OneDrive bookkeeping
+   * folder rather than the knowledge base, and the two should not widen each
+   * other: the routing engine has no business writing to the receipts folder,
+   * and the harvest has none writing to the rule note. Empty disables the tool.
+   */
+  receiptsRoots: string[]
+  /**
+   * Where harvested receipts land. From `MCP_M365_RECEIPTS_DIR`; must resolve
+   * inside {@link receiptsRoots}. Configuration rather than a tool parameter —
+   * attachments are attacker-supplied bytes, and a caller-chosen destination
+   * would let any prompt place them anywhere the process can reach.
+   */
+  receiptsDir: string
+  /** Path to the `pdftotext` binary the harvest uses to read a receipt's total. */
+  pdftotextPath: string
 }
 
 const parseScopes = (raw: string | undefined): string[] => {
@@ -228,6 +245,7 @@ const defaultTrackingPath = (roots: readonly string[]): string =>
 export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
   hydrateEnvFromFiles()
   const triageRoots = parseRoots(env.MCP_M365_TRIAGE_ROOTS)
+  const receiptsRoots = parseRoots(env.MCP_M365_RECEIPTS_ROOTS)
 
   const homeDir = env.HOME || env.USERPROFILE || os.homedir() || '/tmp'
   const stateDir = path.join(resolveXdgStateHome(env, homeDir), 'ki', 'mcp-m365')
@@ -270,6 +288,13 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     triageTrackingPath: env.MCP_M365_TRIAGE_TRACKING_PATH?.trim()
       ? expandHome(env.MCP_M365_TRIAGE_TRACKING_PATH)
       : defaultTrackingPath(triageRoots),
-    triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : ''
+    triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : '',
+    receiptsRoots,
+    receiptsDir: env.MCP_M365_RECEIPTS_DIR?.trim()
+      ? expandHome(env.MCP_M365_RECEIPTS_DIR)
+      : ((receiptsRoots[0] as string) ?? ''),
+    pdftotextPath: env.MCP_M365_PDFTOTEXT_PATH?.trim()
+      ? expandHome(env.MCP_M365_PDFTOTEXT_PATH)
+      : '/opt/homebrew/bin/pdftotext'
   }
 }

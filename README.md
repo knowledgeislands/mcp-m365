@@ -81,6 +81,22 @@ Both run tools are **batch-bounded and resumable**: a call acts on at most `maxA
 
 The engine keeps one piece of state, a tracking cache recording what it routed where, at `MCP_M365_TRIAGE_TRACKING_PATH`. Message identity is subject + sender + received timestamp, never the Graph id, because Graph reissues ids on folder moves.
 
+### Receipt harvesting
+
+| Tool | Purpose |
+| --- | --- |
+| `m365_email_receipts_harvest` | Save the receipt and invoice PDFs attached to mail in a finance folder as `YYYY-MM-DD_vendor_amount.pdf`, then archive the mail. Report mode by default. |
+
+Downstream of the routing engine: the rules put vendor receipts in one folder, and this takes the PDFs out of them and into the folder the bookkeeping process reads. Deliberately one narrow tool rather than a general `attachment_save` — a general one would be a prompt-controlled write of attacker-supplied bytes to a caller-chosen path. This writes only receipt-like PDFs, only under `MCP_M365_RECEIPTS_DIR`, and names them itself.
+
+Three properties make it safe to run unattended:
+
+- **Selection is conservative.** Only mail whose subject _and_ whose attachment names look like a receipt qualifies; everything else is reported and left where it is. A finance folder legitimately holds other correspondence, and a blanket sweep would file, say, a forwarded debtor-chase letter as a receipt.
+- **Disposal is an archive, never a delete, and never unconditional.** A message moves only once every one of its attachments is confirmed written. A partial write leaves the mail in place for the next run to retry.
+- **The amount is read from the PDF, never from the email body.** Receipt mail routinely quotes several money values, and the transaction total is not reliably the first or the largest. Text extraction shells out to `pdftotext` (`MCP_M365_PDFTOTEXT_PATH`); a document it cannot read is filed as `no-amount` rather than given a plausible wrong figure.
+
+Batch-bounded and resumable like the routing passes — at most `maxMessages` per call (default 20, lower because each message costs an attachment download and a PDF extraction), looping while `remaining` is true.
+
 #### Rule DSL (v1)
 
 One rule per logical line, `predicates -> actions [# comment]`, in a fenced ` ```rules v1 ` block. Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything (valid only as the mandatory final fallback). Predicates: `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`. Actions: `move:`, `tag:`, `mark:`, `delete`, `suggest`.
@@ -248,6 +264,9 @@ bun install
 | `MCP_M365_TRIAGE_TRACKING_PATH` | no | `<first root>/.mcp-m365/email-triage/tracking.json5` | Default location of the routing engine's tracking cache. Overridable per call; always root-checked. |
 | `MCP_M365_TRIAGE_RULES_PATH` | no | — | Default path to the rule note. When set, the routing tools' `rules` argument becomes optional. Overridable per call; always root-checked. |
 | `MCP_M365_TRIAGE_ROOTS` | no | — | `PATH`-style list of directories the routing engine may read and write. Every configured or caller-supplied path must resolve inside one of them. Unset disables all engine file access. |
+| `MCP_M365_RECEIPTS_ROOTS` | no | — | `PATH`-style list of directories the receipt harvest may write into. Separate from `MCP_M365_TRIAGE_ROOTS` so neither widens the other. Unset disables the harvest. |
+| `MCP_M365_RECEIPTS_DIR` | no | `<first receipts root>` | Where harvested receipts land. Must resolve inside `MCP_M365_RECEIPTS_ROOTS`. A call may name a subdirectory of it, never a different path. |
+| `MCP_M365_PDFTOTEXT_PATH` | no | `/opt/homebrew/bin/pdftotext` | Path to the poppler `pdftotext` binary used to read a receipt's total. |
 | `NODE_ENV` | no | — | Dev convention. ‖ |
 
 † Default scopes: `offline_access User.Read Mail.Read Mail.ReadWrite Mail.Send Calendars.Read Calendars.ReadWrite Files.Read Files.ReadWrite` (the canonical `M365_DEFAULT_SCOPES` list in [`src/config/index.ts`](./src/config/index.ts)). `offline_access` is required to receive a refresh token.
@@ -256,7 +275,7 @@ bun install
 
 § Default: `${MCP_M365_AUTHORITY_HOST}/${MCP_M365_TENANT_ID}/oauth2/v2.0/token`.
 
-¶ One of: `read` (default — 11 read-only tools, least privilege), `write` (adds 15 non-destructive mutations such as send-email, create-event, OneDrive upload — 26 tools total), `destructive` (adds 6 delete tools — all 32 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup.
+¶ One of: `read` (default — 12 read-only tools, least privilege), `write` (adds 16 non-destructive mutations such as send-email, create-event, OneDrive upload — 28 tools total), `destructive` (adds 9 delete, retention and harvest tools — all 37 tools registered). Levels nest. Each tool's level is derived from its MCP annotations (`readOnlyHint: true` → `read`; `destructiveHint: true` → `destructive`; explicit `readOnlyHint: false` AND `destructiveHint: false` → `write`; missing annotations → `destructive` fail-safe); a tool registers when its derived level ≤ the configured level. Unknown values abort startup.
 
 ‖ `ki:server:mcp:dev`/`ki:server:auth:dev`/`ki:server:mcp:inspect` set this to `development`. At startup [`src/config/index.ts`](./src/config/index.ts) hydrates `process.env` from the package root, highest precedence first: `.env.local`, then `.env.${NODE_ENV}` (when `NODE_ENV` is set), then `.env`. A var already in the environment (e.g. the Claude Desktop `env` block) always wins.
 
@@ -357,6 +376,7 @@ ki repo audit --skill ki-authoring --repo .  # rumdl check for authored Markdown
 │   │   ├── email/                   # Email tools
 │   │   ├── folder/                  # Mail folder tools
 │   │   ├── rules/                   # Inbox rules tools
+│   │   ├── receipts/               # Receipt attachment harvest
 │   │   └── onedrive/                # OneDrive tools
 │   └── utils/
 │       ├── access-level.ts          # Access-level gate (registers tools ≤ MCP_M365_ACCESS_LEVEL)

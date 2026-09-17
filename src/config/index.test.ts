@@ -182,6 +182,42 @@ describe('triageRulesPath', () => {
   })
 })
 
+describe('receipts harvest', () => {
+  it('parses its own roots, independent of the engine roots', () => {
+    const cfg = loadConfig(
+      baseEnv({ MCP_M365_TRIAGE_ROOTS: '/repo/kb', MCP_M365_RECEIPTS_ROOTS: '/drive/Exec/Receipts' })
+    )
+    expect(cfg.receiptsRoots).toEqual(['/drive/Exec/Receipts'])
+    // Neither root widens the other: the engine cannot write to the receipts
+    // folder and the harvest cannot write to the rule note.
+    expect(cfg.triageRoots).toEqual(['/repo/kb'])
+  })
+
+  it('defaults the destination to the first root', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_RECEIPTS_ROOTS: '/drive/Receipts' })).receiptsDir).toBe('/drive/Receipts')
+  })
+
+  it('resolves an explicit destination, which must still sit inside a root at call time', () => {
+    const cfg = loadConfig(
+      baseEnv({ MCP_M365_RECEIPTS_ROOTS: '/drive/Exec', MCP_M365_RECEIPTS_DIR: '/drive/Exec/Receipts' })
+    )
+    expect(cfg.receiptsDir).toBe('/drive/Exec/Receipts')
+  })
+
+  it('is empty when unset, which disables the harvest', () => {
+    const cfg = loadConfig(baseEnv({}))
+    expect(cfg.receiptsRoots).toEqual([])
+    expect(cfg.receiptsDir).toBe('')
+  })
+
+  it('defaults pdftotext to the Homebrew path and honours an override', () => {
+    expect(loadConfig(baseEnv({})).pdftotextPath).toBe('/opt/homebrew/bin/pdftotext')
+    expect(loadConfig(baseEnv({ MCP_M365_PDFTOTEXT_PATH: '/usr/bin/pdftotext' })).pdftotextPath).toBe(
+      '/usr/bin/pdftotext'
+    )
+  })
+})
+
 describe('parseNonNegativeInt (via auditLogMaxBytes)', () => {
   it('parses a valid integer', () => {
     expect(loadConfig(baseEnv({ MCP_M365_AUDIT_LOG_MAX_BYTES: '2048' })).auditLogMaxBytes).toBe(2048)
