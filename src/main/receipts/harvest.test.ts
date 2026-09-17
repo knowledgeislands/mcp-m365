@@ -27,7 +27,7 @@ const FOLDERS = [
 const anthropic = {
   id: 'msg-anthropic',
   subject: 'Your receipt from Anthropic, PBC #2842-9910',
-  from: { emailAddress: { address: 'invoice+statements@mail.anthropic.com' } },
+  from: { emailAddress: { address: 'invoice+statements@billing.example.com' } },
   receivedDateTime: '2026-09-13T07:14:00Z',
   hasAttachments: true
 }
@@ -36,7 +36,7 @@ const anthropic = {
 const debtors = {
   id: 'msg-debtors',
   subject: 'FW: Appcheck Ltd - Overdue Payment',
-  from: { emailAddress: { address: 'kris@humansnotrobots.com' } },
+  from: { emailAddress: { address: 'owner@example.com' } },
   receivedDateTime: '2026-09-11T11:02:00Z',
   hasAttachments: true
 }
