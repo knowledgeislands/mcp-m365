@@ -51,6 +51,7 @@ let ctx: {
   roots: string[]
   trackingPath: string
   rulesPath: string
+  attachmentRoots: string[]
 }
 
 beforeEach(async () => {
@@ -64,7 +65,8 @@ beforeEach(async () => {
     ensureAuthenticated: vi.fn().mockResolvedValue('token'),
     roots: [dir],
     trackingPath: path.join(dir, 'tracking.json5'),
-    rulesPath: ''
+    rulesPath: '',
+    attachmentRoots: []
   }
 })
 

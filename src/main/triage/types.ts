@@ -100,8 +100,30 @@ export interface ParseError {
   source?: string
 }
 
+/**
+ * One `name = path` line from a ```destinations block.
+ *
+ * Where a `save-attachments:` destination points is *policy* — it is the same
+ * kind of statement as which mail is saved there — so it is declared in the
+ * rule note alongside the rules that use it, not in the server's environment.
+ * The server keeps only the boundary: a declared path must resolve inside
+ * `MCP_M365_ATTACHMENT_ROOTS`, so a note can choose where within the permitted
+ * area a rule writes, never whether it may write outside it.
+ */
+export interface DestinationDecl {
+  /** Rule-facing name, as a `save-attachments:` action spells it. */
+  name: string
+  /** Path as written in the note, `~` unexpanded. */
+  path: string
+  /** 1-based line number in the source. */
+  line: number
+  source: string
+}
+
 export interface ParseResult {
   blocks: RuleBlock[]
+  /** Attachment destinations declared in the note, in the order written. */
+  destinations: DestinationDecl[]
   errors: ParseError[]
 }
 

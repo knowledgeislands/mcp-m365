@@ -3,7 +3,6 @@
  * env object, so each case passes a literal `NodeJS.ProcessEnv` slice rather
  * than mutating `process.env` and re-importing the module.
  */
-import os from 'node:os'
 import path from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { loadConfig, M365_DEFAULT_SCOPES } from './index.js'
@@ -194,45 +193,22 @@ describe('attachment saving', () => {
     expect(cfg.triageRoots).toEqual(['/repo/kb'])
   })
 
-  it('reads one destination per environment variable, keyed by the name a rule uses', () => {
+  it('is empty when unset, which disables saving attachments', () => {
+    expect(loadConfig(baseEnv({})).attachmentRoots).toEqual([])
+  })
+
+  it('does not read destinations from the environment — the rule note declares those', () => {
+    // Where a destination points is policy, and policy lives in the ordered
+    // rule list. The server keeps only the roots that bound it, so a variable
+    // naming a destination is ignored rather than honoured.
     const cfg = loadConfig(
       baseEnv({
         MCP_M365_ATTACHMENT_ROOTS: '/drive/Exec',
-        MCP_M365_ATTACHMENT_DEST_RECEIPTS: '/drive/Exec/Receipts',
-        MCP_M365_ATTACHMENT_DEST_SIGNED_CONTRACTS: '/drive/Exec/Contracts'
+        MCP_M365_ATTACHMENT_DEST_RECEIPTS: '/drive/Exec/Receipts'
       })
     )
-    // Underscores become hyphens so the name matches the rule grammar.
-    expect(cfg.attachmentDestinations).toEqual({
-      receipts: '/drive/Exec/Receipts',
-      'signed-contracts': '/drive/Exec/Contracts'
-    })
-  })
-
-  it('expands a leading ~ in a destination', () => {
-    // `expandHome` uses the real home directory, not `env.HOME` — the same as
-    // every other configured path.
-    const cfg = loadConfig(baseEnv({ MCP_M365_ATTACHMENT_DEST_RECEIPTS: '~/Receipts' }))
-    expect(cfg.attachmentDestinations.receipts).toBe(path.join(os.homedir(), 'Receipts'))
-  })
-
-  it('ignores a destination set to whitespace rather than mapping a name to nothing', () => {
-    expect(loadConfig(baseEnv({ MCP_M365_ATTACHMENT_DEST_RECEIPTS: '   ' })).attachmentDestinations).toEqual({})
-  })
-
-  it('rejects a name that could not appear in a rule', () => {
-    // The grammar admits `[a-z0-9][a-z0-9-]*`, so a name that cannot survive
-    // the round trip is a configuration error, not a destination nobody can
-    // reach.
-    expect(() => loadConfig(baseEnv({ 'MCP_M365_ATTACHMENT_DEST_bad name': '/drive/x' }))).toThrow(
-      /must be A-Z, 0-9 and underscores/
-    )
-  })
-
-  it('is empty when unset, which disables saving attachments', () => {
-    const cfg = loadConfig(baseEnv({}))
-    expect(cfg.attachmentRoots).toEqual([])
-    expect(cfg.attachmentDestinations).toEqual({})
+    expect(cfg).not.toHaveProperty('attachmentDestinations')
+    expect(cfg.attachmentRoots).toEqual(['/drive/Exec'])
   })
 
   it('defaults pdftotext to the Homebrew path and honours an override', () => {

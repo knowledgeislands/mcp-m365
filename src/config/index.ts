@@ -163,21 +163,14 @@ export interface Config {
    * widen each other: saving attachments has no business writing to the rule
    * note, and the rule engine none writing into the destination. Empty disables
    * attachment saving outright.
+   *
+   * This is the whole of the server's attachment configuration. *Which*
+   * destinations exist and where they point is declared in the rule note's
+   * ```destinations block, because that is policy — the same kind of statement
+   * as which mail gets saved there. The roots are the boundary on that policy:
+   * a note may point a destination anywhere inside them, never outside.
    */
   attachmentRoots: string[]
-  /**
-   * The destination names a rule may write to, mapped to their paths. From
-   * `MCP_M365_ATTACHMENT_DEST_<NAME>`; each path must resolve inside
-   * {@link attachmentRoots}.
-   *
-   * The split matters. *Which* mail has its attachments saved, and what becomes
-   * of the mail afterwards, is policy, and policy lives in the rule note. The
-   * path is not policy: rules are data read from a file, and attachments are
-   * attacker-supplied bytes, so a rule that could name a path would make
-   * editing the note a way to write anywhere this process can reach. A rule
-   * names `receipts`; only this config says where that is.
-   */
-  attachmentDestinations: Record<string, string>
   /** Path to the `pdftotext` binary used to read a transaction total out of a saved PDF. */
   pdftotextPath: string
 }
@@ -246,31 +239,6 @@ export const resolveXdgStateHome = (env: NodeJS.ProcessEnv, homeDir: string): st
   }
   return path.join(homeDir, '.local', 'state')
 }
-/** `MCP_M365_ATTACHMENT_DEST_SCANNED_IN` declares the destination a rule calls `scanned-in`. */
-const DESTINATION_ENV_PREFIX = 'MCP_M365_ATTACHMENT_DEST_'
-
-/**
- * Collect the destination map from the environment.
- *
- * One variable per destination rather than one packed variable: the name is
- * then visible in the process environment, and a path containing the list
- * delimiter or an `=` cannot break the parse.
- */
-const parseDestinations = (env: NodeJS.ProcessEnv): Record<string, string> => {
-  const destinations: Record<string, string> = {}
-  for (const [key, value] of Object.entries(env)) {
-    if (!key.startsWith(DESTINATION_ENV_PREFIX) || !value?.trim()) continue
-    const suffix = key.slice(DESTINATION_ENV_PREFIX.length)
-    if (!/^[A-Z0-9][A-Z0-9_]*$/.test(suffix)) {
-      throw new Error(`Invalid ${key} — the part after ${DESTINATION_ENV_PREFIX} must be A-Z, 0-9 and underscores.`)
-    }
-    // Underscores become hyphens, so the rule-facing name matches the rest of
-    // the grammar (`save-attachments:scanned-in`, never `scanned_in`).
-    destinations[suffix.toLowerCase().replace(/_/g, '-')] = expandHome(value)
-  }
-  return destinations
-}
-
 const defaultTrackingPath = (roots: readonly string[]): string =>
   roots.length > 0 ? path.join(roots[0] as string, TRIAGE_STATE_DIR, 'email-triage', 'tracking.json5') : ''
 
@@ -322,7 +290,6 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
       : defaultTrackingPath(triageRoots),
     triageRulesPath: env.MCP_M365_TRIAGE_RULES_PATH?.trim() ? expandHome(env.MCP_M365_TRIAGE_RULES_PATH) : '',
     attachmentRoots,
-    attachmentDestinations: parseDestinations(env),
     pdftotextPath: env.MCP_M365_PDFTOTEXT_PATH?.trim()
       ? expandHome(env.MCP_M365_PDFTOTEXT_PATH)
       : '/opt/homebrew/bin/pdftotext'

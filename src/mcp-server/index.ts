@@ -48,13 +48,6 @@ console.error(`  MCP_M365_TRIAGE_RULES_PATH=${config.triageRulesPath || '(unset)
 console.error(
   `  MCP_M365_ATTACHMENT_ROOTS=${config.attachmentRoots.join(', ') || '(none — save-attachments disabled)'}`
 )
-console.error(
-  `  attachment destinations=${
-    Object.entries(config.attachmentDestinations)
-      .map(([name, target]) => `${name} -> ${target}`)
-      .join(', ') || '(none)'
-  }`
-)
 
 // Construct the token storage once here from the loaded config, then derive the
 // auth gate and the GraphContext threaded into every Graph-calling tool group.
@@ -67,25 +60,19 @@ const ctx: GraphContext = {
 // The routing engine additionally owns a tracking cache; its location is
 // configuration, never a tool parameter.
 // It also carries out `save-attachments:`, which writes outside the knowledge
-// base — so the saver gets its own roots rather than borrowing the engine's,
-// and is left off entirely when no destination is configured, which makes the
-// action fail loudly instead of silently doing nothing.
-const destinations = config.attachmentDestinations
+// base — so the saver gets its own roots rather than borrowing the engine's.
+// Which destinations exist is not the server's business: the rule note declares
+// them, and the roots bound what it may declare.
 const triageCtx: TriageContext = {
   ...ctx,
   roots: config.triageRoots,
   trackingPath: config.triageTrackingPath,
   rulesPath: config.triageRulesPath,
-  attachmentDestinations: destinations,
-  ...(Object.keys(destinations).length > 0
-    ? {
-        saveAttachments: makeAttachmentSaver(ctx, {
-          roots: config.attachmentRoots,
-          destinations,
-          extractPdfText: makePdftotextExtractor(config.pdftotextPath)
-        })
-      }
-    : {})
+  attachmentRoots: config.attachmentRoots,
+  saveAttachments: makeAttachmentSaver(ctx, {
+    roots: config.attachmentRoots,
+    extractPdfText: makePdftotextExtractor(config.pdftotextPath)
+  })
 }
 
 const server = new McpServer({

@@ -54,7 +54,7 @@ let ctx: {
   roots: string[]
   trackingPath: string
   rulesPath: string
-  attachmentDestinations?: Record<string, string>
+  attachmentRoots: string[]
   saveAttachments?: Mock
 }
 
@@ -67,7 +67,8 @@ beforeEach(async () => {
     ensureAuthenticated: vi.fn().mockResolvedValue('token'),
     roots: [dir],
     trackingPath: path.join(dir, 'tracking.json5'),
-    rulesPath: ''
+    rulesPath: '',
+    attachmentRoots: [dir]
   }
 })
 
@@ -575,7 +576,12 @@ describe('handleAgedRun — save-attachments', () => {
       ...over
     })
 
-  const savingRules = (actions: string) =>
+  /**
+   * A note carrying both halves: the rules, and the destinations block that
+   * says where `receipts` points. Both are rule data — the server contributes
+   * only the roots that bound the path.
+   */
+  const savingRules = (actions: string, declared = path.join(dir, 'Receipts')) =>
     [
       '## Inbound',
       '',
@@ -587,6 +593,12 @@ describe('handleAgedRun — save-attachments', () => {
       '',
       '```rules v1',
       `folder:"991 Junk" age:7d has:attachment -> ${actions}`,
+      '```',
+      '',
+      '## Destinations',
+      '',
+      '```destinations v1',
+      `receipts = ${declared}`,
       '```'
     ].join('\n')
 
@@ -601,7 +613,6 @@ describe('handleAgedRun — save-attachments', () => {
   }
 
   beforeEach(() => {
-    ctx.attachmentDestinations = { receipts: path.join(dir, 'Receipts') }
     ctx.saveAttachments = vi.fn().mockResolvedValue({
       ok: true,
       files: [{ filename: '2020-01-01_vendor_5.14.pdf', source: 'receipt.pdf', amount: '5.14', written: true }]
@@ -641,13 +652,35 @@ describe('handleAgedRun — save-attachments', () => {
     expect(ctx.saveAttachments).not.toHaveBeenCalled()
   })
 
-  it('refuses the whole run when the rule names a destination the server does not have', async () => {
+  it('passes the note’s declared destinations to the saver, `~` expanded', async () => {
+    stubAgedFolder()
+    await handleAgedRun(ctx, { rules: savingRules('save-attachments:receipts'), mode: 'live' })
+    expect(ctx.saveAttachments).toHaveBeenCalledWith(
+      expect.objectContaining({
+        destination: 'receipts',
+        destinations: { receipts: path.join(dir, 'Receipts') }
+      })
+    )
+  })
+
+  it('refuses the whole run when the rule names a destination the note does not declare', async () => {
     // Blocking, not per-message: a typo would otherwise be discovered one
     // message at a time, after the pass had already started moving mail.
-    ctx.attachmentDestinations = { receipts: path.join(dir, 'Receipts') }
     stubAgedFolder()
     const result = await handleAgedRun(ctx, { rules: savingRules('save-attachments:invoices, move:111 Partner') })
     expect(result.content[0].text).toContain('unknown-destination')
+    expect(ctx.saveAttachments).not.toHaveBeenCalled()
+  })
+
+  it('refuses the whole run when the note declares a path outside the server’s roots', async () => {
+    // The note owns the destination; the roots own whether it is allowed. A
+    // note that oversteps stops the run rather than failing at write time.
+    stubAgedFolder()
+    const result = await handleAgedRun(ctx, {
+      rules: savingRules('save-attachments:receipts', path.join(os.tmpdir(), 'elsewhere')),
+      mode: 'live'
+    })
+    expect(result.content[0].text).toContain('destination-outside-roots')
     expect(ctx.saveAttachments).not.toHaveBeenCalled()
   })
 })
@@ -659,10 +692,22 @@ describe('handleRulesLint', () => {
     expect(result.content[0].text).toContain('0 error, 0 warning, 0 info')
   })
 
-  it('flags a save-attachments destination this server cannot honour', async () => {
+  it('flags a save-attachments target the note does not declare', async () => {
     const rules = ['## Inbound', '', '```rules v1', '* -> save-attachments:receipts', '```'].join('\n')
-    const result = await handleRulesLint({ ...ctx, attachmentDestinations: { invoices: dir } }, { rules })
-    expect(result.content[0].text).toContain('unknown-destination')
+    expect((await handleRulesLint(ctx, { rules })).content[0].text).toContain('unknown-destination')
+  })
+
+  it('flags a declared destination this server would refuse', async () => {
+    // Linting a proposed edit is where an over-reaching destination should be
+    // caught — before the edit lands in the note.
+    const rules = [
+      '## Destinations',
+      '',
+      '```destinations v1',
+      `receipts = ${path.join(os.tmpdir(), 'elsewhere')}`,
+      '```'
+    ].join('\n')
+    expect((await handleRulesLint(ctx, { rules })).content[0].text).toContain('destination-outside-roots')
   })
 
   it('notes when no folder taxonomy was supplied', async () => {

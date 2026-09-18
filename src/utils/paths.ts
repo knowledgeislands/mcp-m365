@@ -55,6 +55,19 @@ const isWithin = (root: string, candidate: string): boolean =>
   candidate === root || candidate.startsWith(root + path.sep)
 
 /**
+ * Lexical-only containment check, for callers that cannot await a syscall.
+ *
+ * The lint is a pure synchronous function over rule text, so it can catch a
+ * declared path that is obviously outside the roots without resolving symlinks.
+ * It is an early warning, not the boundary: {@link assertWithinRoots} still
+ * runs before anything is written.
+ */
+export const withinRootsLexically = (roots: readonly string[], candidate: string): boolean => {
+  const lexical = expandHome(candidate)
+  return roots.some((root) => isWithin(root, lexical))
+}
+
+/**
  * Resolve `target` through `realpath`, walking up to the deepest ancestor that
  * exists and reattaching the remaining segments. Lets a path that has not been
  * created yet still be checked against its real (symlink-resolved) location.

@@ -11,6 +11,26 @@ const codes = (body: string, options = {}): string[] => lint(body, options).map(
 
 const find = (body: string, code: string, options = {}) => lint(body, options).find((f) => f.code === code)
 
+/** A note carrying both a rule list and the destinations block it refers to. */
+const withDestinations = (body: string, declared = '/drive/Receipts') =>
+  parseRules(
+    [
+      '## Inbound',
+      '',
+      '```rules v1',
+      body,
+      FALLBACK,
+      '```',
+      '',
+      '## Destinations',
+      '',
+      '```destinations v1',
+      `receipts = ${declared}`,
+      '```',
+      ''
+    ].join('\n')
+  )
+
 const ruleOf = (text: string): Rule =>
   parseRules(`## Inbound\n\n\`\`\`rules v1\n${text}\n\`\`\`\n`).blocks[0]?.rules[0] as Rule
 
@@ -212,38 +232,57 @@ describe('lintRules — hygiene', () => {
     )
   })
 
-  it('checks save-attachments targets against the configured destinations', () => {
-    // A rule naming a destination the server does not have would otherwise
-    // fail at apply time, one message at a time, after the pass had started.
-    const findings = lint(`sender:*@x.com -> save-attachments:invoices, move:000 Unknown\n${FALLBACK}`, {
-      knownDestinations: ['receipts']
-    })
+  it('checks save-attachments targets against the destinations the note declares', () => {
+    // Both halves are in the same note now, so this is a consistency check
+    // over one file: a typo on either side is caught before a run starts.
+    const findings = lintRules(withDestinations('sender:*@x.com -> save-attachments:invoices, move:000 Unknown'))
     expect(findings.find((f) => f.code === 'unknown-destination')?.message).toMatch(
-      /"invoices" is not among 1 configured destinations/
+      /"invoices" is not declared \(declared: receipts\)/
     )
   })
 
-  it('says so when no destination is configured at all', () => {
-    const findings = lint(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`, {
-      knownDestinations: []
-    })
+  it('says so when the note declares no destinations block at all', () => {
+    const findings = lint(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`)
     expect(findings.find((f) => f.code === 'unknown-destination')?.message).toMatch(
-      /no attachment destinations are configured/
+      /the note declares no destinations block/
     )
   })
 
-  it('accepts a configured destination', () => {
+  it('accepts a target the note declares', () => {
+    const findings = lintRules(withDestinations('sender:*@x.com -> save-attachments:receipts, move:000 Unknown'))
+    expect(findings.map((f) => f.code)).not.toContain('unknown-destination')
+  })
+
+  it('checks a declared path against the roots the server permits', () => {
+    // The note chooses the folder; the server chooses the area it may sit in.
+    const findings = lintRules(withDestinations('sender:*@x.com -> save-attachments:receipts, move:000 Unknown'), {
+      attachmentRoots: ['/drive/Exec']
+    })
+    expect(findings.find((f) => f.code === 'destination-outside-roots')?.message).toMatch(
+      /"receipts" resolves outside the 1 permitted attachment root/
+    )
+  })
+
+  it('accepts a declared path inside the roots', () => {
+    const findings = lintRules(withDestinations('sender:*@x.com -> save-attachments:receipts, move:000 Unknown'), {
+      attachmentRoots: ['/drive/Receipts']
+    })
+    expect(findings.map((f) => f.code)).not.toContain('destination-outside-roots')
+  })
+
+  it('refuses any declared destination when the server has no roots', () => {
+    const findings = lintRules(withDestinations('sender:*@x.com -> save-attachments:receipts, move:000 Unknown'), {
+      attachmentRoots: []
+    })
+    expect(findings.find((f) => f.code === 'destination-outside-roots')?.message).toMatch(
+      /no attachment roots configured/
+    )
+  })
+
+  it('skips the roots check when the caller supplies none', () => {
     expect(
-      codes(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`, {
-        knownDestinations: ['receipts']
-      })
-    ).not.toContain('unknown-destination')
-  })
-
-  it('skips the destination check when no destinations are supplied', () => {
-    expect(codes(`sender:*@x.com -> save-attachments:receipts, move:000 Unknown\n${FALLBACK}`)).not.toContain(
-      'unknown-destination'
-    )
+      lintRules(withDestinations('sender:*@x.com -> save-attachments:receipts, move:000 Unknown')).map((f) => f.code)
+    ).not.toContain('destination-outside-roots')
   })
 
   it('skips the folder check when no taxonomy is supplied', () => {

@@ -15,14 +15,25 @@
  * `|` binds across whole AND-groups: `a b | c` is `(a AND b) OR (c)`. There are
  * no parentheses — a rule that would need them is written as two rules.
  *
+ * The note may also carry a ```destinations block, declaring where each
+ * `save-attachments:<name>` writes:
+ *
+ *   decl := name "=" path                         (absolute, `~` allowed)
+ *
+ * That is policy too, so it lives in the note with the rules. The server keeps
+ * only the boundary: a declared path must resolve inside its configured
+ * attachment roots.
+ *
  * Parsing never throws on a malformed rule: errors are collected with line
  * numbers so `email_rules_lint` can report every problem in one pass. Callers
  * that mutate a mailbox (`email_triage_run`, `email_aged_run`) must refuse to
  * run while `errors` is non-empty.
  */
+import { expandHome } from '../../utils/paths.js'
 import {
   type Action,
   type AndGroup,
+  type DestinationDecl,
   HAS_VALUES,
   IMPORTANCE_VALUES,
   MARK_VALUES,
@@ -40,7 +51,7 @@ import {
 /** The only grammar version this engine understands. Anything else is rejected rather than guessed at. */
 export const SUPPORTED_VERSION = 'v1'
 
-const FENCE_RE = /^```rules\s+(\S+)\s*$/
+const FENCE_RE = /^```(rules|destinations)\s+(\S+)\s*$/
 const HEADING_RE = /^#{1,6}\s+(.+?)\s*$/
 const BARE_HEADER_RE = /^rules\s+(\S+)$/
 const AGE_RE = /^(\d+)d$/
@@ -180,13 +191,13 @@ const parsePredicates = (text: string): { groups: AndGroup[] } | { error: string
 }
 
 /**
- * A `save-attachments:` value names a destination configured on the server, so
- * the grammar admits only a bare name. Rules are data read from a knowledge-base
- * note; if a rule could name a filesystem path, editing that note would be a
- * way to write anywhere the server process can reach, and attachments are
- * attacker-supplied bytes.
+ * A `save-attachments:` value names a destination declared in the note's
+ * ```destinations block, so the grammar admits only a bare name. Keeping the
+ * path out of the rule line is not a security boundary on its own — the note
+ * declares the path too — it is so one destination can be renamed or
+ * repointed in one place rather than on every rule that writes to it.
  */
-const DESTINATION_NAME_RE = /^[a-z0-9][a-z0-9-]*$/
+export const DESTINATION_NAME_RE = /^[a-z0-9][a-z0-9-]*$/
 
 /**
  * Parse the action side of a rule. Action values are read up to the next
@@ -226,7 +237,9 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     }
     if (kind === 'save-attachments') {
       if (!DESTINATION_NAME_RE.test(value))
-        return { error: `invalid save-attachments destination "${value}" — expected a configured name, not a path` }
+        return {
+          error: `invalid save-attachments destination "${value}" — expected a name declared in the destinations block, not a path`
+        }
       actions.push({ kind, value })
       continue
     }
@@ -298,8 +311,10 @@ export const parseRule = (logical: LogicalLine): { rule: Rule } | { error: Parse
   return { rule }
 }
 
-/** A fenced block located in the source, before its rules are parsed. */
+/** A fenced block located in the source, before its contents are parsed. */
 interface RawBlock {
+  /** Which fence opened it: a rule list, or a destination declaration list. */
+  kind: 'rules' | 'destinations'
   label: string
   version: string
   startLine: number
@@ -309,10 +324,10 @@ interface RawBlock {
 }
 
 /**
- * Locate the ```rules fenced blocks in a markdown source, labelling each with
- * its nearest preceding heading (`## Inbound` → `inbound`). Labelling by
- * heading rather than position means the note can gain sections without
- * silently re-pointing a tool at the wrong block.
+ * Locate the ```rules and ```destinations fenced blocks in a markdown source,
+ * labelling each with its nearest preceding heading (`## Inbound` →
+ * `inbound`). Labelling by heading rather than position means the note can
+ * gain sections without silently re-pointing a tool at the wrong block.
  */
 const findFencedBlocks = (lines: string[]): RawBlock[] => {
   const blocks: RawBlock[] = []
@@ -343,8 +358,9 @@ const findFencedBlocks = (lines: string[]): RawBlock[] => {
     const closed = index < lines.length
     index++
     blocks.push({
+      kind: fence[1] as 'rules' | 'destinations',
       label: heading || `block${blocks.length + 1}`,
-      version: fence[1] as string,
+      version: fence[2] as string,
       startLine,
       lines: body,
       closed
@@ -352,6 +368,69 @@ const findFencedBlocks = (lines: string[]): RawBlock[] => {
   }
 
   return blocks
+}
+
+/** `name = path`, with `=` the only separator so a Windows-style path stays intact. */
+const DECL_RE = /^([^=]+)=(.*)$/
+
+/**
+ * Parse a ```destinations block: one `name = path` per line, `#` comments and
+ * blanks ignored.
+ *
+ * Paths must be absolute (a leading `~` counts): a relative path would resolve
+ * against whatever directory the server happens to have been started in, which
+ * is not something the note's author can see.
+ */
+const parseDestinationBlock = (
+  block: RawBlock,
+  taken: Map<string, DestinationDecl>,
+  errors: ParseError[]
+): DestinationDecl[] => {
+  const declared: DestinationDecl[] = []
+  block.lines.forEach((raw, index) => {
+    const line = block.startLine + index + 1
+    const text = raw.trim()
+    if (!text || text.startsWith('#')) return
+
+    const match = DECL_RE.exec(text)
+    if (!match) {
+      errors.push({ line, message: 'expected `name = /path/to/directory`', source: text })
+      return
+    }
+    const name = (match[1] as string).trim()
+    const target = (match[2] as string).trim()
+
+    if (!DESTINATION_NAME_RE.test(name)) {
+      errors.push({
+        line,
+        message: `invalid destination name "${name}" — expected lower-case letters, digits and hyphens`,
+        source: text
+      })
+      return
+    }
+    if (!target) {
+      errors.push({ line, message: `destination "${name}" has no path`, source: text })
+      return
+    }
+    if (!target.startsWith('/') && !target.startsWith('~')) {
+      errors.push({
+        line,
+        message: `destination "${name}" must be an absolute path (or start with \`~\`), not "${target}"`,
+        source: text
+      })
+      return
+    }
+    const clash = taken.get(name)
+    if (clash) {
+      errors.push({ line, message: `destination "${name}" is already declared on line ${clash.line}`, source: text })
+      return
+    }
+
+    const decl: DestinationDecl = { name, path: target, line, source: text }
+    taken.set(name, decl)
+    declared.push(decl)
+  })
+  return declared
 }
 
 /**
@@ -370,11 +449,13 @@ export const parseRules = (source: string): ParseResult => {
     if (!header) {
       return {
         blocks: [],
+        destinations: [],
         errors: [{ line: 1, message: 'no ```rules block found and no `rules <version>` header line' }]
       }
     }
     raw = [
       {
+        kind: 'rules',
         label: 'default',
         version: header[1] as string,
         startLine: headerIndex + 1,
@@ -385,6 +466,8 @@ export const parseRules = (source: string): ParseResult => {
   }
 
   const blocks: RuleBlock[] = []
+  const destinations: DestinationDecl[] = []
+  const declaredNames = new Map<string, DestinationDecl>()
   for (const block of raw) {
     // A block with no closing fence may have been truncated mid-list, so the
     // rules that ARE present cannot be trusted to be the whole ordered list —
@@ -393,15 +476,20 @@ export const parseRules = (source: string): ParseResult => {
     if (!block.closed) {
       errors.push({
         line: block.startLine,
-        message: 'unterminated ```rules block — no closing fence, so the rule list may be truncated'
+        message: `unterminated \`\`\`${block.kind} block — no closing fence, so the list may be truncated`
       })
       continue
     }
     if (block.version !== SUPPORTED_VERSION) {
       errors.push({
         line: block.startLine,
-        message: `unsupported rules version "${block.version}" — this engine understands ${SUPPORTED_VERSION} only`
+        message: `unsupported ${block.kind} version "${block.version}" — this engine understands ${SUPPORTED_VERSION} only`
       })
+      continue
+    }
+
+    if (block.kind === 'destinations') {
+      destinations.push(...parseDestinationBlock(block, declaredNames, errors))
       continue
     }
 
@@ -418,8 +506,16 @@ export const parseRules = (source: string): ParseResult => {
     blocks.push({ label: block.label, version: block.version, rules, startLine: block.startLine })
   }
 
-  return { blocks, errors }
+  return { blocks, destinations, errors }
 }
+
+/**
+ * Declared destinations as the name → absolute path map the saver resolves
+ * against. `~` is expanded here, so the note may be written the way the rest of
+ * the configuration is.
+ */
+export const destinationPaths = (parsed: ParseResult): Record<string, string> =>
+  Object.fromEntries(parsed.destinations.map((decl) => [decl.name, expandHome(decl.path)]))
 
 /**
  * Pick the block a tool should run against. Matches on label, falling back to

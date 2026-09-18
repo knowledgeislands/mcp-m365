@@ -125,7 +125,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     'm365_email_routing_lint',
     {
       description:
-        'Parses a rule file and reports parse errors, unreachable (shadowed) rules, duplicates, broad-rule collisions, party-consolidation opportunities, malformed address patterns, unknown move targets, and unknown attachment destinations. No mailbox access — safe to run against a proposed edit before saving it.',
+        'Parses a rule file and reports parse errors, unreachable (shadowed) rules, duplicates, broad-rule collisions, party-consolidation opportunities, malformed address patterns, unknown move targets, undeclared attachment destinations, and declared destinations this server would refuse. No mailbox access — safe to run against a proposed edit before saving it.',
       inputSchema: z
         .object({
           rules: rulesSchema,

@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import type { EmailRecord } from '../triage/types.js'
-import { MAX_ATTACHMENT_BYTES, makeAttachmentSaver } from './save.js'
+import { MAX_ATTACHMENT_BYTES, makeAttachmentSaver, type SaveRequest } from './save.js'
 
 vi.mock('../graph-client/index.js', () => ({ callGraphAPI: vi.fn() }))
 
@@ -57,10 +57,22 @@ const graphReturns = (attachments: Record<string, unknown>[], bytes: Record<stri
 const saver = (over: Partial<Parameters<typeof makeAttachmentSaver>[1]> = {}) =>
   makeAttachmentSaver(ctx, {
     roots: [root],
-    destinations: { receipts: destination },
     extractPdfText: async () => 'Amount paid  £5.14',
     ...over
   })
+
+/**
+ * A save request. `destinations` is the map parsed out of the rule note, so it
+ * is per-call data here exactly as it is in the engine.
+ */
+const request = (over: Partial<SaveRequest> = {}): SaveRequest => ({
+  accessToken: TOKEN,
+  messageId: 'msg-1',
+  record: record(),
+  destination: 'receipts',
+  destinations: { receipts: destination },
+  ...over
+})
 
 beforeEach(async () => {
   vi.clearAllMocks()
@@ -73,36 +85,34 @@ afterEach(async () => {
 })
 
 describe('destination resolution', () => {
-  it('refuses a name that is not configured, naming the ones that are', async () => {
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'invoices' })
+  it('refuses a name the note does not declare, naming the ones it does', async () => {
+    const outcome = await saver()(request({ destination: 'invoices' }))
     expect(outcome).toEqual({
       ok: false,
       files: [],
-      detail: 'destination "invoices" is not configured (have: receipts)'
+      detail: 'destination "invoices" is not declared in the rule note (declared: receipts)'
     })
     // Nothing was fetched: the name is rejected before the message is touched.
     expect(mockCall).not.toHaveBeenCalled()
   })
 
-  it('says so plainly when the server has no destinations at all', async () => {
-    const outcome = await saver({ destinations: {} })({
-      accessToken: TOKEN,
-      messageId: 'msg-1',
-      record: record(),
-      destination: 'receipts'
-    })
-    expect(outcome.detail).toBe('no attachment destinations are configured on this server')
+  it('says so plainly when the note declares nothing', async () => {
+    const outcome = await saver()(request({ destinations: {} }))
+    expect(outcome.detail).toBe('destination "receipts" is not declared — the rule note has no destinations block')
   })
 
-  it('refuses a configured path that sits outside the permitted roots', async () => {
-    // The roots are the safety boundary, and a destination is only as trusted
-    // as the root it falls inside — a typo in one env var must not widen it.
-    const outcome = await saver({ destinations: { receipts: path.join(os.tmpdir(), 'elsewhere') } })({
-      accessToken: TOKEN,
-      messageId: 'msg-1',
-      record: record(),
-      destination: 'receipts'
-    })
+  it('refuses everything when the server has no roots', async () => {
+    // Roots are the whole of the server's attachment configuration, so an
+    // unconfigured server must not be talked into a write by a note.
+    const outcome = await saver({ roots: [] })(request())
+    expect(outcome.detail).toBe('this server has no attachment roots configured, so no rule may save attachments')
+    expect(mockCall).not.toHaveBeenCalled()
+  })
+
+  it('refuses a declared path that sits outside the permitted roots', async () => {
+    // This is the boundary the note cannot cross: it may choose a folder
+    // inside the roots, never outside them.
+    const outcome = await saver()(request({ destinations: { receipts: path.join(os.tmpdir(), 'elsewhere') } }))
     expect(outcome.ok).toBe(false)
     expect(outcome.detail).toContain('attachment destination "receipts"')
     expect(mockCall).not.toHaveBeenCalled()
@@ -113,7 +123,7 @@ describe('selecting attachments', () => {
   it('saves the PDFs, named from the received date, the subject and the amount in the document', async () => {
     graphReturns([item({ id: 'a', name: 'Receipt-2026-08.pdf' }), item({ id: 'b', name: 'Invoice-2026-08.pdf' })])
 
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
 
     expect(outcome.ok).toBe(true)
     expect(outcome.files).toEqual([
@@ -137,7 +147,7 @@ describe('selecting attachments', () => {
       item({ id: 'b', name: 'signature.pdf', isInline: true }),
       item({ id: 'c', name: 'receipt.pdf' })
     ])
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
     expect(outcome.files.map((file) => file.source)).toEqual(['receipt.pdf'])
   })
 
@@ -145,7 +155,7 @@ describe('selecting attachments', () => {
     // Graph is being taken at its word about names and sizes, so an entry
     // missing either must not throw on the way past.
     graphReturns([null as unknown as Record<string, unknown>, { id: 'att-1', name: 'receipt.pdf' }])
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
     expect(outcome.ok).toBe(true)
     expect(outcome.files.map((file) => file.source)).toEqual(['receipt.pdf'])
   })
@@ -154,17 +164,13 @@ describe('selecting attachments', () => {
     // `has:attachment` is true of an inline image too. Failing here would block
     // the rule's `move:` and wedge the mail in the triage folder on every run.
     graphReturns([item({ name: 'logo.png' })])
-    expect(
-      await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
-    ).toEqual({ ok: true, files: [] })
+    expect(await saver()(request())).toEqual({ ok: true, files: [] })
     await expect(fs.readdir(destination)).rejects.toThrow()
   })
 
   it('tolerates a response carrying no attachment collection', async () => {
     mockCall.mockResolvedValue({})
-    expect(
-      await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
-    ).toEqual({ ok: true, files: [] })
+    expect(await saver()(request())).toEqual({ ok: true, files: [] })
   })
 })
 
@@ -174,7 +180,7 @@ describe('naming on disk', () => {
     await fs.writeFile(path.join(destination, '2026-08-13_anthropic_5.14.pdf'), 'earlier run')
     graphReturns([item()])
 
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
 
     expect(outcome.files[0]?.filename).toBe('2026-08-13_anthropic_5.14-2.pdf')
     expect(await fs.readFile(path.join(destination, '2026-08-13_anthropic_5.14.pdf'), 'utf8')).toBe('earlier run')
@@ -182,12 +188,7 @@ describe('naming on disk', () => {
 
   it('names an unreadable total `no-amount`, which is visible in the folder', async () => {
     graphReturns([item()])
-    const outcome = await saver({ extractPdfText: async () => null })({
-      accessToken: TOKEN,
-      messageId: 'msg-1',
-      record: record(),
-      destination: 'receipts'
-    })
+    const outcome = await saver({ extractPdfText: async () => null })(request())
     expect(outcome.files).toEqual([
       { filename: '2026-08-13_anthropic_no-amount.pdf', source: 'receipt.pdf', amount: null, written: true }
     ])
@@ -201,7 +202,7 @@ describe('failure', () => {
       item({ id: 'b', name: 'invoice.pdf', size: 40 * 1024 * 1024 })
     ])
 
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
 
     expect(outcome.ok).toBe(false)
     expect(outcome.detail).toBe(`"invoice.pdf" is 41943040 bytes, over the ${MAX_ATTACHMENT_BYTES}-byte limit`)
@@ -218,7 +219,7 @@ describe('failure', () => {
     await fs.chmod(destination, 0o500)
     graphReturns([item()])
 
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
 
     expect(outcome.ok).toBe(false)
     expect(outcome.detail).toContain('could not write "2026-08-13_anthropic_5.14.pdf"')
@@ -229,7 +230,7 @@ describe('failure', () => {
 
   it('reports an item or reference attachment rather than writing an empty file', async () => {
     graphReturns([item()], { 'att-1': { name: 'receipt.pdf' } })
-    const outcome = await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
+    const outcome = await saver()(request())
     expect(outcome).toEqual({
       ok: false,
       files: [],
@@ -239,8 +240,6 @@ describe('failure', () => {
 
   it('reports a Graph failure as a failed outcome, not a throw', async () => {
     mockCall.mockRejectedValue(new Error('Graph unreachable'))
-    expect(
-      await saver()({ accessToken: TOKEN, messageId: 'msg-1', record: record(), destination: 'receipts' })
-    ).toEqual({ ok: false, files: [], detail: 'Graph unreachable' })
+    expect(await saver()(request())).toEqual({ ok: false, files: [], detail: 'Graph unreachable' })
   })
 })

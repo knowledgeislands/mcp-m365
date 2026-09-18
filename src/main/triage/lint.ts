@@ -10,11 +10,13 @@
  * a caller-supplied list of folders that exist).
  */
 
+import { withinRootsLexically } from '../../utils/paths.js'
 import { resolveMoveTarget } from './folders.js'
 import { renderAction, renderGroup, renderPredicates } from './parser.js'
 import {
   type AndGroup,
   BROAD_KEYS,
+  type DestinationDecl,
   type ParseResult,
   type PredicateKey,
   type PredicateTerm,
@@ -42,12 +44,13 @@ export interface LintOptions {
    */
   knownFolders?: readonly string[]
   /**
-   * Attachment destination names configured on the server. When supplied, every
-   * `save-attachments:` target is checked against it. A rule naming a
-   * destination the server does not have would otherwise fail at apply time,
-   * one message at a time, after the pass had already started.
+   * Directories the server permits attachments to be written into, from
+   * `MCP_M365_ATTACHMENT_ROOTS`. When supplied, every path the note declares in
+   * its ```destinations block is checked against them. A destination the server
+   * would refuse is better caught here than one message at a time, part-way
+   * through a pass that has already started moving mail.
    */
-  knownDestinations?: readonly string[]
+  attachmentRoots?: readonly string[]
   /** Block labels that must end in a `*` fallback rule. Defaults to `['inbound']`. */
   requireFallbackIn?: readonly string[]
 }
@@ -308,24 +311,70 @@ const checkFolders = (rules: readonly Rule[], known: readonly string[], findings
   }
 }
 
-const checkDestinations = (rules: readonly Rule[], known: readonly string[], findings: LintFinding[]): void => {
-  const normalised = new Set(known.map((d) => d.toLowerCase()))
+/**
+ * Every `save-attachments:` target must name a destination the note declares.
+ *
+ * Both halves live in the same file now, so this is a within-note consistency
+ * check: a typo in either the rule or the declaration is caught before a run.
+ */
+const checkDestinations = (
+  rules: readonly Rule[],
+  declared: readonly DestinationDecl[],
+  findings: LintFinding[]
+): void => {
+  const names = new Set(declared.map((decl) => decl.name.toLowerCase()))
   for (const rule of rules) {
     for (const action of rule.actions) {
       if (action.kind !== 'save-attachments') continue
       const target = String(action.value)
-      if (normalised.has(target.toLowerCase())) continue
+      if (names.has(target.toLowerCase())) continue
       findings.push({
         severity: 'error',
         code: 'unknown-destination',
         line: rule.line,
         message:
-          known.length === 0
-            ? `save-attachments target "${target}" but no attachment destinations are configured`
-            : `save-attachments target "${target}" is not among ${known.length} configured destinations`,
+          names.size === 0
+            ? `save-attachments target "${target}" but the note declares no destinations block`
+            : `save-attachments target "${target}" is not declared (declared: ${[...names].sort().join(', ')})`,
         source: rule.source
       })
     }
+  }
+}
+
+/**
+ * Every declared path must sit inside the roots the server permits.
+ *
+ * This is where the note's authority ends. A destination may point anywhere
+ * within the permitted area, so which folder the bookkeeping process reads is
+ * the note's decision; it may not point outside it, so editing the note is not
+ * a way to write anywhere the process can reach. Lexical here, re-checked
+ * through `realpath` before any write.
+ */
+const checkDeclaredDestinations = (
+  declared: readonly DestinationDecl[],
+  roots: readonly string[],
+  findings: LintFinding[]
+): void => {
+  for (const decl of declared) {
+    if (roots.length === 0) {
+      findings.push({
+        severity: 'error',
+        code: 'destination-outside-roots',
+        line: decl.line,
+        message: `destination "${decl.name}" cannot be used — the server has no attachment roots configured`,
+        source: decl.source
+      })
+      continue
+    }
+    if (withinRootsLexically(roots, decl.path)) continue
+    findings.push({
+      severity: 'error',
+      code: 'destination-outside-roots',
+      line: decl.line,
+      message: `destination "${decl.name}" resolves outside the ${roots.length} permitted attachment root(s): ${roots.join(', ')}`,
+      source: decl.source
+    })
   }
 }
 
@@ -349,8 +398,10 @@ export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintF
     checkPartyConsolidation(block.rules, findings)
     checkAddressPatterns(block.rules, findings)
     if (options.knownFolders) checkFolders(block.rules, options.knownFolders, findings)
-    if (options.knownDestinations) checkDestinations(block.rules, options.knownDestinations, findings)
+    checkDestinations(block.rules, parsed.destinations, findings)
   }
+
+  if (options.attachmentRoots) checkDeclaredDestinations(parsed.destinations, options.attachmentRoots, findings)
 
   return findings.sort((a, b) => a.line - b.line)
 }

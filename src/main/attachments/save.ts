@@ -16,11 +16,12 @@
  * the first failure, so a save that fails takes the `move:` with it and the
  * mail stays where it was for the next run to retry.
  *
- * What remains configuration is the part a rule must not be able to choose: the
- * directories the server may write into, and the paths the destination names
- * resolve to. Rules are data read from a note, and attachments are
- * attacker-supplied bytes; if a rule line could name a filesystem path, editing
- * a note would be a way to write anywhere this process can reach.
+ * Where `receipts` points is policy too, so the note declares that as well, in
+ * a ```destinations block beside the rules. What remains configuration is the
+ * one thing a note must not be able to choose: the directories this server may
+ * write into at all. Attachments are attacker-supplied bytes and rules are data
+ * read from a file, so the roots are the boundary — a note picks a folder
+ * inside them, never outside.
  */
 import fs from 'node:fs/promises'
 import path from 'node:path'
@@ -58,8 +59,10 @@ export interface SaveRequest {
   messageId: string
   /** Supplies the date and the subject the vendor is read from. */
   record: EmailRecord
-  /** A destination name from the rule, resolved against the configured map. */
+  /** The destination name from the rule line. */
   destination: string
+  /** Name → path, as declared in the rule note this run parsed. */
+  destinations: Readonly<Record<string, string>>
 }
 
 export interface SaveOutcome {
@@ -79,8 +82,6 @@ export type AttachmentSaver = (request: SaveRequest) => Promise<SaveOutcome>
 export interface AttachmentsConfig {
   /** Directories the saver may write into. Empty means no rule can save anything. */
   roots: readonly string[]
-  /** Destination name → absolute path. The names a `save-attachments:` action may use. */
-  destinations: Readonly<Record<string, string>>
   /** PDF text extraction, for reading the transaction total. */
   extractPdfText: PdfTextExtractor
 }
@@ -128,23 +129,31 @@ const fetchAttachmentBytes = async (
 /** Build the saver the triage context injects. */
 export const makeAttachmentSaver =
   (ctx: GraphContext, config: AttachmentsConfig): AttachmentSaver =>
-  async ({ accessToken, messageId, record, destination }: SaveRequest): Promise<SaveOutcome> => {
-    const configured = config.destinations[destination]
-    if (!configured) {
-      const known = Object.keys(config.destinations)
+  async ({ accessToken, messageId, record, destination, destinations }: SaveRequest): Promise<SaveOutcome> => {
+    if (config.roots.length === 0) {
+      return {
+        ok: false,
+        files: [],
+        detail: 'this server has no attachment roots configured, so no rule may save attachments'
+      }
+    }
+
+    const declared = destinations[destination]
+    if (!declared) {
+      const known = Object.keys(destinations)
       return {
         ok: false,
         files: [],
         detail:
           known.length === 0
-            ? 'no attachment destinations are configured on this server'
-            : `destination "${destination}" is not configured (have: ${known.join(', ')})`
+            ? `destination "${destination}" is not declared — the rule note has no destinations block`
+            : `destination "${destination}" is not declared in the rule note (declared: ${known.join(', ')})`
       }
     }
 
     let directory: string
     try {
-      directory = await assertWithinRoots(config.roots, configured, `attachment destination "${destination}"`)
+      directory = await assertWithinRoots(config.roots, declared, `attachment destination "${destination}"`)
     } catch (error) {
       return { ok: false, files: [], detail: errMessage(error) }
     }

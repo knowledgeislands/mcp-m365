@@ -1,5 +1,8 @@
+import os from 'node:os'
+import path from 'node:path'
 import {
   assembleLines,
+  destinationPaths,
   parseRule,
   parseRules,
   renderAction,
@@ -233,11 +236,11 @@ describe('parseRules — diagnostics', () => {
   })
 
   it('rejects a save-attachments target that looks like a path', () => {
-    // A rule names a configured destination, never a path. Rules are data read
-    // from a note, so a path here would make editing that note a way to write
-    // anywhere the server can reach.
+    // A rule line names a destination the note declares elsewhere, never a
+    // path — so one destination can be repointed in one place rather than on
+    // every rule that writes to it.
     expect(errorsFor('sender:a@b.com -> save-attachments:/tmp/anywhere')[0]).toMatch(
-      /expected a configured name, not a path/
+      /expected a name declared in the destinations block, not a path/
     )
     expect(errorsFor('sender:a@b.com -> save-attachments:../escape')[0]).toMatch(/not a path/)
     expect(errorsFor('sender:a@b.com -> save-attachments:Receipts')[0]).toMatch(/not a path/)
@@ -249,6 +252,69 @@ describe('parseRules — diagnostics', () => {
 
   it('collects every error rather than stopping at the first', () => {
     expect(errorsFor('theme:x -> move:A\nsender:b@c.com -> forward:d')).toHaveLength(2)
+  })
+})
+
+describe('parseRules — destinations block', () => {
+  const declaring = (body: string): string => `## Destinations\n\n\`\`\`destinations v1\n${body}\n\`\`\`\n`
+  const declErrors = (body: string): string[] => parseRules(declaring(body)).errors.map((e) => e.message)
+
+  it('reads `name = path` declarations, keeping the order and the line numbers', () => {
+    const parsed = parseRules(declaring('receipts = /drive/Receipts\nsigned-contracts = /drive/Contracts'))
+    expect(parsed.errors).toEqual([])
+    expect(parsed.destinations).toEqual([
+      { name: 'receipts', path: '/drive/Receipts', line: 4, source: 'receipts = /drive/Receipts' },
+      { name: 'signed-contracts', path: '/drive/Contracts', line: 5, source: 'signed-contracts = /drive/Contracts' }
+    ])
+  })
+
+  it('ignores comments and blank lines, as the rule blocks do', () => {
+    const parsed = parseRules(declaring('# where the bookkeeper looks\n\nreceipts = /drive/Receipts'))
+    expect(parsed.errors).toEqual([])
+    expect(parsed.destinations).toHaveLength(1)
+  })
+
+  it('coexists with the rule blocks in one note', () => {
+    const parsed = parseRules(`${block('* -> save-attachments:receipts')}\n${declaring('receipts = /drive/Receipts')}`)
+    expect(parsed.errors).toEqual([])
+    expect(parsed.blocks.map((b) => b.label)).toEqual(['inbound'])
+    expect(parsed.destinations.map((d) => d.name)).toEqual(['receipts'])
+  })
+
+  it('reports a line that is not a declaration', () => {
+    expect(declErrors('receipts /drive/Receipts')[0]).toMatch(/expected `name = \/path\/to\/directory`/)
+  })
+
+  it('reports a name a rule could not spell', () => {
+    expect(declErrors('Receipts = /drive/Receipts')[0]).toMatch(/invalid destination name "Receipts"/)
+  })
+
+  it('reports a declaration with no path', () => {
+    expect(declErrors('receipts =')[0]).toMatch(/destination "receipts" has no path/)
+  })
+
+  it('reports a relative path, which would resolve against the server’s working directory', () => {
+    expect(declErrors('receipts = Receipts/incoming')[0]).toMatch(/must be an absolute path/)
+  })
+
+  it('reports the same name declared twice rather than silently taking one', () => {
+    expect(declErrors('receipts = /drive/A\nreceipts = /drive/B')[0]).toMatch(/already declared on line 4/)
+  })
+
+  it('rejects an unterminated block, whose list may be truncated', () => {
+    const parsed = parseRules('## Destinations\n\n```destinations v1\nreceipts = /drive/Receipts\n')
+    expect(parsed.errors[0]?.message).toMatch(/unterminated ```destinations block/)
+    expect(parsed.destinations).toEqual([])
+  })
+
+  it('rejects a version it does not understand', () => {
+    const parsed = parseRules('## Destinations\n\n```destinations v2\nreceipts = /drive/Receipts\n```\n')
+    expect(parsed.errors[0]?.message).toMatch(/unsupported destinations version "v2"/)
+  })
+
+  it('expands `~` when resolving the declared paths', () => {
+    const parsed = parseRules(declaring('receipts = ~/Receipts'))
+    expect(destinationPaths(parsed)).toEqual({ receipts: path.join(os.homedir(), 'Receipts') })
   })
 })
 
@@ -296,7 +362,7 @@ describe('selectBlock', () => {
   })
 
   it('reports when there are no blocks at all', () => {
-    const selected = selectBlock({ blocks: [], errors: [] }, 'inbound')
+    const selected = selectBlock({ blocks: [], destinations: [], errors: [] }, 'inbound')
     expect('error' in selected && selected.error).toMatch(/blocks present: none/)
   })
 })

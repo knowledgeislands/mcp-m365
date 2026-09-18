@@ -149,6 +149,13 @@ describe('findMessage — identity, not id', () => {
     expect(await findMessage(ctx, TOKEN, record({ received: '' }))).toBeNull()
     expect(mockCall).not.toHaveBeenCalled()
   })
+
+  it('returns null without calling Graph when the timestamp will not parse', async () => {
+    // The search filter is built from the timestamp, so an unparseable one has
+    // no window to search in. Refuse rather than send Graph `Invalid Date`.
+    expect(await findMessage(ctx, TOKEN, record({ received: 'not a date' }))).toBeNull()
+    expect(mockCall).not.toHaveBeenCalled()
+  })
 })
 
 describe('hasExecutableActions', () => {
@@ -287,7 +294,7 @@ describe('applyActions', () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ id: 'msg-after-move' })
 
     const { applied } = await applyActions(
-      { ...ctx, saveAttachments },
+      { ...ctx, saveAttachments, attachmentDestinations: { receipts: '/drive/Receipts' } },
       TOKEN,
       record({ id: 'msg-1' }),
       [
@@ -301,7 +308,9 @@ describe('applyActions', () => {
       accessToken: TOKEN,
       messageId: 'msg-1',
       record: record({ id: 'msg-1' }),
-      destination: 'receipts'
+      destination: 'receipts',
+      // Declared in the note the run parsed, not configured on the server.
+      destinations: { receipts: '/drive/Receipts' }
     })
     expect(applied).toEqual([
       { action: 'save-attachments:receipts', ok: true, detail: '2026-08-13_anthropic_5.14.pdf' },
@@ -373,7 +382,7 @@ describe('applyActions', () => {
       {
         action: 'save-attachments:receipts',
         ok: false,
-        detail: 'no attachment destination is configured on this server'
+        detail: 'this server cannot save attachments'
       }
     ])
   })

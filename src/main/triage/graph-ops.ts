@@ -164,12 +164,15 @@ export const resolveMessageId = async (
 }
 
 /**
- * What applying actions needs: Graph access, plus the saver when a rule uses
- * `save-attachments:`. Narrower than `TriageContext` so a caller holding only a
- * Graph client — the folder helpers, the tests — still satisfies it.
+ * What applying actions needs: Graph access, plus — when a rule uses
+ * `save-attachments:` — the saver and the destinations the note declared.
+ * Narrower than `TriageContext` so a caller holding only a Graph client — the
+ * folder helpers, the tests — still satisfies it.
  */
 export interface ActionContext extends GraphContext {
   saveAttachments?: AttachmentSaver
+  /** Destination name → path, as declared in the rule note being run. */
+  attachmentDestinations?: Readonly<Record<string, string>>
 }
 
 export interface AppliedAction {
@@ -198,14 +201,15 @@ const applyOne = async (
     // dispose of the mail, and the engine stops the chain on failure.
     if (!ctx.saveAttachments)
       return {
-        result: { action: label, ok: false, detail: 'no attachment destination is configured on this server' },
+        result: { action: label, ok: false, detail: 'this server cannot save attachments' },
         nextId: messageId
       }
     const outcome = await ctx.saveAttachments({
       accessToken,
       messageId,
       record,
-      destination: String(action.value)
+      destination: String(action.value),
+      destinations: ctx.attachmentDestinations ?? {}
     })
     const saved = outcome.files.map((file) => file.filename).join(', ')
     return {

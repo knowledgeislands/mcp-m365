@@ -22,12 +22,19 @@ export interface TriageContext extends GraphContext {
    */
   rulesPath: string
   /**
-   * Destination names a `save-attachments:` action may use, mapped to their
-   * paths. Configuration, not rule data: a rule line names a destination, never
-   * a path, so editing the rule note cannot redirect writes. Absent when none
-   * is configured, which makes the lint reject any rule that saves.
+   * Directories `save-attachments:` may write into, from
+   * `MCP_M365_ATTACHMENT_ROOTS`. Separate from {@link roots} so neither widens
+   * the other: the action that writes PDFs cannot reach the rule note, and the
+   * engine that reads the rules cannot write into the receipts folder.
+   *
+   * This is all the server keeps of attachment saving. Which destinations exist
+   * and where they point is declared in the rule note's ```destinations block,
+   * because that is policy — the same kind of statement as which mail is saved
+   * there. The roots stay here because they are the boundary on that policy: a
+   * note may choose where within them a rule writes, never whether it may
+   * write outside them.
    */
-  attachmentDestinations?: Readonly<Record<string, string>>
-  /** Carries out `save-attachments:`. Absent when no destination is configured, which makes the action fail loudly. */
+  attachmentRoots: readonly string[]
+  /** Carries out `save-attachments:`. Absent leaves the action failing loudly rather than silently doing nothing. */
   saveAttachments?: AttachmentSaver
 }

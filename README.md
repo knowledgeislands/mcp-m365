@@ -89,19 +89,24 @@ A rule may lift the attachments out of a message before disposing of it:
 folder:"282 HNR Finance" has:attachment subject:receipt -> save-attachments:receipts, move:_ARCHIVE/Internal/Finance, mark:read
 ```
 
-`save-attachments:<name>` writes the message's PDF attachments into a configured destination, naming each `YYYY-MM-DD_vendor_amount.pdf` from the received date, the subject, and the transaction total read out of the document.
+`save-attachments:<name>` writes the message's PDF attachments into a destination the rule note declares, naming each one `YYYY-MM-DD_vendor_amount.pdf` from the received date, the subject and the transaction total read out of the document.
 
 This is a rule action rather than a tool of its own because of where the policy lives:
 
-- **Which mail, and what becomes of it afterwards, is policy** — so it sits in the rule note with the rest of the routing and is reviewed the same way. A rule selects (`folder:`, `subject:`, `has:attachment`) and disposes (`move:`, `mark:`), and the engine supplies the gate for free: a rule's actions run in written order and stop at the first failure, so a save that fails takes the `move:` with it and the mail is left for the next run to retry.
-- **Where the bytes land is not** — a rule names `receipts`, never a path. Rules are data read from a file and attachments are attacker-supplied bytes, so a rule that could name a path would make editing that note a way to write anywhere this process can reach. The grammar admits only `[a-z0-9][a-z0-9-]*`; the name must resolve through `MCP_M365_ATTACHMENT_DEST_*`, and the path it resolves to must sit inside `MCP_M365_ATTACHMENT_ROOTS`. A rule naming an unconfigured destination is a blocking lint error, so it fails the whole run rather than one message at a time.
-- **The amount is read from the PDF, never from the email body.** Receipt mail routinely quotes several money values, and the transaction total is not reliably the first or the largest. Text extraction shells out to `pdftotext` (`MCP_M365_PDFTOTEXT_PATH`); a document that cannot be read is filed `no-amount` rather than given a plausible wrong figure.
+- **Which mail, and what becomes of it afterwards, is policy** — so it sits in the rule note with the rest of the routing and is reviewed the same way. The rule both selects (`folder:`, `subject:`, `has:attachment`) and disposes (`move:`, `mark:`), and the engine supplies the gate between them for free: a rule's actions run in written order and stop at the first failure, so a save that fails takes the `move:` with it and the mail stays put for the next pass.
+- **Where a destination points is policy too** — so the note declares that as well, in a ` ```destinations v1 ` block of `name = path` lines beside the rules. A rule line names `receipts`; the declaration says where `receipts` is. Repointing it is one edit in one place rather than one per rule.
+- **What the note may not choose is whether it writes outside the permitted area.** Attachments are attacker-supplied bytes and rules are data read from a file, so `MCP_M365_ATTACHMENT_ROOTS` is the boundary: every declared path must resolve inside it. A destination that oversteps, or a rule naming a destination the note never declared, is a blocking lint error that refuses the whole run rather than failing one message at a time.
+- **The amount is read from the PDF, never from the email body.** Receipt mail routinely quotes several money values, and the transaction total is not reliably the first or the largest. Text extraction shells out to `pdftotext` (`MCP_M365_PDFTOTEXT_PATH`); a document it cannot read is filed as `no-amount` rather than given a plausible wrong figure.
 
-Only non-inline `.pdf` attachments are saved, each capped at 25 MB, and an existing filename is never overwritten — a clash gains `-2`, `-3`. A message carrying no PDF is a success rather than a failure: `has:attachment` is true of an inline signature image too, and failing would wedge that mail in the triage folder on every subsequent run. A part-written message is rolled back, so the retry cannot duplicate the files that had already been written.
+Only non-inline `.pdf` attachments are saved, each capped at 25 MB, and an existing filename is never overwritten — a clash gains `-2`, `-3`. A message carrying no PDF is a success rather than a failure: `has:attachment` is true of an inline signature image too, and failing would wedge that mail in the triage folder on every subsequent run. A part-written message is rolled back, so a retry cannot duplicate files that had already been written.
+
+```destinations v1
+receipts = ~/Library/CloudStorage/OneDrive-Example/Exec/Receipts
+```
 
 #### Rule DSL (v1)
 
-One rule per logical line, `predicates -> actions [# comment]`, in a fenced ` ```rules v1 ` block. Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything (valid only as the mandatory final fallback). Predicates: `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`. Actions: `move:`, `tag:`, `mark:`, `delete`, `suggest`.
+One rule per logical line, `predicates -> actions [# comment]`, in a fenced ` ```rules v1 ` block. Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything (valid only as the mandatory final fallback). Predicates: `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`. Actions: `move:`, `tag:`, `mark:`, `save-attachments:`, `delete`, `suggest`.
 
 ```rules v1
 sender:*@vendor.example.com !subject:sign  -> move:981 Delete   # keep signature requests visible
@@ -267,7 +272,6 @@ bun install
 | `MCP_M365_TRIAGE_RULES_PATH` | no | — | Default path to the rule note. When set, the routing tools' `rules` argument becomes optional. Overridable per call; always root-checked. |
 | `MCP_M365_TRIAGE_ROOTS` | no | — | `PATH`-style list of directories the routing engine may read and write. Every configured or caller-supplied path must resolve inside one of them. Unset disables all engine file access. |
 | `MCP_M365_ATTACHMENT_ROOTS` | no | — | `PATH`-style list of directories a `save-attachments:` action may write into. Separate from `MCP_M365_TRIAGE_ROOTS` so neither widens the other. Unset disables attachment saving. |
-| `MCP_M365_ATTACHMENT_DEST_<NAME>` | no | — | One per destination: the path `save-attachments:<name>` writes to, where `<name>` is the variable suffix lowercased with `_` as `-` (`MCP_M365_ATTACHMENT_DEST_RECEIPTS` → `save-attachments:receipts`). Must resolve inside `MCP_M365_ATTACHMENT_ROOTS`. |
 | `MCP_M365_PDFTOTEXT_PATH` | no | `/opt/homebrew/bin/pdftotext` | Path to the poppler `pdftotext` binary used to read a saved PDF's transaction total. |
 | `NODE_ENV` | no | — | Dev convention. ‖ |
 
