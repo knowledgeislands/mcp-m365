@@ -44,12 +44,7 @@ class TokenStorage {
 
     this.config = {
       /* v8 ignore next — os.homedir() always returns a path on supported platforms; '' is a defensive fallback */
-      tokenStorePath: path.join(
-        resolveXdgStateHome(process.env, os.homedir() || '/tmp'),
-        'ki',
-        'mcp-m365',
-        'oauth-tokens.json'
-      ),
+      tokenStorePath: path.join(resolveXdgStateHome({}, os.homedir() || '/tmp'), 'ki', 'mcp-m365', 'oauth-tokens.json'),
       clientId: '',
       clientSecret: '',
       redirectUri: '',
