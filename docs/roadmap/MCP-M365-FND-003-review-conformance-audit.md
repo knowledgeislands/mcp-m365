@@ -5,7 +5,6 @@ area: FND
 theme: foundation-tooling
 horizon: future
 status: draft
-candidate: true
 blocks: []
 blocked_by: []
 baseline_ref: null
