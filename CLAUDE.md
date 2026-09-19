@@ -1,5 +1,7 @@
 # CLAUDE.md
 
+@AGENTS.md
+
 Guidance for Claude Code when working in this repo. The user-facing tool surface, Azure app setup, install/config, and Claude Desktop setup live in [README.md](./README.md); this file covers what Claude needs that isn't in README and isn't derivable from one grep.
 
 ## Bun vs Node
