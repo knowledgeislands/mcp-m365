@@ -21,6 +21,7 @@ Thumbs.db
 # ki-repo:ignore:ki-engineering:start
 # TypeScript/Bun dependencies, build output, caches, logs, and real environment files.
 node_modules/
+.turbo/
 dist/
 *.tsbuildinfo
 npm-debug.log*

@@ -1,1 +1,2 @@
-bunx lint-staged
+bunx lint-staged || exit 1
+bunx syncpack format --check || exit 1
