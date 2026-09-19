@@ -1,6 +1,8 @@
 # Knowledge Islands repository configuration.
 # Its presence declares conformance with the Knowledge Islands repository standard.
 
+# =============================================================================
+
 # -----------------------------------------------------------------------------
 # Foundation
 # -----------------------------------------------------------------------------
@@ -27,7 +29,7 @@ visibility = "public"
 [skills.ki-repo-mcp]
 
 # -----------------------------------------------------------------------------
-# Governance runtime
+# Governance and runtime
 # -----------------------------------------------------------------------------
 
 [skills.ki-engineering]
@@ -46,10 +48,8 @@ adapter = "roadmap"
 
 [skills.ki-work-roadmap]
 themes = ["foundation-tooling", "tool-surface"]
-
-[skills.ki-work-roadmap.areas]
-FND = "foundation-tooling"
-TOOL = "tool-surface"
+areas.FND = "foundation-tooling"
+areas.TOOL = "tool-surface"
 
 [skills.ki-housekeeping-claude]
 
@@ -64,16 +64,8 @@ TOOL = "tool-surface"
 # -----------------------------------------------------------------------------
 
 [skills.ki-trades]
-
-[skills.ki-trades.routes."knowledgeislands/ki-agentic-harness"]
-import = ["knowledge"]
+routes."knowledgeislands/ki-agentic-harness" = { import = ["knowledge"] }
 
 [skills.ki-agora]
-
-[skills.ki-agora.memberships.ki-all]
-home = "https://github.com/knowledgeislands/ki-agentic-harness"
-role = "maintainer"
-
-[skills.ki-agora.memberships.ki-mcps]
-home = "https://github.com/knowledgeislands/ki-agentic-harness"
-role = "maintainer"
+memberships.ki-all = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
+memberships.ki-mcps = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
