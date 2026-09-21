@@ -1,15 +1,16 @@
 ---
 id: MCP-M365-FND-005
-area: FND
 title: Establish audience-centric guides
-theme: documentation-structure
+area: FND
+theme: foundation-tooling
+horizon: now
+status: draft
 blocks: []
 blocked_by: []
 transferred_from: ki-website
+baseline_ref: null
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-21T16:12:00Z
-horizon: now
-status: draft
+updated_at: 2026-09-21T16:40:00Z
 ---
 
 ## Goal
@@ -39,6 +40,50 @@ KI Website derives and cites; it does not own this collection and must not be gi
 - Leave the README as orientation: what the server is, what it can do, and where to go next. Feature lists and tool inventories can stay; step-by-step setup should not.
 - Declare `[skills.ki-guides]` in `.ki.toml` and run `ki repo audit --skill ki-guides --repo .` to gate the result.
 - Decide whether the tool inventory is a guide at all. It may belong in a specification or be generated from the server's own tool declarations; a hand-maintained list that drifts from the code is the usual failure.
+
+## Current state
+
+There is no `docs/guides/` directory and `.ki.toml` declares no `[skills.ki-guides]` block, so nothing gates whether the collection exists or what shape it takes. The practical material catalogued in Context sits in `README.md`, where a reader arriving with a task has to reconstruct that task out of reference prose.
+
+## Steps
+
+- [ ] Name the audiences this server actually has, and reject any audience nobody is writing for.
+- [ ] Create `docs/guides/README.md` as the collection index, routing by audience and nothing else.
+- [ ] Create one directory per named audience, each with its own `README.md`.
+- [ ] Move the README's how-to material into the guide that owns it, leaving the README to orient and link.
+- [ ] Write what is missing: installation and client configuration, the credentials the server needs, and recovery from its common failures.
+- [ ] Declare `[skills.ki-guides]` in `.ki.toml`.
+- [ ] Run the guides audit and repair what it reports.
+
+## Files touched
+
+`docs/guides/` (new), `.ki.toml`, `README.md`.
+
+## Verify
+
+`ki repo audit --skill ki-guides --repo .` passes, and `ki repo audit --skill ki-authoring --repo .` passes over the new Markdown.
+
+## Dependencies / blocks
+
+Nothing blocks this. `KI-HARNESS-GOV-083` in `ki-agentic-harness` proposes making audience directories a `ki-guides` requirement: if it lands first this collection satisfies it by construction, and if it lands later this collection already conforms. KI Website intends to derive public guidance from these guides and cite them at a pinned ref, but it derives rather than owns and its schedule does not gate this work.
+
+## Documentation impact
+
+### Decision Records
+
+No decision record is needed. Audience-centric grouping is the house arrangement `ki-guides` already encodes, so adopting it here is conformance rather than a new decision. One becomes owed only if this repository concludes it needs an exception.
+
+### Specifications
+
+No behaviour-level contract changes. The server's tool surface is untouched; this item changes only where its instructions live and who they are written for.
+
+### Guides
+
+This item is entirely guide impact. It creates the collection, its audience directories, and their indexes, and it empties the README of instruction.
+
+### Roadmap
+
+No further roadmap change is expected. If writing the guides exposes behaviour that cannot honestly be explained — an unclear failure mode, a configuration step with no recovery — that is a separate item raised at the time.
 
 ## Discussion
 
