@@ -7,8 +7,8 @@ blocks: []
 blocked_by: []
 transferred_from: ki-website
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-21T15:44:00Z
-horizon: triage
+updated_at: 2026-09-21T16:12:00Z
+horizon: now
 status: draft
 ---
 
@@ -28,7 +28,7 @@ Separately, `ki-guides` is being asked to require audience directories under `do
 
 ## Boundary
 
-This is a discussion proposal only. It is not accepted, prioritised, or implementation authority, and this repository owns its horizon and plan.
+Adopted into `Now` by explicit approval, so this is prioritised work rather than intake. It remains `status: draft`: `ki-plan` shapes it to `Ready` before any implementation, and this repository still owns its plan and sequencing.
 
 KI Website derives and cites; it does not own this collection and must not be given approval rights over it. Nothing here requires a guide to be written for the website's benefit — if a guide would not serve this repository's own readers, it should not exist.
 
@@ -42,4 +42,4 @@ KI Website derives and cites; it does not own this collection and must not be gi
 
 ## Discussion
 
-Review the evidence before deciding whether to restructure now, defer, or record an exception. The prompting question is whether a reader who has never opened this repository can install it, run it, and recover from its common failures without reading source.
+Shaping settles how far the restructure goes, not whether it happens. The prompting question is whether a reader who has never opened this repository can install it, run it, and recover from its common failures without reading source.
