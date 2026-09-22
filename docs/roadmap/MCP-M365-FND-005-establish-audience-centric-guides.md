@@ -4,13 +4,13 @@ title: Establish audience-centric guides
 area: FND
 theme: foundation-tooling
 horizon: now
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 transferred_from: ki-website
 baseline_ref: null
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-21T16:40:00Z
+updated_at: 2026-09-22T07:16:00Z
 ---
 
 ## Goal
@@ -29,7 +29,7 @@ Separately, `ki-guides` is being asked to require audience directories under `do
 
 ## Boundary
 
-Adopted into `Now` by explicit approval, so this is prioritised work rather than intake. It remains `status: draft`: `ki-plan` shapes it to `Ready` before any implementation, and this repository still owns its plan and sequencing.
+Adopted into `Now` by explicit approval, so this is prioritised work rather than intake. It was captured at `status: draft` and required `ki-plan` to shape it to `Ready` before any implementation; this repository still owns its plan and sequencing.
 
 KI Website derives and cites; it does not own this collection and must not be given approval rights over it. Nothing here requires a guide to be written for the website's benefit — if a guide would not serve this repository's own readers, it should not exist.
 
@@ -41,31 +41,74 @@ KI Website derives and cites; it does not own this collection and must not be gi
 - Declare `[skills.ki-guides]` in `.ki.toml` and run `ki repo audit --skill ki-guides --repo .` to gate the result.
 - Decide whether the tool inventory is a guide at all. It may belong in a specification or be generated from the server's own tool declarations; a hand-maintained list that drifts from the code is the usual failure.
 
+### Resolved in planning
+
+**Two audiences, `user/` and `developer/`. No `operator/`.** The server is a local stdio subprocess that an MCP client launches; there is no deployment, no service lifecycle, no host to keep alive, and no second party who runs it on someone else's behalf. The only long-lived process a reader starts by hand is the OAuth callback server, and they start it for their own sign-in. The material that reads as operational — the access-level gate, the audit log, the routing engine's filesystem roots — is configuration that the same person sets on their own machine, so it belongs in `user/configuration.md` rather than in an audience directory nobody is writing for. If this server ever gains a shared or hosted deployment, `operator/` is added then, against a real reader.
+
+**The tool inventory does not become a guide.** A list of tools answers _what the server exposes_, which the four-doc split places outside `docs/guides/`; and the authoritative inventory already exists in executable form, as the server's own `tools/list` response and `m365_about`. A hand-maintained copy under `docs/guides/` would be a second inventory with no test holding it to the first, and a guide that is confidently wrong about a tool name is worse than a guide that never claimed to list them. The README keeps its capability tables, which the Shaping brief explicitly permits, with a sentence naming `tools/list` as authoritative. No `docs/specs/` corpus is manufactured to hold the surface either; whether this repository should adopt `ki-specs` is a separate decision, recorded below as a question for a human rather than answered here.
+
+**The routing engine's procedure moves; its capability summary stays.** The README's routing-engine material is two things welded together: a description of what the engine is, which orients, and the rule DSL, the destinations block, the filesystem roots, and the report-then-live run loop, which instruct. The instructing half moves to `user/email-routing.md`. The description and the four-tool table stay in the README.
+
+**Two developer guides, not four.** `developer/definition-of-done.md` and `developer/releasing.md` are optional under the general `ki-guides` standard and no repository-kind overlay requires them here. This repository has no documented release procedure to write down and the named gaps in this record are installation, credentials, and recovery, so inventing a release guide now would be describing a process rather than recording one. That gap is noted, not filled.
+
 ## Current state
 
-There is no `docs/guides/` directory and `.ki.toml` declares no `[skills.ki-guides]` block, so nothing gates whether the collection exists or what shape it takes. The practical material catalogued in Context sits in `README.md`, where a reader arriving with a task has to reconstruct that task out of reference prose.
+There is no `docs/guides/` directory. `docs/` holds only `docs/roadmap/` (eleven records plus `_ISSUES.md`) and `docs/decisions/` (one Decision Record plus its index), so the `how` corner of the four-doc split is empty and unclaimed. `.ki.toml` declares fifteen skills and no `[skills.ki-guides]` block, so nothing gates whether the collection exists or what shape it takes.
+
+`README.md` is 430 lines across seventeen H2 sections. Of those, six are pure procedure — Quick Start, Installation, Azure App Registration, Configuration, Authentication, Development, Troubleshooting, and Extending the Server — and a reader arriving with a task has to reconstruct that task out of reference prose interleaved with them. `Directory Structure` is contributor orientation sitting in a document a user reads first.
+
+`CLAUDE.md` states in its opening line that "the user-facing tool surface, Azure app setup, install/config, and Claude Desktop setup live in README.md". That sentence stops being true the moment this item lands and has to move with the material.
+
+Two figures in the README are already wrong. The `MCP_M365_ACCESS_LEVEL` footnote claims `destructive` "adds 9 delete, retention and harvest tools — all 37 tools registered". The source registers 36 tools: 12 derive `read`, 16 derive `write`, and 8 derive `destructive`. The four capability tables themselves list exactly 36 and are correct; only the footnote drifted. Moving that footnote into a guide is not an occasion to carry a known-false number across.
+
+`ki repo audit --concise --progress never` currently passes at 15 skills. Declaring `ki-guides` takes that to 16, and it must still pass.
 
 ## Steps
 
-- [ ] Name the audiences this server actually has, and reject any audience nobody is writing for.
-- [ ] Create `docs/guides/README.md` as the collection index, routing by audience and nothing else.
-- [ ] Create one directory per named audience, each with its own `README.md`.
-- [ ] Move the README's how-to material into the guide that owns it, leaving the README to orient and link.
-- [ ] Write what is missing: installation and client configuration, the credentials the server needs, and recovery from its common failures.
-- [ ] Declare `[skills.ki-guides]` in `.ki.toml`.
-- [ ] Run the guides audit and repair what it reports.
+- [ ] Create `docs/guides/README.md` as the collection entry point: what the collection covers, a route to each audience, and a statement of what lives in `docs/decisions/` and `docs/roadmap/` instead. It routes by audience and carries no procedure of its own.
+- [ ] Create `docs/guides/user/README.md` and `docs/guides/developer/README.md`, each introducing its audience and giving a substantive route into every guide beneath it.
+- [ ] Write `docs/guides/user/azure-app-registration.md` from the README's `Azure App Registration` section, extended with the prerequisites it assumes, what each delegated permission buys, the failures the Azure console actually produces, and what to do when a client secret expires.
+- [ ] Write `docs/guides/user/installation.md` from the README's `Quick Start`, `Installation`, and `Claude Desktop Configuration` material, as one ordered route from an empty machine to a connected client, ending in a verification a reader can run.
+- [ ] Write `docs/guides/user/authentication.md` from the README's `Authentication` section: the auth-server handshake, where tokens land, how refresh works, and how to force re-authentication or revoke access.
+- [ ] Write `docs/guides/user/configuration.md` from the README's `Environment Variables` table and its footnotes, with the access-level gate, the audit log, and the `.env` precedence rules stated as choices a reader makes. Correct the tool counts to 12 / 16 / 8 and 36 while moving them.
+- [ ] Write `docs/guides/user/email-routing.md` from the README's `Email routing engine`, `Saving attachments`, `Rule DSL (v1)`, and `Email folder targeting` material: roots, the rule file, report-then-live, the resumable batch loop, and drift.
+- [ ] Write `docs/guides/user/troubleshooting.md` from the README's `Troubleshooting` section, extended to cover the failures the new guides introduce a reader to — consent, tenant, redirect-URI mismatch, secret expiry, access-level surprises, and a refused routing path.
+- [ ] Write `docs/guides/developer/local-development.md` from the README's `Development`, `Running From Source (Dev)`, and `Directory Structure` sections, plus the verification gates `AGENTS.md` already names.
+- [ ] Write `docs/guides/developer/extending-the-server.md` from the README's `Extending the Server` section, with the annotation-driven access gate and the `main/` versus `tools/` boundary stated as the constraints they are.
+- [ ] Reduce `README.md` to orientation: what the server is, what it can do, the capability tables, the example conversations, the security model, and a route into `docs/guides/`. Every moved section is deleted, not summarised in place.
+- [ ] Update `CLAUDE.md`'s pointer so it names `docs/guides/` for user-facing setup and keeps `README.md` only for the tool tables. Leave the protocol-profile corrections in that file untouched.
+- [ ] Declare `[skills.ki-guides]` in `.ki.toml` under the governance block, beside `ki-decision-records`.
+- [ ] Run the gates and repair what they report.
 
 ## Files touched
 
-`docs/guides/` (new), `.ki.toml`, `README.md`.
+- `docs/guides/README.md` — new collection entry point.
+- `docs/guides/user/README.md`, `docs/guides/user/azure-app-registration.md`, `docs/guides/user/installation.md`, `docs/guides/user/authentication.md`, `docs/guides/user/configuration.md`, `docs/guides/user/email-routing.md`, `docs/guides/user/troubleshooting.md` — new user collection.
+- `docs/guides/developer/README.md`, `docs/guides/developer/local-development.md`, `docs/guides/developer/extending-the-server.md` — new developer collection.
+- `README.md` — eight procedural sections removed, orientation and capability tables retained, guide routes added.
+- `CLAUDE.md` — one pointer sentence.
+- `.ki.toml` — `[skills.ki-guides]`.
+- `docs/roadmap/MCP-M365-FND-005-establish-audience-centric-guides.md` — this record.
+
+No file under `src/` changes. This item moves documentation and declares a skill; it touches no behaviour, no test, and no build output.
 
 ## Verify
 
-`ki repo audit --skill ki-guides --repo .` passes, and `ki repo audit --skill ki-authoring --repo .` passes over the new Markdown.
+- `ki repo audit --skill ki-guides --concise --progress never` — passes over the new collection, confirming the root, the entry point, the guide headings, and the absence of a retired `docs/spec/` or `docs/developer/` sibling.
+- `ki repo audit --skill ki-authoring --concise --progress never` — passes over every new and edited Markdown file.
+- `bunx rumdl check` — no issues across the repository's authored Markdown.
+- `ki repo audit --concise --progress never` — PASS, now at 16 skills rather than 15, with no regression in any previously passing skill.
+- Reader check, by judgment rather than by tool: from `docs/guides/README.md` alone, a reader who has never opened this repository can reach the Azure registration, complete it, connect a client, authenticate, and recover from a failed sign-in without opening `src/` or `README.md`.
 
 ## Dependencies / blocks
 
-Nothing blocks this. `KI-HARNESS-GOV-083` in `ki-agentic-harness` proposes making audience directories a `ki-guides` requirement: if it lands first this collection satisfies it by construction, and if it lands later this collection already conforms. KI Website intends to derive public guidance from these guides and cite them at a pinned ref, but it derives rather than owns and its schedule does not gate this work.
+Nothing blocks this item and `blocked_by` stays empty. The collection is new files plus edits to three existing ones, and every gate it must pass is already installed and green.
+
+`KI-HARNESS-GOV-083` in `ki-agentic-harness` proposes making audience directories a `ki-guides` requirement. If it lands first this collection satisfies it by construction, and if it lands later this collection already conforms. It is neither a blocker nor a receiver.
+
+KI Website intends to derive public guidance from these guides and cite them at a pinned ref. It derives rather than owns and its schedule does not gate this work; no handoff item is created in either direction by this record.
+
+`MCP-M365-FND-002` is `awaiting-review` on the same branch and touches `src/`, `package.json`, `.ki.toml`'s dependency holds, and `CHANGELOG.md`. This item touches `docs/`, `README.md`, `CLAUDE.md`, and a new `.ki.toml` skill block, so the two share no content; the `.ki.toml` edit is an addition in a different block.
 
 ## Documentation impact
 
@@ -75,11 +118,11 @@ No decision record is needed. Audience-centric grouping is the house arrangement
 
 ### Specifications
 
-No behaviour-level contract changes. The server's tool surface is untouched; this item changes only where its instructions live and who they are written for.
+No behaviour-level contract changes. The server's tool surface is untouched; this item changes only where its instructions live and who they are written for. It deliberately does not create a `docs/specs/` corpus: the guides route to the README's capability tables and to the server's own `tools/list` for the surface, and the `ki-specs` question is raised as an open one rather than pre-empted.
 
 ### Guides
 
-This item is entirely guide impact. It creates the collection, its audience directories, and their indexes, and it empties the README of instruction.
+This item is entirely guide impact. It creates the collection, its two audience directories, their indexes, and nine guides, and it empties the README of instruction.
 
 ### Roadmap
 
@@ -88,3 +131,11 @@ No further roadmap change is expected. If writing the guides exposes behaviour t
 ## Discussion
 
 Shaping settles how far the restructure goes, not whether it happens. The prompting question is whether a reader who has never opened this repository can install it, run it, and recover from its common failures without reading source.
+
+### Why the move must be a move
+
+The failure mode this item is most exposed to is a README that keeps its procedures "for convenience" while the guides gain a second copy. Two copies diverge on the first correction, and the one a reader lands on is the one a search engine or a cross-repository citation happened to pick. So every section named in Steps is deleted from the README in the same change that creates its guide, and the README's route into `docs/guides/` is the only instruction it retains.
+
+### Where the honesty gates are
+
+Three things in the moved material are claims about the code rather than about the reader's machine: the tool counts in the access-level footnote, the default scope list, and the default paths for tokens, the audit log, and the triage tracking cache. Each was checked against `src/` while planning, and the counts were found wrong. Nothing else moves without the same check.
