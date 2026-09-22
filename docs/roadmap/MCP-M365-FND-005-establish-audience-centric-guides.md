@@ -4,13 +4,13 @@ title: Establish audience-centric guides
 area: FND
 theme: foundation-tooling
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
 transferred_from: ki-website
-baseline_ref: null
+baseline_ref: 9879a4180a96e517b63c0310863c1605b1bbfde0
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-22T07:16:00Z
+updated_at: 2026-09-22T09:05:00Z
 ---
 
 ## Goal
@@ -65,20 +65,20 @@ Two figures in the README are already wrong. The `MCP_M365_ACCESS_LEVEL` footnot
 
 ## Steps
 
-- [ ] Create `docs/guides/README.md` as the collection entry point: what the collection covers, a route to each audience, and a statement of what lives in `docs/decisions/` and `docs/roadmap/` instead. It routes by audience and carries no procedure of its own.
-- [ ] Create `docs/guides/user/README.md` and `docs/guides/developer/README.md`, each introducing its audience and giving a substantive route into every guide beneath it.
-- [ ] Write `docs/guides/user/azure-app-registration.md` from the README's `Azure App Registration` section, extended with the prerequisites it assumes, what each delegated permission buys, the failures the Azure console actually produces, and what to do when a client secret expires.
-- [ ] Write `docs/guides/user/installation.md` from the README's `Quick Start`, `Installation`, and `Claude Desktop Configuration` material, as one ordered route from an empty machine to a connected client, ending in a verification a reader can run.
-- [ ] Write `docs/guides/user/authentication.md` from the README's `Authentication` section: the auth-server handshake, where tokens land, how refresh works, and how to force re-authentication or revoke access.
-- [ ] Write `docs/guides/user/configuration.md` from the README's `Environment Variables` table and its footnotes, with the access-level gate, the audit log, and the `.env` precedence rules stated as choices a reader makes. Correct the tool counts to 12 / 16 / 8 and 36 while moving them.
-- [ ] Write `docs/guides/user/email-routing.md` from the README's `Email routing engine`, `Saving attachments`, `Rule DSL (v1)`, and `Email folder targeting` material: roots, the rule file, report-then-live, the resumable batch loop, and drift.
-- [ ] Write `docs/guides/user/troubleshooting.md` from the README's `Troubleshooting` section, extended to cover the failures the new guides introduce a reader to — consent, tenant, redirect-URI mismatch, secret expiry, access-level surprises, and a refused routing path.
-- [ ] Write `docs/guides/developer/local-development.md` from the README's `Development`, `Running From Source (Dev)`, and `Directory Structure` sections, plus the verification gates `AGENTS.md` already names.
-- [ ] Write `docs/guides/developer/extending-the-server.md` from the README's `Extending the Server` section, with the annotation-driven access gate and the `main/` versus `tools/` boundary stated as the constraints they are.
-- [ ] Reduce `README.md` to orientation: what the server is, what it can do, the capability tables, the example conversations, the security model, and a route into `docs/guides/`. Every moved section is deleted, not summarised in place.
-- [ ] Update `CLAUDE.md`'s pointer so it names `docs/guides/` for user-facing setup and keeps `README.md` only for the tool tables. Leave the protocol-profile corrections in that file untouched.
-- [ ] Declare `[skills.ki-guides]` in `.ki.toml` under the governance block, beside `ki-decision-records`.
-- [ ] Run the gates and repair what they report.
+- [x] Create `docs/guides/README.md` as the collection entry point: what the collection covers, a route to each audience, and a statement of what lives in `docs/decisions/` and `docs/roadmap/` instead. It routes by audience and carries no procedure of its own.
+- [x] Create `docs/guides/user/README.md` and `docs/guides/developer/README.md`, each introducing its audience and giving a substantive route into every guide beneath it.
+- [x] Write `docs/guides/user/azure-app-registration.md` from the README's `Azure App Registration` section, extended with the prerequisites it assumes, what each delegated permission buys, the failures the Azure console actually produces, and what to do when a client secret expires.
+- [x] Write `docs/guides/user/installation.md` from the README's `Quick Start`, `Installation`, and `Claude Desktop Configuration` material, as one ordered route from an empty machine to a connected client, ending in a verification a reader can run.
+- [x] Write `docs/guides/user/authentication.md` from the README's `Authentication` section: the auth-server handshake, where tokens land, how refresh works, and how to force re-authentication or revoke access.
+- [x] Write `docs/guides/user/configuration.md` from the README's `Environment Variables` table and its footnotes, with the access-level gate, the audit log, and the `.env` precedence rules stated as choices a reader makes. Correct the tool counts to 12 / 16 / 8 and 36 while moving them.
+- [x] Write `docs/guides/user/email-routing.md` from the README's `Email routing engine`, `Saving attachments`, `Rule DSL (v1)`, and `Email folder targeting` material: roots, the rule file, report-then-live, the resumable batch loop, and drift.
+- [x] Write `docs/guides/user/troubleshooting.md` from the README's `Troubleshooting` section, extended to cover the failures the new guides introduce a reader to — consent, tenant, redirect-URI mismatch, secret expiry, access-level surprises, and a refused routing path.
+- [x] Write `docs/guides/developer/local-development.md` from the README's `Development`, `Running From Source (Dev)`, and `Directory Structure` sections, plus the verification gates `AGENTS.md` already names.
+- [x] Write `docs/guides/developer/extending-the-server.md` from the README's `Extending the Server` section, with the annotation-driven access gate and the `main/` versus `tools/` boundary stated as the constraints they are.
+- [x] Reduce `README.md` to orientation: what the server is, what it can do, the capability tables, the example conversations, the security model, and a route into `docs/guides/`. Every moved section is deleted, not summarised in place.
+- [x] Update `CLAUDE.md`'s pointer so it names `docs/guides/` for user-facing setup and keeps `README.md` only for the tool tables. Leave the protocol-profile corrections in that file untouched.
+- [x] Declare `[skills.ki-guides]` in `.ki.toml` under the governance block, beside `ki-decision-records`.
+- [x] Run the gates and repair what they report.
 
 ## Files touched
 
@@ -88,6 +88,7 @@ Two figures in the README are already wrong. The `MCP_M365_ACCESS_LEVEL` footnot
 - `README.md` — eight procedural sections removed, orientation and capability tables retained, guide routes added.
 - `CLAUDE.md` — one pointer sentence.
 - `.ki.toml` — `[skills.ki-guides]`.
+- `.env.example` — two comment lines that pointed at `README.md` for setup and at a README section name that no longer exists.
 - `docs/roadmap/MCP-M365-FND-005-establish-audience-centric-guides.md` — this record.
 
 No file under `src/` changes. This item moves documentation and declares a skill; it touches no behaviour, no test, and no build output.
@@ -127,6 +128,72 @@ This item is entirely guide impact. It creates the collection, its two audience 
 ### Roadmap
 
 No further roadmap change is expected. If writing the guides exposes behaviour that cannot honestly be explained — an unclear failure mode, a configuration step with no recovery — that is a separate item raised at the time.
+
+## Review
+
+### Delivered
+
+The approved boundary held: a `docs/guides/` collection with `user/` and `developer/` audience directories, the README's procedural material moved rather than copied, `[skills.ki-guides]` declared in `.ki.toml`, and the `CLAUDE.md` pointer corrected. Nothing under `src/`, `tests/`, or the build configuration was touched, and no behaviour changed.
+
+Excluded, as planned: no tool-inventory guide and no `developer/releasing.md`. Both exclusions are stated in `docs/guides/README.md` under "What is not here" rather than left as a silent gap, so a reader who looks for either finds out why it is absent and where the answer actually lives.
+
+Baseline: `9879a4180a96e517b63c0310863c1605b1bbfde0` (the planning commit, tree clean). Resulting evidence: the commit recorded in `Verification` below, eleven new files under `docs/guides/`, and five edited files.
+
+### Summary of changes
+
+Eleven new files, 857 lines: `docs/guides/README.md` (collection entry point, routes by audience and carries no procedure), `docs/guides/user/README.md`, `docs/guides/user/azure-app-registration.md`, `docs/guides/user/installation.md`, `docs/guides/user/authentication.md`, `docs/guides/user/configuration.md`, `docs/guides/user/email-routing.md`, `docs/guides/user/troubleshooting.md`, `docs/guides/developer/README.md`, `docs/guides/developer/local-development.md`, `docs/guides/developer/extending-the-server.md`.
+
+`README.md` fell from 430 lines to 159. Eight sections were deleted outright — `Quick Start`, `Installation`, `Azure App Registration`, `Configuration`, `Authentication`, `Development`, `Directory Structure`, `Troubleshooting`, `Extending the Server`, the `Rule DSL (v1)` block, and the second JSON block under email folder targeting. What remains is orientation: what the server is, the four capability tables, the example conversations, the security model, and three numbered routes into `docs/guides/`.
+
+`.ki.toml` declares `[skills.ki-guides]` in the governance block beside `ki-decision-records`. `CLAUDE.md`'s opening pointer now names `docs/guides/` for setup and sign-in and keeps `README.md` for the tool surface; the two protocol-profile corrections in that file were left untouched. `.env.example` lost two stale pointers into README sections that no longer exist.
+
+Three material decisions were taken during implementation rather than in planning.
+
+**The tool counts were wrong and were corrected at the point of moving them.** The README's `MCP_M365_ACCESS_LEVEL` footnote claimed `destructive` "adds 9 delete, retention and harvest tools — all 37 tools registered". A scan of `src/tools/**/*.ts` for `registerTool(...)` with its `annotations:` preset gives 36 tools: 12 derive `read`, 16 derive `write`, 8 derive `destructive`. The guides carry 12 / 28 / 36 as the cumulative registration counts, and the README's own prose was corrected to match.
+
+**`m365_auth_start` is not available at the default access level, so the guides do not lead with it.** `levelFromAnnotations` in `src/utils/access-level.ts` derives a tool's level from its annotations, and `m365_auth_start` is `WRITE_REMOTE` because it persists tokens to disk — so at the default `MCP_M365_ACCESS_LEVEL=read` it is never registered. A first sign-in therefore cannot start from inside the MCP client on a default installation. `src/auth-server/index.ts` serves a `GET /auth` route that mints a fresh single-use state and a PKCE S256 verifier and redirects to Microsoft; that route is unaffected by the access level. `authentication.md` leads with <http://localhost:3333/auth> and explains the tool route as the alternative; `installation.md`, `troubleshooting.md`, and `azure-app-registration.md` were swept for the same assumption.
+
+**No specification was manufactured.** `docs/specs/` does not exist here and this item did not create one. Where a gap is genuinely specification-shaped — an authoritative tool inventory — the guides say so and point at the server's own `tools/list` response as the authority, rather than starting a corpus that would immediately drift.
+
+### Verification
+
+- `ki repo audit --skill ki-guides --concise --progress never` — `summary: KI REPO AUDIT on mcp-m365 PASS · 1 skill`
+- `ki repo audit --skill ki-authoring --concise --progress never` — `summary: KI REPO AUDIT on mcp-m365 PASS · 1 skill`
+- `bunx rumdl check` — `Success: No issues found in 36 files (20ms)`
+- `ki repo audit --concise --progress never` — `summary: KI REPO AUDIT on mcp-m365 PASS · 16 skills`, up from 15 exactly as predicted, with no previously passing skill regressing.
+- Reader check, by judgment: from `docs/guides/README.md` alone a reader reaches the Azure registration, completes it, connects a client, signs in through the browser, and recovers from the common failures without opening `src/` or `README.md`. Every factual claim carried out of the README was re-read against source — the scope list, the defaults, the counts, the script bodies, the error strings, and the coverage thresholds.
+
+No test, build, or lint gate covers `src/`, because no file under `src/` changed.
+
+### Outstanding concerns
+
+**`m365_auth_start` at the default access level is an ergonomics problem the guides document rather than fix.** A fresh installation registers twelve read tools, none of which can authenticate, and the 401 hint in `src/utils/errors.ts` tells the reader to "Run the m365_auth_start tool" — a tool their server has not registered. The guides now route around this honestly, but the hint text is misleading on a default installation and the fix is a code change outside this item's boundary. It is worth a separate item.
+
+**No release procedure is written down.** `ki-guides` treats `developer/releasing.md` as optional and it was deliberately not invented; there is no documented release process to describe. If one exists tacitly, the guide is owed and someone who knows it has to write it.
+
+**The README's capability tables remain hand-maintained.** They are correct today, verified against the registrations. Nothing prevents them drifting from `src/tools/` tomorrow. Generating them, or replacing them with a pointer to `tools/list`, is the durable fix and is not in this item.
+
+**A pre-existing link-check failure was not introduced and not fixed.** `CLAUDE.md` links `../mcp-gmail/src/utils/paths.ts`, a sibling repository that is not present. It predates this item and is out of its boundary.
+
+### Post-change review
+
+The goal is met. A reader can find practical instructions grouped by audience, and `ki-guides` gates the grouping rather than convention holding it together — that gate is now green and is part of the 16-skill audit, so a future regression fails the repository's habitual check rather than going unnoticed.
+
+Scope held. The one place the work pressed on its boundary was the `m365_auth_start` discovery: writing an honest sign-in guide surfaced a real defect in the default experience. The boundary was respected by documenting the working route and raising the defect as a concern rather than editing `src/`.
+
+Regression risk is low and confined to documentation. No runtime file changed. The residual risk is factual drift rather than breakage: the tool counts, the capability tables, and the environment-variable defaults are now asserted in two places, and the guides are only as true as the next person keeps them.
+
+Acceptance readiness: ready for human review. Terminal closure is not this skill's to take, and two of the concerns above — whether a `ki-specs` corpus should exist here, and whether a release guide is owed — are decisions for a human rather than defects to fix.
+
+### Mini recap
+
+Delivered an eleven-file audience-centric guide collection, moved 271 lines of procedure out of the README, declared `ki-guides`, and corrected two factual errors found in the material being moved.
+
+Verified with the four stated gates, all passing verbatim as recorded above.
+
+Concerns: the `m365_auth_start` default-level trap and its misleading 401 hint; no documented release procedure; hand-maintained tool tables with no drift check.
+
+Proposed learning routes, offered rather than promoted: the general lesson that moving documentation is the moment its claims get audited — two wrong numbers and one wrong instruction had survived in the README precisely because nobody had to re-read them; and that a security gate derived from annotations can exclude the tool a user needs first, which is a design pattern worth checking for in the sibling MCP servers that share this access-level model.
 
 ## Discussion
 

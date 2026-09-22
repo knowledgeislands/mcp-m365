@@ -2,7 +2,7 @@
 
 @AGENTS.md
 
-Guidance for Claude Code when working in this repo. The user-facing tool surface, Azure app setup, install/config, and Claude Desktop setup live in [README.md](./README.md); this file covers what Claude needs that isn't in README and isn't derivable from one grep.
+Guidance for Claude Code when working in this repo. Azure app setup, install and client configuration, sign-in, every environment variable, the routing engine, and troubleshooting live in [docs/guides/](./docs/guides/README.md); the tool-surface catalogue lives in [README.md](./README.md). This file covers what Claude needs that isn't in either and isn't derivable from one grep.
 
 ## Bun vs Node
 
