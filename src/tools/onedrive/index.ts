@@ -1,7 +1,7 @@
 /**
  * OneDrive module for MCP M365 server.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import {

@@ -4,7 +4,7 @@
  * `ensureAuthenticated` gate) lives in `main/auth`; this file only validates
  * args and wires the handlers behind the access-gated `registerTool` proxy.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import type { Config } from '../../config/index.js'
 import type TokenStorage from '../../main/auth/index.js'

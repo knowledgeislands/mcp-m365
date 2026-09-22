@@ -4,12 +4,12 @@ area: FND
 title: Migrate MCP protocol profile
 theme: foundation-tooling
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 97a41fa3e565d234da8cf0be27b09781becc5bff
 created_at: 2026-09-02T01:12:46Z
-updated_at: 2026-09-22T06:56:00Z
+updated_at: 2026-09-22T07:12:00Z
 ---
 
 ## Goal
@@ -46,14 +46,14 @@ Result envelopes are split. `src/utils/results.ts` exports `errorResult` and `er
 
 ## Steps
 
-- [ ] Replace the dependency selection in `package.json`: drop `@modelcontextprotocol/sdk`, add `@modelcontextprotocol/server` `2.0.0` to `dependencies` and `@modelcontextprotocol/client` `2.0.0` to `devDependencies`, mirroring the accepted pilot. Mixed families are a PROTO-1 violation, so the legacy package must leave in the same change.
-- [ ] Repoint the nine legacy source imports: `McpServer` and `ToolAnnotations` now both come from `@modelcontextprotocol/server`. No `@modelcontextprotocol/sdk` specifier and no `StdioServerTransport` identifier may survive anywhere under `src/`.
-- [ ] Convert `src/mcp-server/index.ts` to a per-connection factory. Keep config loading, token storage, the derived `GraphContext`/`TriageContext`, and the boot logging at module scope; move `new McpServer(...)`, the access-gate assignment, and the seven `register*Tools` calls into a `createServer(): McpServer` factory handed to `serveStdio(createServer, { legacy: 'serve', onerror })`. Retain the existing `SIGTERM` behaviour and close the returned handle on `SIGINT`.
-- [ ] Carry `resultType: 'complete'` on the synchronous result helpers in `src/utils/results.ts` and extend `src/utils/results.test.ts` to assert it on both, keeping the 100% coverage thresholds satisfied.
-- [ ] Rewrite the `scripts/smoke.ts` boundary against `@modelcontextprotocol/client`: assert the modern protocol era, the negotiated `2026-07-28` revision, and a `server/discover` result whose `resultType` is `complete` and whose advertised server identity matches; keep the existing tool-surface and `inputSchema` assertions unchanged; add a `m365_about` round trip and a malformed-argument rejection; then open a second, deliberately legacy client and assert the fallback still serves the identical tool surface.
-- [ ] Reassess the `zod` dependency hold in `.ki.toml` now that its stated cause (the legacy SDK's schema types) is gone: bump `zod` and remove the hold only if the toolchain agrees, otherwise restate the hold against its real cause.
-- [ ] Record the migration in `CHANGELOG.md` under an Unreleased heading, naming the protocol-profile move and the retained legacy fallback.
-- [ ] Run the declared gates and `ki repo audit --concise --progress never`, and confirm PROTO-1 now reports the modern profile while the audit still passes at 15 skills.
+- [x] Replace the dependency selection in `package.json`: drop `@modelcontextprotocol/sdk`, add `@modelcontextprotocol/server` `2.0.0` to `dependencies` and `@modelcontextprotocol/client` `2.0.0` to `devDependencies`, mirroring the accepted pilot. Mixed families are a PROTO-1 violation, so the legacy package must leave in the same change.
+- [x] Repoint the nine legacy source imports: `McpServer` and `ToolAnnotations` now both come from `@modelcontextprotocol/server`. No `@modelcontextprotocol/sdk` specifier and no `StdioServerTransport` identifier may survive anywhere under `src/`.
+- [x] Convert `src/mcp-server/index.ts` to a per-connection factory. Keep config loading, token storage, the derived `GraphContext`/`TriageContext`, and the boot logging at module scope; move `new McpServer(...)`, the access-gate assignment, and the seven `register*Tools` calls into a `createServer(): McpServer` factory handed to `serveStdio(createServer, { legacy: 'serve', onerror })`. Retain the existing `SIGTERM` behaviour and close the returned handle on `SIGINT`.
+- [x] Carry `resultType: 'complete'` on the synchronous result helpers in `src/utils/results.ts` and extend `src/utils/results.test.ts` to assert it on both, keeping the 100% coverage thresholds satisfied.
+- [x] Rewrite the `scripts/smoke.ts` boundary against `@modelcontextprotocol/client`: assert the modern protocol era, the negotiated `2026-07-28` revision, and a `server/discover` result whose `resultType` is `complete` and whose advertised server identity matches; keep the existing tool-surface and `inputSchema` assertions unchanged; add a `m365_about` round trip and a malformed-argument rejection; then open a second, deliberately legacy client and assert the fallback still serves the identical tool surface.
+- [x] Reassess the `zod` dependency hold in `.ki.toml` now that its stated cause (the legacy SDK's schema types) is gone: bump `zod` and remove the hold only if the toolchain agrees, otherwise restate the hold against its real cause.
+- [x] Record the migration in `CHANGELOG.md` under an Unreleased heading, naming the protocol-profile move and the retained legacy fallback.
+- [x] Run the declared gates and `ki repo audit --concise --progress never`, and confirm PROTO-1 now reports the modern profile while the audit still passes at 15 skills.
 
 ## Files touched
 
@@ -102,6 +102,75 @@ No human guidance changes. The install, configure, and run instructions in `READ
 ### Roadmap
 
 No follow-on roadmap record is needed. MCP-M365-FND-003 (conformance-audit review) already covers any residual audit finding, and the retained legacy fallback is a deliberate standing position rather than deferred work; a future record would be warranted only when the fleet is ready to set `legacy: 'reject'`.
+
+## Review
+
+### Delivered
+
+The approved boundary held exactly. The public tool contract is unchanged — the same 36 tools, identical names, descriptions, input schemas, annotations, and response text — and the smoke boundary proves that by asserting the surface twice, once over the modern era and once over a deliberately legacy connection. Legacy compatibility was retained, not removed: `legacy: 'serve'` stays, and the fallback is now positively tested rather than assumed. Nothing here treats the Harness rollout as acceptance; acceptance, release, and publication remain outside this record.
+
+Immutable baseline: `97a41fa3e565d234da8cf0be27b09781becc5bff`.
+
+Resulting evidence: `ki repo audit --concise --progress never` reports PASS at 15 skills, and the PROTO-1 inputs now read `@modelcontextprotocol/server 2.0.0` with zero `@modelcontextprotocol/sdk` or `StdioServerTransport` markers under `src/`, one `serveStdio(` call site, and three `resultType: 'complete'` occurrences against one counted helper definition in `src/utils/results.ts`.
+
+### Summary of changes
+
+- `package.json`, `bun.lock` — removed `@modelcontextprotocol/sdk`; added `@modelcontextprotocol/server` `2.0.0` to `dependencies` and `@modelcontextprotocol/client` `2.0.0` to `devDependencies`. The two never coexisted in a committed state, so the mixed-family violation was never entered.
+- `src/mcp-server/index.ts` — the module-scope `McpServer` and `await server.connect(new StdioServerTransport())` are replaced by a `createServer(): McpServer` factory handed to `serveStdio(createServer, { legacy: 'serve', onerror })`. Config, token storage, and the derived `GraphContext`/`TriageContext` stay at module scope; the server instance, access gate, and seven `register*Tools` calls moved inside the factory. `SIGTERM` behaviour is unchanged and `SIGINT` now closes the handle.
+- `src/utils/access-level.ts` and the seven `src/tools/<group>/index.ts` files — type imports repointed to `@modelcontextprotocol/server`. `McpServer` and `ToolAnnotations` collapse into one import in the access gate. No logic changed; the existing `z.object(...).strict()` registrations type-check unmodified against the v2 primary overload.
+- `src/utils/results.ts`, `src/utils/results.test.ts` — `errorResult` and `errorText` now carry `resultType: 'complete'`, asserted by full-envelope `toEqual` rather than field spot-checks.
+- `scripts/smoke.ts` — migrated to `@modelcontextprotocol/client`, and extended with the era, negotiated-revision, and discovery-envelope assertions, a `m365_about` round trip, a strict-schema rejection, and the legacy-fallback leg. The transport construction was extracted to `createTransport()` so both clients open the same server identically.
+- `.ki.toml`, `package.json` — the `zod` dependency hold named the legacy SDK's schema types as its cause, so with the SDK gone it was removed and `zod` moved from the pinned `4.4.3` to `4.6.5`, matching the pilot.
+- `CHANGELOG.md` — an Unreleased entry naming the profile move, the explicit discriminator, the `zod` unpinning, and the unchanged tool surface.
+
+Two deviations from the planned file scope, both accuracy repairs rather than scope growth:
+
+- `CLAUDE.md` was not in `Files touched`, but two of its statements became false on delivery: the entry-point description said only that the file threads config into tool registration, with no factory or stdio boundary, and the smoke-test description named only the tool-surface assertion. Both were corrected in place. This is agent instruction, not the human guidance the Documentation impact section assessed, so that assessment stands.
+- No file under `src/main/` changed, as predicted.
+
+### Verification
+
+| Gate | Command | Outcome |
+| --- | --- | --- |
+| Build | `bun run build` | PASS — `tsc -p tsconfig.build.json`, no diagnostics |
+| Typecheck | `bunx tsc -p tsconfig.json --noEmit` | PASS — no diagnostics across src, tests, and scripts |
+| Lint | `bunx @biomejs/biome check .` | PASS — `Checked 115 files. No fixes applied. Found 1 info.` † |
+| Tests | `bun run test` | PASS — `Test Files 33 passed (33)`, `Tests 1043 passed (1043)` |
+| Coverage | `bun run test:coverage` | PASS — statements 2974/2974, branches 1921/1921, functions 398/398, lines 2715/2715, all 100% |
+| Smoke | `bun run ki:test:smoke` | PASS — `✓ smoke passed: modern discovery, legacy fallback, 36 tools, valid result envelope` |
+| Unused code | `bunx knip` | PASS — configuration hints only, all pre-existing |
+| Markdown | `bunx rumdl check` | PASS — no issues |
+| Repository | `ki repo audit --concise --progress never` | PASS — `KI REPO AUDIT on mcp-m365 PASS · 15 skills` |
+
+† The single `info` is the pre-existing `biome.json` schema pin at `2.5.12` against CLI `2.5.14`. It is present on the baseline commit, unrelated to this item, and left alone.
+
+### Outstanding concerns
+
+None blocking.
+
+Two observations for the record. First, one test failed once, immediately after `bun add zod@4.6.5` replaced `node_modules/zod` mid-session; it did not reproduce across five subsequent full runs, including two clean coverage runs, and the most likely cause is a stale Vitest transform of the swapped dependency rather than a defect. It is recorded because it happened, not because it is suspected to be real.
+
+Second, `legacy: 'serve'` remains a standing position rather than a resolved question. Retiring it needs fleet-wide client readiness this repository cannot observe, so no follow-on record was created; the smoke test keeps the claim honest in the meantime.
+
+### Post-change review
+
+The goal is met on its own terms: the runtime dependency now selects the modern 2026-07-28 profile, and every element the record demanded — the per-connection factory, SDK-owned discovery, complete result envelopes, the smoke boundary, and the deliberate fallback — is present and independently asserted.
+
+Scope held tighter than planned. The record's hardest question was how far the result-envelope change should reach, and the answer came from reading the SDK rather than from copying the pilot: the encode contract's `stampResultType` step adds `resultType: 'complete'` to any result that omits it, and `ki-repo-mcp` §12 scopes the requirement to the synchronous helpers. Rewriting the fifty-two inline handler envelopes would have produced no wire-level difference while enlarging the diff across precisely the modules the Boundary protects. The smoke test's `m365_about` round trip confirms this empirically — that handler builds its envelope inline, and the strict v2 client accepted it.
+
+Regression risk is low and concentrated in two places. The tool surface is asserted identical on both eras by the only test that sees the real wire, and the type-level migration is fully covered by a clean whole-tree typecheck. The genuine residual risk is behavioural rather than structural: the per-connection factory changes instance lifetime, so a second concurrent connection now gets its own `McpServer` while sharing one token store. That is the intended design and matches the accepted pilot, but it is the change a reviewer should look at hardest.
+
+Acceptance readiness: every step is complete, every declared gate passed, the audit still passes at 15 skills, and the two deviations are named above. The item is ready for human review. It has not been accepted, closed, pruned, pushed, or released.
+
+### Mini recap
+
+Delivered the protocol-profile migration for mcp-m365: v2 package family, `serveStdio` per-connection factory, explicit complete discriminators on the result helpers, a smoke boundary that proves modern discovery and the legacy fallback, and the removal of a `zod` hold whose cause had gone.
+
+Verified against build, typecheck, lint, 1043 tests, 100% coverage on all four metrics, the live smoke boundary, knip, markdown lint, and a 15-skill repository audit — all passing.
+
+Concerns: none blocking; one non-reproducing test failure during the dependency swap, and the standing `legacy: 'serve'` retention, both recorded above.
+
+Proposed learning routes, offered rather than promoted: the `stampResultType` finding is the reusable part of this work — it tells the next sibling MCP that the helper-scoped requirement is genuinely helper-scoped, and that a repository whose handlers build envelopes inline does not need a fifty-file rewrite to reach the modern profile. That belongs with the family's shared `src/utils/results.ts` convention if anywhere, and is a `ki-repo-mcp` observation rather than a local one.
 
 ## Discussion
 

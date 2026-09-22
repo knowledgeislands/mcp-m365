@@ -5,16 +5,23 @@
  * A Model Context Protocol server that provides access to Microsoft 365
  * services (Outlook, OneDrive) through the Microsoft Graph API.
  *
- * Uses the high-level `McpServer` from `@modelcontextprotocol/sdk` so each
- * tool is registered with a Zod input schema and tool annotations. Init,
- * tools/list, and tools/call are handled by the SDK.
+ * Uses the high-level `McpServer` from `@modelcontextprotocol/server` (the
+ * modern 2026-07-28 profile) so each tool is registered with a Zod input schema
+ * and tool annotations. Discovery, protocol stamping, tools/list, and
+ * tools/call are handled by the SDK.
+ *
+ * The stdio boundary is `serveStdio`, which owns the era decision for each
+ * connection: the opening exchange selects modern or legacy, and exactly one
+ * instance from `createServer` is pinned for that connection's lifetime.
+ * `legacy: 'serve'` is deliberate — a 2025-era client still gets the identical
+ * tool surface while the fleet migrates.
  *
  * Config is loaded once here via `loadConfig()` and threaded into the access
  * gate, the shared token storage, and every tool-registration function — no
  * module reads `process.env` at import.
  */
-import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js'
+import { McpServer } from '@modelcontextprotocol/server'
+import { serveStdio } from '@modelcontextprotocol/server/stdio'
 import { loadConfig } from '../config/index.js'
 import { makePdftotextExtractor } from '../main/attachments/pdf-text.js'
 import { makeAttachmentSaver } from '../main/attachments/save.js'
@@ -75,36 +82,51 @@ const triageCtx: TriageContext = {
   })
 }
 
-const server = new McpServer({
-  name: config.serverName,
-  version: config.serverVersion
-})
-server.registerTool = makeAccessGatedRegister(server, config.accessLevel, {
-  mode: config.auditLogMode,
-  path: config.auditLogPath,
-  maxBytes: config.auditLogMaxBytes,
-  keep: config.auditLogKeep
+/**
+ * Per-connection server factory. `serveStdio` calls this once the opening
+ * exchange has chosen an era, so the instance — and the access gate and tool
+ * registrations wrapped around it — belong to that connection rather than to
+ * the process. The same factory serves both eras; nothing here branches on the
+ * protocol revision.
+ *
+ * The long-lived, expensive state (config, token storage, the Graph and triage
+ * contexts) stays at module scope above: it is connection-independent, and
+ * rebuilding the token storage per connection would fragment the refresh path.
+ */
+const createServer = (): McpServer => {
+  const server = new McpServer({
+    name: config.serverName,
+    version: config.serverVersion
+  })
+  server.registerTool = makeAccessGatedRegister(server, config.accessLevel, {
+    mode: config.auditLogMode,
+    path: config.auditLogPath,
+    maxBytes: config.auditLogMaxBytes,
+    keep: config.auditLogKeep
+  })
+
+  registerAuthTools(server, config, tokenStorage)
+  registerCalendarTools(server, ctx)
+  registerEmailTools(server, ctx)
+  registerFolderTools(server, ctx)
+  registerOnedriveTools(server, ctx)
+  registerRulesTools(server, ctx)
+  registerTriageTools(server, triageCtx)
+  return server
+}
+
+const handle = serveStdio(createServer, {
+  legacy: 'serve',
+  onerror: (error) => console.error(`${config.serverName} stdio error:`, error)
 })
 
-registerAuthTools(server, config, tokenStorage)
-registerCalendarTools(server, ctx)
-registerEmailTools(server, ctx)
-registerFolderTools(server, ctx)
-registerOnedriveTools(server, ctx)
-registerRulesTools(server, ctx)
-registerTriageTools(server, triageCtx)
+console.error(`${config.serverName} ready`)
 
 process.on('SIGTERM', () => {
   console.error('SIGTERM received but staying alive')
 })
 
-const main = async (): Promise<void> => {
-  const transport = new StdioServerTransport()
-  await server.connect(transport)
-  console.error(`${config.serverName} ready`)
-}
-
-main().catch((error: Error) => {
-  console.error(`Connection error: ${error.message}`)
-  process.exit(1)
+process.on('SIGINT', async () => {
+  await handle.close()
+  process.exit(0)
 })

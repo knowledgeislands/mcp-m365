@@ -6,6 +6,12 @@
  * `ok: false` and the spec's Tool-Execution-Error semantics hold (validation /
  * API / business errors are surfaced in the result envelope, not as JSON-RPC
  * protocol errors). Mirrors the sibling `results.ts` in mcp-gmail / mcp-git-audit.
+ *
+ * Both helpers carry `resultType: 'complete'`, the 2026-07-28 wire
+ * discriminator. The SDK's encode step stamps it on any result that omits it,
+ * so this is the explicit form of what the wire already guarantees — and it
+ * keeps the discriminator visible at the one place every failure passes
+ * through, rather than implied by the transport.
  */
 import { errMessage } from './errors.js'
 
@@ -15,6 +21,7 @@ import { errMessage } from './errors.js'
  * and the 401 → `m365_auth_start` hint is appended.
  */
 export const errorResult = (action: string, error: unknown) => ({
+  resultType: 'complete' as const,
   isError: true as const,
   content: [{ type: 'text' as const, text: `Error ${action}: ${errMessage(error)}` }]
 })
@@ -25,6 +32,7 @@ export const errorResult = (action: string, error: unknown) => ({
  * hint, or a Source/Context-annotated Graph failure) that must be preserved.
  */
 export const errorText = (text: string) => ({
+  resultType: 'complete' as const,
   isError: true as const,
   content: [{ type: 'text' as const, text }]
 })

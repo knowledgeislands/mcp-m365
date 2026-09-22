@@ -5,7 +5,7 @@
  * the matching pure `main/` handler, passing the injected `GraphContext` as the
  * first argument. The handler holds the logic; this layer only wires.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   handleAcceptEvent,

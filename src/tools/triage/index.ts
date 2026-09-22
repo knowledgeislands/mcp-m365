@@ -20,7 +20,7 @@
  * design note's literal names are preferred; the scheduled task prompts are the
  * only callers.
  */
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
+import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
   driftScanResultSchema,

@@ -1,5 +1,4 @@
-import type { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
-import type { ToolAnnotations } from '@modelcontextprotocol/sdk/types.js'
+import type { McpServer, ToolAnnotations } from '@modelcontextprotocol/server'
 import { ACCESS_LEVEL_RANK, type AccessLevel } from '../config/index.js'
 import { type AuditConfig, withAuditLog } from './audit-log.js'
 
