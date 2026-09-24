@@ -68,5 +68,5 @@ areas.TOOL = "tool-surface"
 routes."knowledgeislands/ki-agentic-harness" = { import = ["knowledge"] }
 
 [skills.ki-agora]
-memberships.ki-all = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
+memberships.ki-all = { home = "https://github.com/knowledgeislands/ki-arcadia-principal", role = "product" }
 memberships.ki-mcps = { home = "https://github.com/knowledgeislands/ki-agentic-harness", role = "maintainer" }
