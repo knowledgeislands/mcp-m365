@@ -10,7 +10,7 @@ blocked_by: []
 transferred_from: ki-website
 baseline_ref: 9879a4180a96e517b63c0310863c1605b1bbfde0
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-22T09:05:00Z
+updated_at: 2026-09-24T09:14:00Z
 ---
 
 ## Goal
@@ -25,7 +25,7 @@ KI Website now declares, for every page it publishes under `apps/site/src/guidan
 
 That is a pull, not an obligation: KI Website derives, it does not own. This repository decides what its guides say and when they change.
 
-Separately, `ki-guides` is being asked to require audience directories under `docs/guides/` rather than permitting a flat collection (`ki-agentic-harness` `KI-HARNESS-GOV-083`). If that lands, this repository's collection has to satisfy it.
+Separately, `KI-HARNESS-GOV-083` has clarified `ki-guides`: audience directories are recommended when stable reader groups make a collection easier to navigate, while flat and mixed collections remain valid. This item therefore stands on this repository's own readers and routing needs, not a universal Harness requirement.
 
 ## Boundary
 
@@ -105,7 +105,7 @@ No file under `src/` changes. This item moves documentation and declares a skill
 
 Nothing blocks this item and `blocked_by` stays empty. The collection is new files plus edits to three existing ones, and every gate it must pass is already installed and green.
 
-`KI-HARNESS-GOV-083` in `ki-agentic-harness` proposes making audience directories a `ki-guides` requirement. If it lands first this collection satisfies it by construction, and if it lands later this collection already conforms. It is neither a blocker nor a receiver.
+`KI-HARNESS-GOV-083` is advisory rather than a universal migration requirement. This collection's user and developer grouping remains a repository-local choice supported by its distinct readers. The Harness item is neither a blocker nor a receiver.
 
 KI Website intends to derive public guidance from these guides and cite them at a pinned ref. It derives rather than owns and its schedule does not gate this work; no handoff item is created in either direction by this record.
 
@@ -139,7 +139,7 @@ Excluded, as planned: no tool-inventory guide and no `developer/releasing.md`. B
 
 Baseline: `9879a4180a96e517b63c0310863c1605b1bbfde0` (the planning commit, tree clean). Resulting evidence: the commit recorded in `Verification` below, eleven new files under `docs/guides/`, and five edited files.
 
-### Summary of changes
+### Change Summary
 
 Eleven new files, 857 lines: `docs/guides/README.md` (collection entry point, routes by audience and carries no procedure), `docs/guides/user/README.md`, `docs/guides/user/azure-app-registration.md`, `docs/guides/user/installation.md`, `docs/guides/user/authentication.md`, `docs/guides/user/configuration.md`, `docs/guides/user/email-routing.md`, `docs/guides/user/troubleshooting.md`, `docs/guides/developer/README.md`, `docs/guides/developer/local-development.md`, `docs/guides/developer/extending-the-server.md`.
 

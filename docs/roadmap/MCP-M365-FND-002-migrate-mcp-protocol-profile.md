@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 97a41fa3e565d234da8cf0be27b09781becc5bff
 created_at: 2026-09-02T01:12:46Z
-updated_at: 2026-09-22T07:12:00Z
+updated_at: 2026-09-24T09:18:00Z
 ---
 
 ## Goal
@@ -113,7 +113,7 @@ Immutable baseline: `97a41fa3e565d234da8cf0be27b09781becc5bff`.
 
 Resulting evidence: `ki repo audit --concise --progress never` reports PASS at 15 skills, and the PROTO-1 inputs now read `@modelcontextprotocol/server 2.0.0` with zero `@modelcontextprotocol/sdk` or `StdioServerTransport` markers under `src/`, one `serveStdio(` call site, and three `resultType: 'complete'` occurrences against one counted helper definition in `src/utils/results.ts`.
 
-### Summary of changes
+### Change Summary
 
 - `package.json`, `bun.lock` — removed `@modelcontextprotocol/sdk`; added `@modelcontextprotocol/server` `2.0.0` to `dependencies` and `@modelcontextprotocol/client` `2.0.0` to `devDependencies`. The two never coexisted in a committed state, so the mixed-family violation was never entered.
 - `src/mcp-server/index.ts` — the module-scope `McpServer` and `await server.connect(new StdioServerTransport())` are replaced by a `createServer(): McpServer` factory handed to `serveStdio(createServer, { legacy: 'serve', onerror })`. Config, token storage, and the derived `GraphContext`/`TriageContext` stay at module scope; the server instance, access gate, and seven `register*Tools` calls moved inside the factory. `SIGTERM` behaviour is unchanged and `SIGINT` now closes the handle.
