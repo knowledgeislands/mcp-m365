@@ -11,24 +11,24 @@
     "url": "https://github.com/knowledgeislands/mcp-m365/issues"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.0.0",
+    "@modelcontextprotocol/server": "2.1.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.14",
-    "@commitlint/cli": "^21.2.2",
-    "@commitlint/config-conventional": "^21.2.2",
-    "@modelcontextprotocol/client": "2.0.0",
-    "@types/node": "^26.6.2",
-    "@vitest/coverage-v8": "^5.0.1",
+    "@commitlint/cli": "^21.2.3",
+    "@commitlint/config-conventional": "^21.2.3",
+    "@modelcontextprotocol/client": "2.1.0",
+    "@types/node": "^26.6.3",
+    "@vitest/coverage-v8": "^5.0.2",
     "husky": "^9.1.7",
-    "knip": "^6.37.0",
-    "lint-staged": "^17.5.1",
-    "mcporter": "^0.13.13",
-    "rumdl": "^0.2.74",
+    "knip": "^6.38.0",
+    "lint-staged": "^17.6.0",
+    "mcporter": "^0.14.1",
+    "rumdl": "^0.2.77",
     "syncpack": "^15.3.3",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.1"
+    "vitest": "^5.0.2"
   },
   "engines": {
     "node": ">=22"
