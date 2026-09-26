@@ -4,12 +4,12 @@ area: FND
 title: Migrate MCP protocol profile
 theme: foundation-tooling
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 97a41fa3e565d234da8cf0be27b09781becc5bff
 created_at: 2026-09-02T01:12:46Z
-updated_at: 2026-09-24T09:18:00Z
+updated_at: 2026-09-26T18:10:52Z
 ---
 
 ## Goal
@@ -171,6 +171,10 @@ Verified against build, typecheck, lint, 1043 tests, 100% coverage on all four m
 Concerns: none blocking; one non-reproducing test failure during the dependency swap, and the standing `legacy: 'serve'` retention, both recorded above.
 
 Proposed learning routes, offered rather than promoted: the `stampResultType` finding is the reusable part of this work — it tells the next sibling MCP that the helper-scoped requirement is genuinely helper-scoped, and that a repository whose handlers build envelopes inline does not need a fifty-file rewrite to reach the modern profile. That belongs with the family's shared `src/utils/results.ts` convention if anywhere, and is a `ki-repo-mcp` observation rather than a local one.
+
+## Done
+
+Accepted 2026-09-26 by Kris Brown on the review packet above.
 
 ## Discussion
 

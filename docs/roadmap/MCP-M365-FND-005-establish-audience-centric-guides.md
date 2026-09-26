@@ -4,13 +4,13 @@ title: Establish audience-centric guides
 area: FND
 theme: foundation-tooling
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 transferred_from: ki-website
 baseline_ref: 9879a4180a96e517b63c0310863c1605b1bbfde0
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-26T17:35:30Z
+updated_at: 2026-09-26T18:10:52Z
 ---
 
 ## Goal
@@ -204,6 +204,10 @@ Verified with the four stated gates, all passing verbatim as recorded above.
 Concerns: the `m365_auth_start` default-level trap and its misleading 401 hint; no documented release procedure; hand-maintained tool tables with no drift check.
 
 Proposed learning routes, offered rather than promoted: the general lesson that moving documentation is the moment its claims get audited — two wrong numbers and one wrong instruction had survived in the README precisely because nobody had to re-read them; and that a security gate derived from annotations can exclude the tool a user needs first, which is a design pattern worth checking for in the sibling MCP servers that share this access-level model.
+
+## Done
+
+Accepted 2026-09-26 by Kris Brown on the review packet above.
 
 ## Discussion
 
