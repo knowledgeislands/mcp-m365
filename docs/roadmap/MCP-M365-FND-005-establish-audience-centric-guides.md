@@ -10,7 +10,7 @@ blocked_by: []
 transferred_from: ki-website
 baseline_ref: 9879a4180a96e517b63c0310863c1605b1bbfde0
 created_at: 2026-09-21T15:44:00Z
-updated_at: 2026-09-24T09:14:00Z
+updated_at: 2026-09-26T17:35:30Z
 ---
 
 ## Goal
@@ -155,6 +155,9 @@ Three material decisions were taken during implementation rather than in plannin
 
 **No specification was manufactured.** `docs/specs/` does not exist here and this item did not create one. Where a gap is genuinely specification-shaped — an authoritative tool inventory — the guides say so and point at the server's own `tools/list` response as the authority, rather than starting a corpus that would immediately drift.
 
+- Review remediation removed outbound Markdown-document links from the guide index and three developer guides. Required procedure remains local through sibling-guide routes; root `README.md`, `AGENTS.md`, `CLAUDE.md`, `CHANGELOG.md`, `docs/decisions/`, and `docs/roadmap/` are named without becoming dependencies.
+- Root `README.md` and `AGENTS.md` already link inward to the guide collection, so no root-document change was needed.
+
 ### Verification
 
 - `ki repo audit --skill ki-guides --concise --progress never` — `summary: KI REPO AUDIT on mcp-m365 PASS · 1 skill`
@@ -164,6 +167,13 @@ Three material decisions were taken during implementation rather than in plannin
 - Reader check, by judgment: from `docs/guides/README.md` alone a reader reaches the Azure registration, completes it, connects a client, signs in through the browser, and recovers from the common failures without opening `src/` or `README.md`. Every factual claim carried out of the README was re-read against source — the scope list, the defaults, the counts, the script bodies, the error strings, and the coverage thresholds.
 
 No test, build, or lint gate covers `src/`, because no file under `src/` changed.
+
+#### GUIDE-4 review remediation
+
+- The exact outbound-document predicate over `docs/guides/` returned no matches.
+- `ki repo audit --skill ki-guides --repo . --concise --progress never` → `summary: KI REPO AUDIT on mcp-m365 PASS · 1 skill`.
+- `ki repo audit --skill ki-authoring --repo . --concise --progress never` → `FAIL=0 WARN=1`; the sole warning is pre-existing `.rumdl.toml` template drift (`OWN-1`), with no authored-Markdown finding.
+- Runtime tests and builds were not repeated because remediation changes only guides and this review record; the original runtime evidence above remains applicable.
 
 ### Outstanding concerns
 

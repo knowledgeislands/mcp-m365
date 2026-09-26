@@ -66,7 +66,7 @@ The `register*Tools(...)` calls belong inside the per-connection factory, becaus
 
 A new tool changes what a user can do with their mailbox, so it is not finished at the code boundary:
 
-- The capability tables in [README.md](../../../README.md) list the tool surface for orientation. Add the tool there.
+- The capability tables in the root `README.md` list the tool surface for orientation. Add the tool there.
 - If the tool is destructive, or needs a permission the current scope list does not request, it changes [Register an Azure application](../user/azure-app-registration.md) and [Configure the server](../user/configuration.md) as well — including the per-level tool counts.
 - If the tool introduces a new failure a user can hit, it belongs in [Troubleshoot](../user/troubleshooting.md) with the message that identifies it.
-- Record the change in [CHANGELOG.md](../../../CHANGELOG.md).
+- Record the change in the root `CHANGELOG.md`.

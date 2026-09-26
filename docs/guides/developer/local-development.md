@@ -73,7 +73,7 @@ Three splits in that tree are load-bearing rather than stylistic, and a change t
 
 **Configuration is injected, never imported.** Both entry points call `loadConfig()` once at boot and thread the resulting `Config` into the access gate, token storage, and tool registration. Nothing reads `process.env` at import time and there is no configuration singleton. `src/utils/` goes further and takes the specific slice or primitive it needs rather than the whole `Config`, so those helpers stay reusable across the sibling MCP repositories.
 
-[CLAUDE.md](../../../CLAUDE.md) states these invariants in full, including the per-connection server factory and the naming convention for tool names.
+The server-change procedure in [Extend the server](extending-the-server.md) covers the per-connection factory and tool-naming conventions that matter when adding or wiring a tool. Root `CLAUDE.md` retains the repository-wide architecture inventory for agents.
 
 ## Run the verification gate
 
