@@ -7,9 +7,6 @@
     "mcp-m365": "dist/mcp-server/index.js",
     "mcp-m365-auth": "dist/auth-server/index.js"
   },
-  "bugs": {
-    "url": "https://github.com/knowledgeislands/mcp-m365/issues"
-  },
   "dependencies": {
     "@modelcontextprotocol/server": "2.1.0",
     "zod": "4.6.5"
