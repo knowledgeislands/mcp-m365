@@ -62,7 +62,7 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: coverage
-          path: coverage/
+          path: reports/coverage/
           retention-days: 14
       # Smoke test: boots the built server and verifies the wire-level tool surface
       # matches the in-process registration tests. Runs after test:coverage so
