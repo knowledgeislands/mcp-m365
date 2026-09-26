@@ -13,7 +13,7 @@ harnesses = ["knowledgeislands/ki-agentic-harness"]
 [skills.ki-repo]
 repository = "https://github.com/knowledgeislands/mcp-m365"
 title = "mcp-m365"
-description = "MCP for Microsoft 365 (Outlook, OneDrive) access via the Microsoft Graph API"
+description = "MCP for Outlook email and calendar plus OneDrive access through Microsoft Graph."
 repo_code = "MCP-M365"
 supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
 visibility = "public"
