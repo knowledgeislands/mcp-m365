@@ -15,6 +15,6 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - The tool surface is unchanged: identical names, descriptions, input schemas, annotations, and response text.
 - Legacy 2025-era clients are still served (`legacy: 'serve'`). The smoke test asserts that a deliberately legacy connection sees the same tool surface as a modern one.
 
-## [1.0.0]
+## [0.9.0]
 
 Initial release.
