@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-08-18T13:19:51Z
+updated_at: 2026-09-27T22:43:46Z
 ---
 
 ## Goal
@@ -85,3 +85,7 @@ Every other decision in this item follows from step 2. A base64 argument keeps t
 ### Reading attachments is a separate risk surface from reading mail
 
 `read.ts` sanitizes HTML bodies specifically because email content is untrusted input that can carry prompt injection. Attachment content is the same class of input with none of that handling, so a download tool needs an explicit position on what it returns and how it is labelled before it is registered.
+
+### Pickup checkpoint — 2026-09-27
+
+At inspected local `main` `2e651e5f8b225be7a1d299e3a7f15ac5289ffe64`, verified partial delivery outside this item's general mail-tool surface: `2b4a1ece73f284ec6f92fafcabf6feb858602e4f` added `makeAttachmentSaver` in `src/main/attachments/save.ts`, which lists and fetches non-inline PDF attachments for the triage engine's `save-attachments:` rule action; `1b5e322246f58588ba6806de80ba852039dabfb6` moved destinations into the rule note, constrained by configured attachment roots. `src/main/triage/graph-ops.ts` invokes that action, and `docs/guides/user/email-routing.md` documents its PDF-only, 25 MB-per-attachment boundary. This is a narrow rule-driven save path, not the requested caller-facing list/download tools or attachment support in `src/main/email/send.ts` and `src/main/email/draft.ts`; every Step above remains open. The existing `src/main/attachments/save.test.ts` and triage tests are source evidence only: this audit's `bun run test` attempt was blocked by sandbox `EPERM` writing `node_modules/.vite-temp`; no fresh test, coverage, build, smoke, or live Graph result is claimed. Before implementation, reconcile the destination branch, linked tasks, and retained worktrees. This checkpoint is pickup guidance, not an execution block or authority grant; absent evidence does not release any owner or lift a hold. This audit leaves `next`/`draft` unchanged; later lifecycle transitions follow normal gates, and closure requires verified delivery, independent review of the exact candidate, explicit owner acceptance, and retention until an explicit prune selection.
