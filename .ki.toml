@@ -11,6 +11,8 @@
 harnesses = ["knowledgeislands/ki-agentic-harness"]
 
 [skills.ki-repo]
+repo_type = "project"
+primary_shape = "ki-repo-mcp"
 repository = "https://github.com/knowledgeislands/mcp-m365"
 title = "mcp-m365"
 description = "MCP for Outlook email and calendar plus OneDrive access through Microsoft Graph."
