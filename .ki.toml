@@ -81,6 +81,3 @@ auto_memory = "disabled"
 export = ["work", "knowledge"]
 import = ["knowledge"]
 standing.export.knowledge = ["shared-capability-maintenance"]
-
-[skills.ki-agora]
-memberships.kis = { home = "https://github.com/knowledgeislands/ki-arcadia-principal" }
