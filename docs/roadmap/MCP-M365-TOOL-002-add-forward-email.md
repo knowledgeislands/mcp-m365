@@ -4,17 +4,17 @@ area: TOOL
 title: Add forward email
 theme: tool-surface
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-08-18T13:19:51Z
+updated_at: 2026-10-01T19:27:46Z
 ---
 
 ## Goal
 
-Achieve the stated outcome: Add forward email.
+Callers can preview and explicitly forward an existing message to validated recipients without downloading and recomposing its original content.
 
 ## Context
 
@@ -22,56 +22,48 @@ Add email forwarding.
 
 ## Boundary
 
-Keep the work limited to the stated surface.
+Add one previewable forward action. Preserve old send/draft recipient parsing; no compose refactor, attachment byte handling or automatic retry.
 
 ## Current state
 
-No forwarding path exists. Graph's `me/messages/{id}/forward` action is not called anywhere in `src/`, and the only outbound composition paths are `handleSendEmail` (`src/main/email/send.ts`, posting to `me/sendMail`) and `handleDraftEmail` (`src/main/email/draft.ts`, posting to `me/messages`). Both parse recipients the same way — split a comma-separated string, trim, and wrap each address as `{ emailAddress: { address } }` — and that logic is duplicated between the two files rather than shared.
+`send.ts` and `draft.ts` create standalone messages; no forward action exists. Their comma-separated recipient parsers differ in empty-address handling. The forwarding endpoint can keep provider-owned original content without downloading it.
 
 ## Steps
 
-- [ ] Add `src/main/email/forward.ts` with a handler that takes the originating message ID, a recipient list, and an optional comment, and calls Graph's `forward` action so the original body and attachments travel with the message.
-- [ ] Extract the duplicated comma-separated recipient parsing out of `send.ts` and `draft.ts` into a shared helper the new handler also uses, instead of adding a third copy.
-- [ ] Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` with `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset.
-- [ ] Add handler tests for the success path, the missing-ID and missing-recipient rejections, and the `Authentication required` branch, and extend the existing send/draft tests to cover the extracted helper.
-- [ ] Add the new tool to the Outlook table under README's Available Tools.
+- [ ] Add `m365_email_message_forward` over a new handler with originating `id`, a bounded array of recipient addresses, optional bounded comment and default-true `dry_run`. Reject empty/invalid recipients and newline injection before authentication or network calls.
+- [ ] Use the array input directly for Graph `toRecipients`; preserve existing send/draft comma-separated compatibility without unrelated parser extraction. Preview never POSTs; explicit execution makes one forward action and returns an accepted acknowledgment without retrying.
+- [ ] Register with strict `graphIdSchema`, `WRITE_REMOTE` and standard provider/auth error handling. Do not download or recompose the original message or attachments.
+- [ ] Test input bounds, preview, payload, Graph failure, authentication, access gating and registration. Update `scripts/smoke.ts` and README.
 
 ## Files touched
 
-- `src/main/email/forward.ts` (new) and `src/main/email/index.ts` re-export
-- `src/main/email/send.ts` and `src/main/email/draft.ts` for the shared recipient-parsing helper
-- `src/tools/email/index.ts` tool registration
-- `src/main/email/email-handlers.test.ts` or a new sibling test file
-- `README.md` Available Tools
+New `src/main/email/forward.ts` and tests, `src/main/email/index.ts`, `src/tools/email/index.ts`, `scripts/smoke.ts`, `README.md`.
 
 ## Verify
 
-1. `bun run test`
-2. `bun run test:coverage`
-3. `bun run build`
-4. `ki repo audit --repo .`
+Run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, then focused `ki repo audit --skill ki-repo-mcp --repo .` and `ki repo audit --skill ki-work-roadmap --repo .` sequentially. Use isolated fixtures and mocked provider calls; no live account operation is part of verification.
 
 ## Dependencies / blocks
 
-This item is not blocked and its frontmatter records no dependency. It belongs to the same mail-composition set as TOOL-001 and shares its message-scoped shape, so doing it after TOOL-001 avoids inventing the recipient-parsing helper twice. The relationship is a sequencing preference only; forwarding does not require reply to exist.
+No build-order blocker. Serialize edits to shared tool registration and smoke inventories with sibling mail items; landing order is a coordination preference, not a dependency.
 
 ## Documentation impact
 
 ### Decision Records
 
-None.
+No new architectural choice is required; follow the existing injected configuration and access-gating decisions.
 
 ### Specifications
 
-None.
+Update tool schemas and regression assertions as the executable contract; this repository has no separate declared specification surface.
 
 ### Guides
 
-Update the README tool catalogue with forward-email behaviour.
+Document forward recipients, preview and accepted-for-delivery semantics.
 
 ### Roadmap
 
-No additional roadmap impact.
+Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
 
 ## Discussion
 
@@ -82,3 +74,7 @@ Forwarding is the first composition path that needs both an existing message ID 
 ### Attachments travel implicitly
 
 Graph's `forward` action carries the original message's attachments without the server handling any bytes, so this item delivers a form of attachment support that TOOL-003 does not depend on and does not supersede.
+
+### Readiness review
+
+The new API uses an address array, so the earlier proposed extraction of legacy comma-separated parsers is unnecessary scope. The [Graph forward action](https://learn.microsoft.com/en-us/graph/api/message-forward?view=graph-rest-1.0) owns forwarding; separate attachment-upload support is not a blocker.

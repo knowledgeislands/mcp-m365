@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-08-10T00:14:17Z
+updated_at: 2026-10-01T19:27:46Z
 ---
 
 ## Goal
@@ -52,3 +52,7 @@ The current implementation is functional and tested, so the argument is not corr
 ### Compatibility is the deciding constraint
 
 An existing user has a populated token file and a working consent. Any approach that silently invalidates it forces re-authentication through `m365_auth_start`, which is a user-visible regression rather than an internal refactor. That is what makes the cache-persistence decision the gate on this item rather than a detail of its implementation.
+
+### Readiness review
+
+Readiness requires a chosen token-cache migration and rollback path preserving atomic 0600 writes and concurrent refresh handling across both processes. Existing OAuth service configuration overrides need explicit disposition; library adoption alone is not a complete plan.

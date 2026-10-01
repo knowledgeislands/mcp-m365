@@ -4,17 +4,17 @@ area: TOOL
 title: Add reply support
 theme: tool-surface
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-08-18T13:19:51Z
+updated_at: 2026-10-01T19:30:08Z
 ---
 
 ## Goal
 
-Achieve the stated outcome: Add reply and reply-all.
+Callers can preview and explicitly send a reply or reply-all to an existing message while preserving provider-owned threading and recipient rules.
 
 ## Context
 
@@ -22,55 +22,48 @@ Add reply and reply-all operations.
 
 ## Boundary
 
-Keep the work limited to the stated surface.
+Add explicit reply and reply-all send actions with default previews. No attachment upload, arbitrary Graph message overrides, retry loop or change to existing send behavior.
 
 ## Current state
 
-`src/tools/email/index.ts` registers seven email tools and none of them replies to an existing message. `handleSendEmail` in `src/main/email/send.ts` always composes a fresh message and posts it to `me/sendMail`, so it has no notion of an originating message and cannot preserve conversation threading. Microsoft Graph's `me/messages/{id}/reply` and `me/messages/{id}/replyAll` actions are unused anywhere in `src/`.
+The email surface has standalone send/draft handlers but no Graph reply or replyAll action. `GraphContext` provides injected endpoint/auth; `graphIdSchema` and access-gate presets already exist.
 
 ## Steps
 
-- [ ] Add `src/main/email/reply.ts` with a handler that takes the originating message ID and a comment body, and calls the Graph `reply` or `replyAll` action so Graph derives the recipients, subject prefix, and threading headers rather than the server re-deriving them.
-- [ ] Decide and document which caller-supplied fields are forwarded into Graph's optional `message` override (additional recipients, importance, body content type) and reject the rest, so the tool's contract is explicit rather than pass-through.
-- [ ] Re-export the handler from `src/main/email/index.ts` and register the tool in `src/tools/email/index.ts` using `graphIdSchema` for the message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_message_send`.
-- [ ] Add handler tests covering the success path plus the missing-ID and `Authentication required` branches that every other email handler already handles, to hold the repository's 100% coverage thresholds.
-- [ ] Add the new tool to the Outlook table under README's Available Tools.
+- [ ] Add one shared reply handler and two explicitly named tools, `m365_email_message_reply` and `m365_email_message_reply_all`. Accept only originating `id`, a bounded plain-text `comment`, and `dry_run` defaulting true; reject optional Graph message overrides in this first version.
+- [ ] Preview the target/action without invoking a mutation. On explicit `dry_run: false`, use Graph reply/replyAll once and return an accepted-for-delivery acknowledgment; do not imply that HTTP acceptance proves delivery or automatically retry a send.
+- [ ] Reuse `GraphContext.ensureAuthenticated`, strict `graphIdSchema`, standard error envelopes and `WRITE_REMOTE`. Graph owns threading and recipient derivation; reply-all is explicit in the tool name and audit event.
+- [ ] Test both Graph endpoints, preview making no POST, actual-send payload, rejected/missing ID, schema bounds, auth failure, provider errors and access-level visibility. Add both names to `scripts/smoke.ts` and README.
 
 ## Files touched
 
-- `src/main/email/reply.ts` (new) and `src/main/email/index.ts` re-export
-- `src/tools/email/index.ts` tool registration
-- `src/main/email/email-handlers.test.ts` or a new sibling test file
-- `README.md` Available Tools
+New `src/main/email/reply.ts` and tests, `src/main/email/index.ts`, `src/tools/email/index.ts`, `scripts/smoke.ts`, `README.md`.
 
 ## Verify
 
-1. `bun run test`
-2. `bun run test:coverage`
-3. `bun run build`
-4. `ki repo audit --repo .`
+Run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, then focused `ki repo audit --skill ki-repo-mcp --repo .` and `ki repo audit --skill ki-work-roadmap --repo .` sequentially. Use isolated fixtures and mocked provider calls; no live account operation is part of verification.
 
 ## Dependencies / blocks
 
-This item is not blocked and its frontmatter records no dependency. It is the first of the mail-composition set (TOOL-001 to TOOL-004) and establishes the message-scoped composition pattern — an existing message ID plus a comment body — that forwarding and the draft variants reuse. Sequencing it first is a preference, not a hard constraint: nothing in the current code makes the other three items unimplementable on their own.
+No build-order blocker. Serialize edits to shared tool registration and smoke inventories with sibling mail items; landing order is a coordination preference, not a dependency.
 
 ## Documentation impact
 
 ### Decision Records
 
-None.
+No new architectural choice is required; follow the existing injected configuration and access-gating decisions.
 
 ### Specifications
 
-None.
+Update tool schemas and regression assertions as the executable contract; this repository has no separate declared specification surface.
 
 ### Guides
 
-Update the README tool catalogue with reply and reply-all behaviour.
+Explain preview-first reply/reply-all semantics and the reviewable draft alternatives.
 
 ### Roadmap
 
-No additional roadmap impact.
+Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
 
 ## Discussion
 
@@ -80,4 +73,8 @@ The reason to call Graph's `reply`/`replyAll` actions rather than reconstruct a 
 
 ### Reply-all as a flag or a separate tool
 
-Graph exposes `reply` and `replyAll` as distinct actions. Whether the server surfaces them as one tool with a boolean or as two tools is unsettled; a single tool keeps the surface small, while two tools make the more consequential reply-all an explicitly named action in the audit log. The decision affects tool naming and should be made before registration.
+Use distinct reply and reply-all tools so the recipient-expanding action is explicit in its name and audit record. Both accept a comment and preview by default; arbitrary recipient/body overrides are outside this first delivery.
+
+### Readiness review
+
+Two distinct tool names make reply-all explicit. Initial scope accepts comment only and no additional recipient/body overrides. Microsoft documents the [reply action](https://learn.microsoft.com/en-us/graph/api/message-reply?view=graph-rest-1.0); HTTP acceptance is not a delivery receipt. Sending exists in the current server, but these new non-idempotent actions use a default preview.

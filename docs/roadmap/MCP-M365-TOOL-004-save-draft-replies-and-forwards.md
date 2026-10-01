@@ -4,17 +4,17 @@ area: TOOL
 title: Save draft replies
 theme: tool-surface
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-08-18T13:19:51Z
+updated_at: 2026-10-01T19:27:46Z
 ---
 
 ## Goal
 
-Achieve the stated outcome: Save draft replies and forwards.
+Callers can create reviewable replies, reply-all messages and forwards as Outlook drafts while preserving the original quoted content and never sending them.
 
 ## Context
 
@@ -22,55 +22,48 @@ Add operations to save draft replies and forwarded messages.
 
 ## Boundary
 
-Keep the work limited to the stated surface.
+Create reviewable message-scoped drafts only. No send operation, arbitrary message-body replacement, PATCH editor or attachment upload.
 
 ## Current state
 
-`handleDraftEmail` in `src/main/email/draft.ts` is the only drafting path and it creates standalone drafts: it posts a freshly built message object to `me/messages` and has no originating-message parameter, so a draft it creates cannot be a reply or a forward. Graph's `createReply`, `createReplyAll`, and `createForward` actions — which return a pre-populated draft the caller then edits and sends — are not used anywhere in `src/`. The handler already carries a specific 403 diagnostic pointing at the `Mail.ReadWrite` scope, which is the scope the draft variants need too.
+`handleDraftEmail` creates standalone drafts through `me/messages`. No createReply/createReplyAll/createForward endpoints are used. Existing Graph authentication, ID schema and Mail.ReadWrite diagnostic can be reused.
 
 ## Steps
 
-- [ ] Add handlers over `me/messages/{id}/createReply`, `createReplyAll`, and `createForward` that return the created draft's ID and subject, matching what `handleDraftEmail` reports today.
-- [ ] Decide how the draft body is populated. Graph's create actions accept a comment and prefill the quoted original, so the tool must state whether a caller-supplied body replaces or supplements that prefill, and whether a follow-up `PATCH` on the returned draft is part of this item.
-- [ ] Re-export from `src/main/email/index.ts` and register in `src/tools/email/index.ts` with `graphIdSchema` for the originating message ID and the `WRITE_REMOTE` annotation preset, matching `m365_email_draft_create`.
-- [ ] Add handler tests covering the success path, the missing-ID rejection, the `Authentication required` branch, and the `Mail.ReadWrite` 403 diagnostic already established in `draft.ts`.
-- [ ] Add the new tools to the Outlook table under README's Available Tools.
+- [ ] Add `m365_email_draft_reply`, `m365_email_draft_reply_all` and `m365_email_draft_forward`, each with originating `id`, optional bounded comment and default-true `dry_run`; draft forwarding additionally accepts a bounded recipient array.
+- [ ] Use the matching Graph create action with comment and recipients only, preserving Graph-provided quoted content. Do not pass both comment and message.body or perform a follow-up PATCH. Preview must not create a draft.
+- [ ] Return the created draft ID and subject through one shared schema and structured/text results. Register `WRITE_REMOTE` tools and retain the existing standalone draft tool unchanged.
+- [ ] Test all three actions, no-POST preview, missing/invalid arguments, Graph-prepared body preservation, authentication and Mail.ReadWrite failure guidance. Update exports, smoke inventory and README examples.
 
 ## Files touched
 
-- `src/main/email/draft.ts` or a new sibling module, plus the `src/main/email/index.ts` re-export
-- `src/tools/email/index.ts` tool registration
-- `src/main/email/email-handlers.test.ts` or a new sibling test file
-- `README.md` Available Tools
+New `src/main/email/draft-actions.ts` and tests, `src/main/email/index.ts`, `src/tools/email/index.ts`, `scripts/smoke.ts`, `README.md`.
 
 ## Verify
 
-1. `bun run test`
-2. `bun run test:coverage`
-3. `bun run build`
-4. `ki repo audit --repo .`
+Run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, then focused `ki repo audit --skill ki-repo-mcp --repo .` and `ki repo audit --skill ki-work-roadmap --repo .` sequentially. Use isolated fixtures and mocked provider calls; no live account operation is part of verification.
 
 ## Dependencies / blocks
 
-This item is not blocked and its frontmatter records no dependency. It is the draft-producing counterpart to TOOL-001 and TOOL-002 over the same Graph message actions, so implementing it after them lets the two share one decision about which caller fields override Graph's prefill. It is independently implementable: the `createReply`/`createForward` actions do not require the send-side `reply`/`forward` actions to exist.
+No build-order blocker. Serialize edits to shared tool registration and smoke inventories with sibling mail items; landing order is a coordination preference, not a dependency.
 
 ## Documentation impact
 
 ### Decision Records
 
-None.
+No new architectural choice is required; follow the existing injected configuration and access-gating decisions.
 
 ### Specifications
 
-None.
+Update tool schemas and regression assertions as the executable contract; this repository has no separate declared specification surface.
 
 ### Guides
 
-Update the README tool catalogue with draft reply and forward behaviour.
+Explain that draft variants preserve quoted content and never send; document IDs returned for review in Outlook.
 
 ### Roadmap
 
-No additional roadmap impact.
+Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
 
 ## Discussion
 
@@ -81,3 +74,7 @@ A draft reply is reviewable before it leaves the mailbox, which makes this the l
 ### Two drafting shapes in one surface
 
 Once this lands, `m365_email_draft_create` creates standalone drafts and the new tools create message-scoped ones. Keeping them as distinct tools rather than overloading the existing one with an optional message ID keeps the required arguments honest, but it does mean the naming has to make the distinction obvious to a model choosing between them.
+
+### Readiness review
+
+The initial contract supplements provider-prepared quoted content with comment; body replacement and follow-up editing are excluded. The [createReply contract](https://learn.microsoft.com/en-us/graph/api/message-createreply?view=graph-rest-1.0) supports this bounded path. Draft creation is independently executable and may precede send-side reply/forward work.

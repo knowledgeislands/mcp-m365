@@ -4,17 +4,17 @@ area: TOOL
 title: Support email attachments
 theme: tool-surface
 horizon: next
-status: draft
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-09-27T22:43:46Z
+updated_at: 2026-10-01T19:30:08Z
 ---
 
 ## Goal
 
-Achieve the stated outcome: Support email attachments.
+Callers can inspect attachment metadata, retrieve explicitly requested small files, and attach bounded file content to standalone messages and drafts without granting filesystem access.
 
 ## Context
 
@@ -22,70 +22,64 @@ Support attachment download and sending messages with attachments.
 
 ## Boundary
 
-Keep the work limited to the stated surface.
+Deliver bounded general attachment metadata, small file downloads and inline attachments on standalone send/draft. No upload sessions, arbitrary filesystem access, OneDrive coupling, item-attachment expansion or triage-saver redesign.
 
 ## Current state
 
-Attachments are visible but inaccessible. `src/main/email/read.ts` selects `EMAIL_DETAIL_FIELDS` from `src/config/index.ts`, which includes `hasAttachments`, so a read email reports whether attachments exist and nothing more; `me/messages/{id}/attachments` is never called. On the outbound side, neither `send.ts` nor `draft.ts` puts an `attachments` array on the message object it posts. The server has no filesystem read surface at all — the OneDrive upload handlers in `src/main/onedrive/` take file content as a string argument — so attachment bytes have to arrive through a tool argument or be sourced from Graph itself.
+General email tools expose hasAttachments but no list/get attachment tools or outbound attachments. A separate, delivered triage-only PDF saver exists under `src/main/attachments/save.ts` and uses configured roots; the older claim that the server has no filesystem surface is obsolete. The current Graph JSON helper buffers responses without a byte limit.
 
 ## Steps
 
-- [ ] Add a read-only attachment listing and download path over `me/messages/{id}/attachments`, returning attachment IDs, names, content types, and sizes, with content fetched only when explicitly requested.
-- [ ] Decide where outbound attachment bytes come from: a base64 tool argument, or a reference to an existing OneDrive item the server fetches. This decision governs the whole outbound design and must be settled before the schema is written.
-- [ ] Add outbound attachment support to the existing composition handlers by attaching an `attachments` array to the message payload, rather than adding a parallel send path.
-- [ ] Handle the size boundary. `src/main/onedrive/upload-large.ts` already establishes the pattern for the 4 MiB threshold in `ONEDRIVE_UPLOAD_THRESHOLD` using a chunked upload session; Graph mail attachments have the same inline limit and need an upload session above it. Decide whether this item ships only the inline path and rejects oversized attachments with a clear error.
-- [ ] Register the tools in `src/tools/email/index.ts` — `READ_ONLY_REMOTE` for listing and download, and no new annotation for the composition changes.
-- [ ] Add tests including the size-rejection and `Authentication required` branches, and document the tools and their size limit in README's Available Tools.
+- [ ] Add `m365_email_attachments_list` returning bounded metadata pages and `m365_email_attachment_get` returning explicitly requested base64 file bytes only. Preserve an opaque continuation reference validated against the configured Graph host; listing must never return contentBytes.
+- [ ] Bound attachment transport with an optional response-byte ceiling in the Graph helper, used by these calls. Use a 256 KiB decoded inline-download cap, validate metadata before fetch and decoded bytes afterward, and stop oversized responses while streaming. Expose unsupported item/reference attachment types as metadata with a clear unsupported-download error.
+- [ ] Extend standalone send/draft schemas with at most 10 file attachments supplied as validated base64 arguments, each with name and MIME type. Cap decoded bytes at 2 MiB per file and 2 MiB aggregate; cap serialized Graph request bytes below 4,000,000, including message body and base64 overhead. Validate before authentication/network; no arbitrary host paths or OneDrive fetches.
+- [ ] Use fileAttachment payloads in the existing composition handlers; retain behavior when attachments are omitted. Do not add upload sessions or broaden the PDF-saving action. Suppress attachment content from audit logging and errors and label returned bytes as untrusted data.
+- [ ] Test metadata-only listing and pagination, unknown attachment kinds, malformed base64, pre/post-fetch size enforcement, streaming abort, payload-size overflow, authorization failures and unchanged send/draft behavior. Update registrations, smoke inventory and README limits.
 
 ## Files touched
 
-- `src/main/email/attachments.ts` (new) and `src/main/email/index.ts` re-export
-- `src/main/email/send.ts` and `src/main/email/draft.ts` for outbound attachment payloads
-- `src/tools/email/index.ts` tool registration
-- `src/config/index.ts` if an attachment size constant is added alongside `ONEDRIVE_UPLOAD_THRESHOLD`
-- `src/main/email/email-handlers.test.ts` or a new sibling test file
-- `README.md` Available Tools
+New `src/main/email/attachments.ts` and tests; `src/main/email/send.ts`, `draft.ts`, `index.ts` and existing handler tests; `src/tools/email/index.ts`; `src/main/graph-client/index.ts` and tests for bounded response support; `src/utils/audit-log.ts` and tests if redaction fields need extending; `scripts/smoke.ts`; `README.md`. Existing triage saver stays behaviorally unchanged.
 
 ## Verify
 
-1. `bun run test`
-2. `bun run test:coverage`
-3. `bun run build`
-4. `ki repo audit --repo .`
-5. An oversized attachment is rejected with an actionable message rather than a raw Graph error.
+Run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, then focused `ki repo audit --skill ki-repo-mcp --repo .` and `ki repo audit --skill ki-work-roadmap --repo .` sequentially. Use isolated fixtures and mocked provider calls; no live account operation is part of verification. Boundary tests must use exact byte counts around each cap; no attachment content may appear in audit fixtures or exception text.
 
 ## Dependencies / blocks
 
-This item is not blocked and its frontmatter records no dependency. It touches the same composition handlers as TOOL-001, TOOL-002, and TOOL-004, so landing it after those keeps the attachment payload change confined to one shape rather than being retrofitted into each new handler in turn. Nothing in the code forces that order.
+No build-order blocker. Serialize edits to shared tool registration and smoke inventories with sibling mail items; landing order is a coordination preference, not a dependency.
 
 ## Documentation impact
 
 ### Decision Records
 
-None.
+Record the bounded base64-only first delivery and data-exposure limits in a Decision Record because the choice governs future attachment and upload-session extensions.
 
 ### Specifications
 
-None.
+Update tool schemas and regression assertions as the executable contract; this repository has no separate declared specification surface.
 
 ### Guides
 
-Update the README with attachment support and its operational limits.
+Document inline limits, supported fileAttachment type, untrusted-data treatment and explicit rejection of larger uploads. Distinguish general attachment tools from the existing triage PDF action.
 
 ### Roadmap
 
-No additional roadmap impact.
+Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
 
 ## Discussion
 
-### Where the bytes come from is the open question
+### Attachment byte transport
 
-Every other decision in this item follows from step 2. A base64 argument keeps the server self-contained but pushes potentially large payloads through the MCP transport; sourcing from OneDrive reuses the existing `src/main/onedrive/` surface and keeps bytes server-side, but couples mail composition to OneDrive and to the `Files.Read` scope. Both options are already consented for in `M365_DEFAULT_SCOPES`, so scope is not the deciding factor.
+Use bounded base64 arguments for outbound files, keeping the first delivery independent of filesystem and OneDrive authority. Enforce decoded per-file and aggregate limits plus the serialized request-size limit before network calls. Download content is separately bounded, explicitly requested, labelled untrusted, and excluded from audit/error payloads.
 
 ### Reading attachments is a separate risk surface from reading mail
 
-`read.ts` sanitizes HTML bodies specifically because email content is untrusted input that can carry prompt injection. Attachment content is the same class of input with none of that handling, so a download tool needs an explicit position on what it returns and how it is labelled before it is registered.
+Attachment bytes remain untrusted source data. Metadata listing returns no bytes; the download operation returns only an explicitly requested small file as base64, with an untrusted-data label and strict byte limits. It neither interprets content nor claims that base64 sanitizes the underlying material.
 
 ### Pickup checkpoint — 2026-09-27
 
 At inspected local `main` `2e651e5f8b225be7a1d299e3a7f15ac5289ffe64`, verified partial delivery outside this item's general mail-tool surface: `2b4a1ece73f284ec6f92fafcabf6feb858602e4f` added `makeAttachmentSaver` in `src/main/attachments/save.ts`, which lists and fetches non-inline PDF attachments for the triage engine's `save-attachments:` rule action; `1b5e322246f58588ba6806de80ba852039dabfb6` moved destinations into the rule note, constrained by configured attachment roots. `src/main/triage/graph-ops.ts` invokes that action, and `docs/guides/user/email-routing.md` documents its PDF-only, 25 MB-per-attachment boundary. This is a narrow rule-driven save path, not the requested caller-facing list/download tools or attachment support in `src/main/email/send.ts` and `src/main/email/draft.ts`; every Step above remains open. The existing `src/main/attachments/save.test.ts` and triage tests are source evidence only: this audit's `bun run test` attempt was blocked by sandbox `EPERM` writing `node_modules/.vite-temp`; no fresh test, coverage, build, smoke, or live Graph result is claimed. Before implementation, reconcile the destination branch, linked tasks, and retained worktrees. This checkpoint is pickup guidance, not an execution block or authority grant; absent evidence does not release any owner or lift a hold. This audit leaves `next`/`draft` unchanged; later lifecycle transitions follow normal gates, and closure requires verified delivery, independent review of the exact candidate, explicit owner acceptance, and retention until an explicit prune selection.
+
+### Readiness review
+
+The earlier 4 MiB mail-inline claim was incorrect: Microsoft describes [upload sessions for 3 MB to 150 MB attachments](https://learn.microsoft.com/en-us/graph/api/attachment-createuploadsession?view=graph-rest-1.0). The selected 2 MiB aggregate inline budget is deliberately below that boundary and includes a separate request-size guard. No new filesystem authority is introduced.
