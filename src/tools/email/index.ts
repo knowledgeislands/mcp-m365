@@ -10,6 +10,7 @@ import {
   handleDeleteEmail,
   handleDraftAction,
   handleDraftEmail,
+  handleForwardEmail,
   handleListEmails,
   handleMarkAsRead,
   handleReadEmail,
@@ -114,6 +115,28 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: DESTRUCTIVE_REMOTE
     },
     (args) => handleDeleteEmail(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_message_forward',
+    {
+      description:
+        'Preview a forward by default; pass dry_run: false to send through Graph once. Graph carries the original content and attachments. A successful call means accepted for delivery, not delivered.',
+      inputSchema: z
+        .object({
+          id: graphIdSchema.describe('ID of the original email'),
+          recipients: z
+            .array(draftRecipientSchema)
+            .min(1)
+            .max(50)
+            .describe('Forward to 1 to 50 validated email addresses'),
+          comment: z.string().max(10000).optional().describe('Optional plain-text comment'),
+          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleForwardEmail(ctx, args)
   )
 
   server.registerTool(

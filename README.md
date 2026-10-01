@@ -52,6 +52,7 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_message_send`      | Send a new email.                                                       |
 | `m365_email_message_reply`     | Preview, then explicitly send a reply to one message.                  |
 | `m365_email_message_reply_all` | Preview, then explicitly send a reply-all to one message.              |
+| `m365_email_message_forward`   | Preview, then explicitly forward one message to chosen recipients.     |
 | `m365_email_draft_create`      | Save an email draft.                                                    |
 | `m365_email_draft_reply`       | Preview or create a threaded reply draft without sending.             |
 | `m365_email_draft_reply_all`   | Preview or create a threaded reply-all draft without sending.         |

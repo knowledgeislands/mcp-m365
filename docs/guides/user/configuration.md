@@ -63,8 +63,8 @@ Changing a path does not migrate the file that was at the old one. Move it yours
 | Level | Registers | Adds |
 | --- | --- | --- |
 | `read` (default) | 12 tools | Read-only tools: listing and searching mail, reading a message, listing folders, rules, events and OneDrive items, linting a rule file, and the two meta tools. |
-| `write` | 33 tools | 21 non-destructive mutations: sending and drafting mail, replying, marking read, moving messages, creating folders and rules, creating and responding to events, uploading and sharing OneDrive files, and starting a sign-in. |
-| `destructive` | 41 tools | 8 destructive tools: deleting a message, folder, event or OneDrive item, cancelling an event, and the three routing-engine run tools. |
+| `write` | 34 tools | 22 non-destructive mutations: sending and drafting mail, replying and forwarding, marking read, moving messages, creating folders and rules, creating and responding to events, uploading and sharing OneDrive files, and starting a sign-in. |
+| `destructive` | 42 tools | 8 destructive tools: deleting a message, folder, event or OneDrive item, cancelling an event, and the three routing-engine run tools. |
 
 The levels nest, so `destructive` includes everything at `write`, which includes everything at `read`. An unrecognised value aborts startup rather than falling back to a default.
 

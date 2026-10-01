@@ -4,12 +4,12 @@ area: TOOL
 title: Add forward email
 theme: tool-surface
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: ab597c4b7d74deb355f5cfbf1f66c705762d3e80
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T19:27:46Z
+updated_at: 2026-10-01T20:56:26Z
 ---
 
 ## Goal
@@ -30,10 +30,10 @@ Add one previewable forward action. Preserve old send/draft recipient parsing; n
 
 ## Steps
 
-- [ ] Add `m365_email_message_forward` over a new handler with originating `id`, a bounded array of recipient addresses, optional bounded comment and default-true `dry_run`. Reject empty/invalid recipients and newline injection before authentication or network calls.
-- [ ] Use the array input directly for Graph `toRecipients`; preserve existing send/draft comma-separated compatibility without unrelated parser extraction. Preview never POSTs; explicit execution makes one forward action and returns an accepted acknowledgment without retrying.
-- [ ] Register with strict `graphIdSchema`, `WRITE_REMOTE` and standard provider/auth error handling. Do not download or recompose the original message or attachments.
-- [ ] Test input bounds, preview, payload, Graph failure, authentication, access gating and registration. Update `scripts/smoke.ts` and README.
+- [x] Add `m365_email_message_forward` over a new handler with originating `id`, a bounded array of recipient addresses, optional bounded comment and default-true `dry_run`. Reject empty/invalid recipients and newline injection before authentication or network calls.
+- [x] Use the array input directly for Graph `toRecipients`; preserve existing send/draft comma-separated compatibility without unrelated parser extraction. Preview never POSTs; explicit execution makes one forward action and returns an accepted acknowledgment without retrying.
+- [x] Register with strict `graphIdSchema`, `WRITE_REMOTE` and standard provider/auth error handling. Do not download or recompose the original message or attachments.
+- [x] Test input bounds, preview, payload, Graph failure, authentication, access gating and registration. Update `scripts/smoke.ts` and README.
 
 ## Files touched
 
@@ -64,6 +64,32 @@ Document forward recipients, preview and accepted-for-delivery semantics.
 ### Roadmap
 
 Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
+
+## Review
+
+### Delivered
+
+Added `m365_email_message_forward` at baseline `ab597c4b7d74deb355f5cfbf1f66c705762d3e80`. Callers can preview a forward and explicitly send it to validated recipients without downloading or rebuilding the original message.
+
+### Change Summary
+
+The handler accepts one original message ID, 1 to 50 email addresses, an optional bounded comment, and default-true `dry_run`. It rejects invalid or newline-containing addresses before authentication. Preview performs one metadata GET; explicit effect performs one Graph `/forward` POST with top-level `toRecipients` and no retry. The tool uses strict ID/schema validation and `WRITE_REMOTE`. Smoke inventory, README, access-level counts, and the user guide were updated; existing send/draft parsers were untouched.
+
+### Verification
+
+`bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, and `bun run ki:test:smoke` passed. The suite passed 1,096 tests with 100% coverage on all four metrics; smoke listed 42 tools. Mocked tests cover bounds, preview, exact payload, provider/auth errors, access visibility, and registration. Focused `ki-repo-mcp`, `ki-work-roadmap`, `ki-guides`, and `ki-authoring` audits passed. No live Microsoft Graph or mailbox call was made.
+
+### Outstanding concerns
+
+HTTP acceptance is not proof of delivery. An ambiguous failure must be checked in Sent Items before retrying; the server does not automatically retry. Graph owns original content and attachments in the forward action, so live rendering has not been certified by these offline tests.
+
+### Post-change review
+
+The input cannot override message body or headers, and the forward result does not claim delivery. The action is distinct from the reviewable forward-draft tool and requires an explicit `dry_run: false` to send. Ready for owner acceptance of this candidate.
+
+### Mini recap
+
+The additive forward action is delivered and verified offline, with no live send or remote Git push. The item remains Awaiting review until explicit acceptance.
 
 ## Discussion
 

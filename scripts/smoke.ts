@@ -29,6 +29,7 @@ const EXPECTED_TOOLS = [
   'm365_email_rule_create',
   'm365_calendar_event_decline',
   'm365_email_message_delete',
+  'm365_email_message_forward',
   'm365_calendar_event_delete',
   'm365_email_folder_delete',
   'm365_email_draft_create',
