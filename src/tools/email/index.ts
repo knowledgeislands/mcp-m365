@@ -11,6 +11,7 @@ import {
   handleListEmails,
   handleMarkAsRead,
   handleReadEmail,
+  handleReplyEmail,
   handleSearchEmails,
   handleSendEmail
 } from '../../main/email/index.js'
@@ -95,6 +96,40 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
     (args) => handleMarkAsRead(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_message_reply',
+    {
+      description:
+        'Preview a reply by default; pass dry_run: false to send one Graph reply action. Graph chooses recipient and threading. A successful call means accepted for delivery, not delivered.',
+      inputSchema: z
+        .object({
+          id: graphIdSchema.describe('ID of the original email'),
+          comment: z.string().min(1).max(10000).describe('Plain-text reply comment, at most 10000 characters'),
+          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleReplyEmail(ctx, args, 'reply')
+  )
+
+  server.registerTool(
+    'm365_email_message_reply_all',
+    {
+      description:
+        'Preview a reply-all by default; pass dry_run: false to send one Graph replyAll action. Graph chooses original recipients and threading. A successful call means accepted for delivery, not delivered.',
+      inputSchema: z
+        .object({
+          id: graphIdSchema.describe('ID of the original email'),
+          comment: z.string().min(1).max(10000).describe('Plain-text reply-all comment, at most 10000 characters'),
+          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleReplyEmail(ctx, args, 'replyAll')
   )
 
   server.registerTool(

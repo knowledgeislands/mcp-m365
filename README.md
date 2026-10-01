@@ -50,6 +50,8 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_messages_search`   | Search emails by query and/or date range. †                             |
 | `m365_email_message_get`       | Read email content.                                                     |
 | `m365_email_message_send`      | Send a new email.                                                       |
+| `m365_email_message_reply`     | Preview, then explicitly send a reply to one message.                  |
+| `m365_email_message_reply_all` | Preview, then explicitly send a reply-all to one message.              |
 | `m365_email_draft_create`      | Save an email draft.                                                    |
 | `m365_email_message_mark_read` | Mark email as read/unread.                                              |
 | `m365_email_message_delete`    | Move an email to Deleted Items (or hard delete with `permanent: true`). |

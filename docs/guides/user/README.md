@@ -6,6 +6,8 @@ Read [Register an Azure application](azure-app-registration.md), [Install and co
 
 Two things are worth knowing before you start. The server registers only read-only tools until you widen `MCP_M365_ACCESS_LEVEL`, so a fresh installation cannot send, move, or delete anything. And the destructive tools it can register act on a real mailbox, so read [Configure the server](configuration.md) before raising that level rather than after.
 
+For an existing message, [preview and send a reply or reply-all](replying-to-mail.md) with explicit effect control.
+
 ## Register an application with Microsoft
 
 [Register an Azure application](azure-app-registration.md) covers the one-time work in the Azure portal: creating the app registration, choosing an account type that matches the mailbox you intend to use, registering the redirect URI the server's sign-in flow depends on, granting the delegated Microsoft Graph permissions and what each one buys you, and creating the client secret. It ends with the two values you carry into the next guide, and with the failures the portal produces when one of those choices is wrong.

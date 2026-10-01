@@ -42,6 +42,8 @@ const EXPECTED_TOOLS = [
   'm365_onedrive_item_upload_large',
   'm365_email_folder_rename',
   'm365_email_message_send',
+  'm365_email_message_reply',
+  'm365_email_message_reply_all',
   'm365_about',
   'm365_auth_status',
   'm365_email_messages_list',
