@@ -5,6 +5,7 @@
  */
 export { handleDeleteEmail } from './delete.js'
 export { handleDraftEmail } from './draft.js'
+export { handleDraftAction } from './draft-actions.js'
 export {
   fetchFoldersRecursive,
   getAllFolders,

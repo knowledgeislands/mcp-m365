@@ -53,6 +53,9 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_message_reply`     | Preview, then explicitly send a reply to one message.                  |
 | `m365_email_message_reply_all` | Preview, then explicitly send a reply-all to one message.              |
 | `m365_email_draft_create`      | Save an email draft.                                                    |
+| `m365_email_draft_reply`       | Preview or create a threaded reply draft without sending.             |
+| `m365_email_draft_reply_all`   | Preview or create a threaded reply-all draft without sending.         |
+| `m365_email_draft_forward`     | Preview or create a forward draft without sending.                     |
 | `m365_email_message_mark_read` | Mark email as read/unread.                                              |
 | `m365_email_message_delete`    | Move an email to Deleted Items (or hard delete with `permanent: true`). |
 | `m365_calendar_events_list`    | List calendar events.                                                   |

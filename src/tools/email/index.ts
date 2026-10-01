@@ -3,10 +3,12 @@
  */
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
+import { draftRecipientSchema } from '../../main/email/draft-actions.js'
 import {
   emailListResultSchema,
   emailSearchResultSchema,
   handleDeleteEmail,
+  handleDraftAction,
   handleDraftEmail,
   handleListEmails,
   handleMarkAsRead,
@@ -18,6 +20,22 @@ import {
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
+
+const draftActionOutput = z
+  .object({
+    dry_run: z.boolean(),
+    action: z.enum(['createReply', 'createReplyAll', 'createForward']),
+    originalMessageId: z.string(),
+    draftId: z.string().nullable(),
+    subject: z.string().nullable()
+  })
+  .strict()
+
+const draftActionBase = {
+  id: graphIdSchema.describe('ID of the original email'),
+  comment: z.string().max(10000).optional().describe('Optional comment added to the Graph-prepared draft'),
+  dry_run: z.boolean().default(true).describe('Preview only by default; pass false to create the draft')
+}
 
 export const registerEmailTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
@@ -37,6 +55,42 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_REMOTE
     },
     (args) => handleDraftEmail(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_draft_forward',
+    {
+      description:
+        'Preview or create a forward draft with Graph-preserved original content. Never sends. Requires 1 to 50 recipient addresses; pass dry_run: false to create.',
+      inputSchema: z.object({ ...draftActionBase, recipients: z.array(draftRecipientSchema).min(1).max(50) }).strict(),
+      outputSchema: draftActionOutput,
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleDraftAction(ctx, args, 'createForward')
+  )
+
+  server.registerTool(
+    'm365_email_draft_reply',
+    {
+      description:
+        'Preview or create a threaded reply draft with Graph-preserved quoted content. Never sends; pass dry_run: false to create.',
+      inputSchema: z.object(draftActionBase).strict(),
+      outputSchema: draftActionOutput,
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleDraftAction(ctx, args, 'createReply')
+  )
+
+  server.registerTool(
+    'm365_email_draft_reply_all',
+    {
+      description:
+        'Preview or create a threaded reply-all draft with Graph-selected recipients and preserved quoted content. Never sends; pass dry_run: false to create.',
+      inputSchema: z.object(draftActionBase).strict(),
+      outputSchema: draftActionOutput,
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleDraftAction(ctx, args, 'createReplyAll')
   )
 
   server.registerTool(

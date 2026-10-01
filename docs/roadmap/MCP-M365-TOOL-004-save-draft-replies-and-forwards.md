@@ -4,12 +4,12 @@ area: TOOL
 title: Save draft replies
 theme: tool-surface
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 328b8269cc4c7491d0008014099752ad4ea914b7
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T19:27:46Z
+updated_at: 2026-10-01T20:52:04Z
 ---
 
 ## Goal
@@ -30,10 +30,10 @@ Create reviewable message-scoped drafts only. No send operation, arbitrary messa
 
 ## Steps
 
-- [ ] Add `m365_email_draft_reply`, `m365_email_draft_reply_all` and `m365_email_draft_forward`, each with originating `id`, optional bounded comment and default-true `dry_run`; draft forwarding additionally accepts a bounded recipient array.
-- [ ] Use the matching Graph create action with comment and recipients only, preserving Graph-provided quoted content. Do not pass both comment and message.body or perform a follow-up PATCH. Preview must not create a draft.
-- [ ] Return the created draft ID and subject through one shared schema and structured/text results. Register `WRITE_REMOTE` tools and retain the existing standalone draft tool unchanged.
-- [ ] Test all three actions, no-POST preview, missing/invalid arguments, Graph-prepared body preservation, authentication and Mail.ReadWrite failure guidance. Update exports, smoke inventory and README examples.
+- [x] Add `m365_email_draft_reply`, `m365_email_draft_reply_all` and `m365_email_draft_forward`, each with originating `id`, optional bounded comment and default-true `dry_run`; draft forwarding additionally accepts a bounded recipient array.
+- [x] Use the matching Graph create action with comment and recipients only, preserving Graph-provided quoted content. Do not pass both comment and message.body or perform a follow-up PATCH. Preview must not create a draft.
+- [x] Return the created draft ID and subject through one shared schema and structured/text results. Register `WRITE_REMOTE` tools and retain the existing standalone draft tool unchanged.
+- [x] Test all three actions, no-POST preview, missing/invalid arguments, Graph-prepared body preservation, authentication and Mail.ReadWrite failure guidance. Update exports, smoke inventory and README examples.
 
 ## Files touched
 
@@ -64,6 +64,32 @@ Explain that draft variants preserve quoted content and never send; document IDs
 ### Roadmap
 
 Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
+
+## Review
+
+### Delivered
+
+Added three message-scoped draft actions at baseline `328b8269cc4c7491d0008014099752ad4ea914b7`: reply, reply-all, and forward. Each previews by default and creates an Outlook draft only on explicit `dry_run: false`.
+
+### Change Summary
+
+One shared handler calls Graph's `createReply`, `createReplyAll`, or `createForward` action. It sends only an optional comment and, for forwarding, 1 to 50 validated recipient addresses; it never replaces Graph-prepared quoted content or sends the draft. Strict input and shared output schemas, structured/text results, smoke inventory, README tool references, and user guidance were added. The existing standalone draft tool remains unchanged.
+
+### Verification
+
+`bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, and `bun run ki:test:smoke` passed; coverage remained 100% across statements, branches, functions, and lines. Mocked tests cover all three endpoints, preview without POST, bounded and invalid inputs, body-preserving payloads, missing draft IDs, authentication and permission failures, and access-level visibility. Focused `ki-repo-mcp`, `ki-work-roadmap`, `ki-guides`, and `ki-authoring` audits passed. No live Graph or mailbox call was made.
+
+### Outstanding concerns
+
+The Graph API prepares the quoted content and returns a draft object; these offline tests cannot certify its live rendering. If a creation response lacks an ID or a request fails ambiguously, an operator must inspect Drafts before retrying to avoid a duplicate.
+
+### Post-change review
+
+The new tools are distinct from the send actions and standalone draft creation. The output records the created ID and subject for Outlook review, while dry-run output records no created draft. The candidate is ready for owner acceptance.
+
+### Mini recap
+
+Reviewable message-scoped drafts are implemented and verified offline. The item remains Awaiting review until explicit acceptance; no live message was sent or remote Git ref pushed.
 
 ## Discussion
 
