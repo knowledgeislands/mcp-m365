@@ -3,6 +3,14 @@
  * message tools. The thin `tools/email` layer validates args and maps these
  * results/errors to MCP envelopes; nothing here prints or reads ambient state.
  */
+
+export {
+  attachmentGetResultSchema,
+  attachmentListResultSchema,
+  handleGetAttachment,
+  handleListAttachments,
+  inlineAttachmentsSchema
+} from './attachments.js'
 export { handleDeleteEmail } from './delete.js'
 export { handleDraftEmail } from './draft.js'
 export { handleDraftAction } from './draft-actions.js'

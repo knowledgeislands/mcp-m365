@@ -32,7 +32,7 @@ Setting this up takes three steps, in this order, and each has its own guide:
 
 The tables below are a capability catalogue, so that you can see whether this server does what you need. They are maintained by hand and the authoritative list is executable: call `tools/list` from any MCP client to see exactly what your build registered at your configured access level.
 
-Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 36 tools, 12 derive `read`, a further 16 derive `write`, and the remaining 8 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
+Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 44 tools, 14 derive `read`, a further 22 derive `write`, and the remaining 8 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
 
 ### Auth & meta
 
@@ -49,11 +49,13 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_messages_list`     | List recent emails from inbox, folder path, or explicit folder ID.      |
 | `m365_email_messages_search`   | Search emails by query and/or date range. †                             |
 | `m365_email_message_get`       | Read email content.                                                     |
-| `m365_email_message_send`      | Send a new email.                                                       |
+| `m365_email_attachments_list`  | List bounded attachment metadata pages without file bytes.            |
+| `m365_email_attachment_get`    | Retrieve one file up to 256 KiB as untrusted base64 data.             |
+| `m365_email_message_send`      | Send a new email, optionally with bounded inline file attachments.    |
 | `m365_email_message_reply`     | Preview, then explicitly send a reply to one message.                  |
 | `m365_email_message_reply_all` | Preview, then explicitly send a reply-all to one message.              |
 | `m365_email_message_forward`   | Preview, then explicitly forward one message to chosen recipients.     |
-| `m365_email_draft_create`      | Save an email draft.                                                    |
+| `m365_email_draft_create`      | Save an email draft, optionally with bounded inline file attachments. |
 | `m365_email_draft_reply`       | Preview or create a threaded reply draft without sending.             |
 | `m365_email_draft_reply_all`   | Preview or create a threaded reply-all draft without sending.         |
 | `m365_email_draft_forward`     | Preview or create a forward draft without sending.                     |

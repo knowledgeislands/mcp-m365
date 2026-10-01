@@ -183,6 +183,74 @@ describe('callGraphAPI', () => {
       /Network error.*ECONNREFUSED/
     )
   })
+
+  it('redacts a Graph error response for attachment calls', async () => {
+    mockHttpsOnce({ statusCode: 500, body: 'secret attachment data' })
+    await expect(
+      callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages/m1/attachments', null, {}, { redactErrorBody: true })
+    ).rejects.toThrow('API call failed with status 500')
+    mockHttpsOnce({ statusCode: 500, body: 'secret attachment data' })
+    await expect(
+      callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages/m1/attachments', null, {}, { redactErrorBody: true })
+    ).rejects.not.toThrow('secret attachment data')
+  })
+
+  it('does not echo malformed attachment JSON in a parse error', async () => {
+    mockHttpsOnce({ statusCode: 200, body: 'private attachment content' })
+    await expect(
+      callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages/m1/attachments', null, {}, { redactErrorBody: true })
+    ).rejects.toThrow('Invalid Graph attachment response.')
+  })
+
+  it('stops an attachment response before reading a declared oversized body', async () => {
+    const response = new EventEmitter() as EventEmitter & {
+      statusCode: number
+      headers: Record<string, string>
+      destroy: Mock
+    }
+    response.statusCode = 200
+    response.headers = { 'content-length': '11' }
+    response.destroy = vi.fn()
+    const request = new EventEmitter() as EventEmitter & { end: () => void }
+    request.end = () => {}
+    ;(https.request as unknown as Mock).mockImplementationOnce(
+      (_url: string, _options: object, callback: (r: typeof response) => void) => {
+        callback(response)
+        return request
+      }
+    )
+    await expect(
+      callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages/m1/attachments', null, {}, { maxResponseBytes: 10 })
+    ).rejects.toThrow('response byte limit')
+    expect(response.destroy).toHaveBeenCalledOnce()
+  })
+
+  it('aborts streaming as soon as an attachment response crosses its byte ceiling', async () => {
+    const response = new EventEmitter() as EventEmitter & {
+      statusCode: number
+      headers: Record<string, string>
+      destroy: Mock
+    }
+    response.statusCode = 200
+    response.headers = {}
+    response.destroy = vi.fn()
+    const request = new EventEmitter() as EventEmitter & { end: () => void }
+    request.end = () =>
+      setImmediate(() => {
+        response.emit('data', Buffer.from('12345'))
+        response.emit('data', Buffer.from('678901'))
+      })
+    ;(https.request as unknown as Mock).mockImplementationOnce(
+      (_url: string, _options: object, callback: (r: typeof response) => void) => {
+        callback(response)
+        return request
+      }
+    )
+    await expect(
+      callGraphAPI(GRAPH_API_ENDPOINT, 'tok', 'GET', 'me/messages/m1/attachments', null, {}, { maxResponseBytes: 10 })
+    ).rejects.toThrow('response byte limit')
+    expect(response.destroy).toHaveBeenCalledOnce()
+  })
 })
 
 describe('callGraphAPIPaginated', () => {

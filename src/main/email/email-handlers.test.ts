@@ -151,6 +151,30 @@ describe('handleReadEmail', () => {
 })
 
 describe('handleDraftEmail', () => {
+  it('validates inline attachments and final request size before authentication', async () => {
+    const invalid = await handleDraftEmail(ctx, {
+      attachments: [{ name: 'a.txt', contentType: 'text/plain', contentBytes: 'bad!' }]
+    })
+    expect(invalid.isError).toBe(true)
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+    const tooLarge = await handleDraftEmail(ctx, {
+      body: 'a'.repeat(4_000_000),
+      attachments: [{ name: 'a.txt', contentType: 'text/plain', contentBytes: 'YQ==' }]
+    })
+    expect(tooLarge.content[0].text).toContain('request limit')
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+  })
+
+  it('creates a standalone draft with bounded Graph file attachments', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({ id: 'd1' })
+    const attachments = [{ name: 'a.txt', contentType: 'text/plain', contentBytes: 'YQ==' }]
+    await handleDraftEmail(ctx, { body: 'hello', attachments })
+    expect(mockCallGraphAPI.mock.calls[0][4].attachments).toEqual([
+      { '@odata.type': '#microsoft.graph.fileAttachment', ...attachments[0] }
+    ])
+    expect(mockCallGraphAPI.mock.calls[0][6]).toEqual({ redactErrorBody: true })
+  })
   it('creates a draft with parsed recipient lists', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({ id: 'd1', subject: 'Hi' })
@@ -218,6 +242,27 @@ describe('handleDraftEmail', () => {
 })
 
 describe('handleSendEmail', () => {
+  it('rejects malformed inline attachments before authentication', async () => {
+    const response = await handleSendEmail(ctx, {
+      to: 'a@x.com',
+      subject: 's',
+      body: 'b',
+      attachments: [{ name: 'bad', contentType: 'text/plain', contentBytes: '@@@' }]
+    })
+    expect(response.isError).toBe(true)
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+  })
+
+  it('sends a standalone message with a bounded file attachment', async () => {
+    mockEnsureAuthenticated.mockResolvedValue('tok')
+    mockCallGraphAPI.mockResolvedValue({})
+    const attachments = [{ name: 'a.txt', contentType: 'text/plain', contentBytes: 'YQ==' }]
+    await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: 'b', attachments })
+    expect(mockCallGraphAPI.mock.calls[0][4].message.attachments).toEqual([
+      { '@odata.type': '#microsoft.graph.fileAttachment', ...attachments[0] }
+    ])
+    expect(mockCallGraphAPI.mock.calls[0][6]).toEqual({ redactErrorBody: true })
+  })
   it('sends to multiple recipients and saves to Sent Items by default', async () => {
     mockEnsureAuthenticated.mockResolvedValue('tok')
     mockCallGraphAPI.mockResolvedValue({})

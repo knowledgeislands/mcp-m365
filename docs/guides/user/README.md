@@ -8,6 +8,8 @@ Two things are worth knowing before you start. The server registers only read-on
 
 For an existing message, [preview and send a reply or reply-all](replying-to-mail.md) with explicit effect control.
 
+For file attachments, [list metadata, download a small file, or attach bounded base64 data to a new message](email-attachments.md).
+
 ## Register an application with Microsoft
 
 [Register an Azure application](azure-app-registration.md) covers the one-time work in the Azure portal: creating the app registration, choosing an account type that matches the mailbox you intend to use, registering the redirect URI the server's sign-in flow depends on, granting the delegated Microsoft Graph permissions and what each one buys you, and creating the client secret. It ends with the two values you carry into the next guide, and with the failures the portal produces when one of those choices is wrong.

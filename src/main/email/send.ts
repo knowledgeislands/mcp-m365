@@ -4,6 +4,7 @@
 
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { assertAttachmentRequestSize, prepareInlineAttachments } from './attachments.js'
 
 export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any> => {
   const { to, cc, bcc, subject, body, importance = 'normal', saveToSentItems = true, isHtml } = args
@@ -21,7 +22,7 @@ export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any
   }
 
   try {
-    const accessToken = await ctx.ensureAuthenticated()
+    const attachments = prepareInlineAttachments(args.attachments)
 
     const toRecipients = to.split(',').map((email: string) => {
       email = email.trim()
@@ -61,12 +62,24 @@ export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any
         toRecipients,
         ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
         bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
-        importance
+        importance,
+        attachments
       },
       saveToSentItems
     }
 
-    await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', 'me/sendMail', emailObject)
+    if (attachments) assertAttachmentRequestSize(emailObject)
+    const accessToken = await ctx.ensureAuthenticated()
+
+    await callGraphAPI(
+      ctx.graphApiEndpoint,
+      accessToken,
+      'POST',
+      'me/sendMail',
+      emailObject,
+      {},
+      { redactErrorBody: !!attachments }
+    )
 
     return {
       content: [

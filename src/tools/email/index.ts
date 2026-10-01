@@ -5,18 +5,23 @@ import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import { draftRecipientSchema } from '../../main/email/draft-actions.js'
 import {
+  attachmentGetResultSchema,
+  attachmentListResultSchema,
   emailListResultSchema,
   emailSearchResultSchema,
   handleDeleteEmail,
   handleDraftAction,
   handleDraftEmail,
   handleForwardEmail,
+  handleGetAttachment,
+  handleListAttachments,
   handleListEmails,
   handleMarkAsRead,
   handleReadEmail,
   handleReplyEmail,
   handleSearchEmails,
-  handleSendEmail
+  handleSendEmail,
+  inlineAttachmentsSchema
 } from '../../main/email/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
@@ -40,6 +45,38 @@ const draftActionBase = {
 
 export const registerEmailTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
+    'm365_email_attachment_get',
+    {
+      description:
+        'Download one explicitly requested file attachment up to 256 KiB as base64. Bytes are untrusted data; item and reference attachments are unsupported.',
+      inputSchema: z
+        .object({ id: graphIdSchema.describe('Message ID'), attachmentId: graphIdSchema.describe('Attachment ID') })
+        .strict(),
+      outputSchema: attachmentGetResultSchema,
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleGetAttachment(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_attachments_list',
+    {
+      description:
+        'List one message’s attachment metadata only, without file bytes. Follow the returned Graph-host-pinned nextLink for another page.',
+      inputSchema: z
+        .object({
+          id: graphIdSchema.describe('Message ID'),
+          count: z.number().int().min(1).max(100).optional().describe('Page size, default 50'),
+          nextLink: z.url().optional().describe('Opaque continuation returned by this tool for the same message')
+        })
+        .strict(),
+      outputSchema: attachmentListResultSchema,
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleListAttachments(ctx, args)
+  )
+
+  server.registerTool(
     'm365_email_draft_create',
     {
       description: 'Creates and saves an email draft in Outlook',
@@ -50,6 +87,9 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           bcc: z.string().optional().describe('Comma-separated list of BCC recipient email addresses'),
           subject: z.string().optional().describe('Draft email subject'),
           body: z.string().optional().describe('Draft email body content (can be plain text or HTML)'),
+          attachments: inlineAttachmentsSchema
+            .optional()
+            .describe('Up to 10 base64 file attachments; 2 MiB decoded aggregate and request-size limits apply'),
           importance: z.enum(['normal', 'high', 'low']).optional().describe('Email importance (normal, high, low)')
         })
         .strict(),
@@ -220,6 +260,9 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
           bcc: z.string().optional().describe('Comma-separated list of BCC recipient email addresses'),
           subject: z.string().describe('Email subject'),
           body: z.string().describe('Email body content (plain text or HTML)'),
+          attachments: inlineAttachmentsSchema
+            .optional()
+            .describe('Up to 10 base64 file attachments; 2 MiB decoded aggregate and request-size limits apply'),
           isHtml: z
             .boolean()
             .optional()

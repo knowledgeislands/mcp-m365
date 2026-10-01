@@ -4,12 +4,13 @@
 
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { assertAttachmentRequestSize, prepareInlineAttachments } from './attachments.js'
 
 export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<any> => {
   const { to, cc, bcc, subject = '', body = '', importance = 'normal' } = args || {}
 
   try {
-    const accessToken = await ctx.ensureAuthenticated()
+    const attachments = prepareInlineAttachments(args?.attachments)
 
     const toRecipients = to
       ? to
@@ -47,10 +48,22 @@ export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<an
       toRecipients: toRecipients.length > 0 ? toRecipients : undefined,
       ccRecipients: ccRecipients.length > 0 ? ccRecipients : undefined,
       bccRecipients: bccRecipients.length > 0 ? bccRecipients : undefined,
-      importance
+      importance,
+      attachments
     }
 
-    const draft = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'POST', 'me/messages', messageObject)
+    if (attachments) assertAttachmentRequestSize(messageObject)
+    const accessToken = await ctx.ensureAuthenticated()
+
+    const draft = await callGraphAPI(
+      ctx.graphApiEndpoint,
+      accessToken,
+      'POST',
+      'me/messages',
+      messageObject,
+      {},
+      { redactErrorBody: !!attachments }
+    )
 
     return {
       content: [

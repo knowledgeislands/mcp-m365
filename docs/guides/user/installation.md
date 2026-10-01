@@ -81,7 +81,7 @@ With the client restarted and the callback server running, make two calls from y
 1. `m365_about` — returns this server's own identity. It reaches no Microsoft service, so a successful call proves the client launched the server and is speaking to it. A failure here is a path, runtime, or configuration problem, not an authentication one.
 2. `m365_auth_status` — reports whether tokens are present, and their scopes and expiry. On a fresh installation it should tell you that you are not authenticated. That is the correct answer at this point, not a fault.
 
-Both are read-only tools, so both are available at the default access level. `m365_auth_start` is not: it persists tokens to disk and therefore derives the `write` level. That is not an obstacle — the sign-in in the next guide runs through the browser and works at any access level — but it does mean a fresh installation shows twelve read tools and no way to authenticate from inside the client, which is easy to mistake for a broken install.
+Both are read-only tools, so both are available at the default access level. `m365_auth_start` is not: it persists tokens to disk and therefore derives the `write` level. That is not an obstacle — the sign-in in the next guide runs through the browser and works at any access level — but it does mean a fresh installation shows fourteen read tools and no way to authenticate from inside the client, which is easy to mistake for a broken install.
 
 If both behave as described, the installation is sound and the only thing missing is a sign-in. Continue with [Sign in](authentication.md).
 

@@ -48,6 +48,8 @@ const REDACT_FIELDS = new Set([
   // OneDrive upload payloads
   'data',
   'fileContent',
+  // Inline email attachments may contain complete file bytes in base64.
+  'attachments',
   // OAuth flow secrets
   'code',
   'state',
@@ -81,6 +83,8 @@ const sanitizeArgs = (args: unknown): unknown => {
     for (const key of Object.keys(copy)) {
       if (REDACT_FIELDS.has(key) && typeof copy[key] === 'string') {
         copy[key] = `[redacted ${Buffer.byteLength(copy[key] as string, 'utf-8')}B]`
+      } else if (key === 'attachments') {
+        copy[key] = '[redacted attachments]'
       }
     }
     safe = copy

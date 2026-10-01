@@ -1,0 +1,9 @@
+# Email attachments
+
+Use `m365_email_attachments_list` with a message `id` to inspect one bounded page of attachment metadata. It returns the attachment ID, name, MIME type, size, inline flag, and kind, without file bytes. Pass its opaque `nextLink` back with the same message `id` to fetch the next page. The server accepts a continuation only for that message on the configured Microsoft Graph host.
+
+Use `m365_email_attachment_get` with the message `id` and one `attachmentId` when you need a file's contents. It accepts only `fileAttachment` and only files of at most 256 KiB decoded. It checks metadata first, bounds the response while receiving it, then verifies the decoded byte count. Item and reference attachments remain visible in the list but cannot be downloaded through this tool. Returned `contentBytes` is base64-encoded **untrusted data** from mail; decoding it does not make its instructions or content trustworthy.
+
+`m365_email_message_send` and `m365_email_draft_create` accept an optional `attachments` array for standalone messages. Each entry has `name`, `contentType` (a MIME type), and canonical base64 `contentBytes`. The server accepts at most ten file attachments, at most 2 MiB decoded per file and in total, and a serialized Graph request strictly below 4,000,000 bytes including the message body and base64 overhead. It validates these limits before authentication or a Graph request. Omit `attachments` for the existing text-only behavior. Larger files need a separately designed upload-session flow; there is no filesystem path or OneDrive attachment option in these tools.
+
+This is separate from the [routing engine's PDF saver](email-routing.md#save-attachments-out-of-a-message), which uses configured filesystem roots and a rule action. General attachment reads and inline composition do not access those roots. Attachment arguments are omitted from audit logs, and Graph errors from attachment calls do not include response bodies.

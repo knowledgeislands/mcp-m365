@@ -21,6 +21,8 @@ import { StdioClientTransport } from '@modelcontextprotocol/client/stdio'
 // Single source of truth for the tool surface. If you add a tool in
 // `src/tools/<group>/index.ts`, update this list.
 const EXPECTED_TOOLS = [
+  'm365_email_attachment_get',
+  'm365_email_attachments_list',
   'm365_calendar_event_accept',
   'm365_auth_start',
   'm365_calendar_event_cancel',

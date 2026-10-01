@@ -48,7 +48,7 @@ If you would rather move the server, remember the port appears in three places t
 
 ## A tool is missing
 
-**A tool you expect is not offered at all.** Check `MCP_M365_ACCESS_LEVEL`. The default is `read`, which registers 12 tools; `write` registers 28; `destructive` registers all 36. A tool below the configured level is never registered, so it cannot appear. The table in [Configure the server](configuration.md) says which tools each level adds.
+**A tool you expect is not offered at all.** Check `MCP_M365_ACCESS_LEVEL`. The default is `read`, which registers 14 tools; `write` registers 36; `destructive` registers all 44. A tool below the configured level is never registered, so it cannot appear. The table in [Configure the server](configuration.md) says which tools each level adds.
 
 **`m365_auth_start` is missing on a fresh installation.** That is the same cause and it is expected: the tool persists tokens, so it derives `write` and is absent at the default level. Sign in through <http://localhost:3333/auth> instead of raising the level to get at it.
 

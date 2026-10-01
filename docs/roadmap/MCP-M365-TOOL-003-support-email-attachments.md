@@ -4,12 +4,12 @@ area: TOOL
 title: Support email attachments
 theme: tool-surface
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 05b4c65836249e401564eafa4af4d64085dc8172
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T19:30:08Z
+updated_at: 2026-10-01T21:25:00Z
 ---
 
 ## Goal
@@ -30,11 +30,11 @@ General email tools expose hasAttachments but no list/get attachment tools or ou
 
 ## Steps
 
-- [ ] Add `m365_email_attachments_list` returning bounded metadata pages and `m365_email_attachment_get` returning explicitly requested base64 file bytes only. Preserve an opaque continuation reference validated against the configured Graph host; listing must never return contentBytes.
-- [ ] Bound attachment transport with an optional response-byte ceiling in the Graph helper, used by these calls. Use a 256 KiB decoded inline-download cap, validate metadata before fetch and decoded bytes afterward, and stop oversized responses while streaming. Expose unsupported item/reference attachment types as metadata with a clear unsupported-download error.
-- [ ] Extend standalone send/draft schemas with at most 10 file attachments supplied as validated base64 arguments, each with name and MIME type. Cap decoded bytes at 2 MiB per file and 2 MiB aggregate; cap serialized Graph request bytes below 4,000,000, including message body and base64 overhead. Validate before authentication/network; no arbitrary host paths or OneDrive fetches.
-- [ ] Use fileAttachment payloads in the existing composition handlers; retain behavior when attachments are omitted. Do not add upload sessions or broaden the PDF-saving action. Suppress attachment content from audit logging and errors and label returned bytes as untrusted data.
-- [ ] Test metadata-only listing and pagination, unknown attachment kinds, malformed base64, pre/post-fetch size enforcement, streaming abort, payload-size overflow, authorization failures and unchanged send/draft behavior. Update registrations, smoke inventory and README limits.
+- [x] Add `m365_email_attachments_list` returning bounded metadata pages and `m365_email_attachment_get` returning explicitly requested base64 file bytes only. Preserve an opaque continuation reference validated against the configured Graph host; listing must never return contentBytes.
+- [x] Bound attachment transport with an optional response-byte ceiling in the Graph helper, used by these calls. Use a 256 KiB decoded inline-download cap, validate metadata before fetch and decoded bytes afterward, and stop oversized responses while streaming. Expose unsupported item/reference attachment types as metadata with a clear unsupported-download error.
+- [x] Extend standalone send/draft schemas with at most 10 file attachments supplied as validated base64 arguments, each with name and MIME type. Cap decoded bytes at 2 MiB per file and 2 MiB aggregate; cap serialized Graph request bytes below 4,000,000, including message body and base64 overhead. Validate before authentication/network; no arbitrary host paths or OneDrive fetches.
+- [x] Use fileAttachment payloads in the existing composition handlers; retain behavior when attachments are omitted. Do not add upload sessions or broaden the PDF-saving action. Suppress attachment content from audit logging and errors and label returned bytes as untrusted data.
+- [x] Test metadata-only listing and pagination, unknown attachment kinds, malformed base64, pre/post-fetch size enforcement, streaming abort, payload-size overflow, authorization failures and unchanged send/draft behavior. Update registrations, smoke inventory and README limits.
 
 ## Files touched
 
@@ -65,6 +65,32 @@ Document inline limits, supported fileAttachment type, untrusted-data treatment 
 ### Roadmap
 
 Keep this item as the execution authority; record delivery and review evidence here without accepting or pruning other work.
+
+## Review
+
+### Delivered
+
+Implemented bounded general mail attachments for MCP-M365-TOOL-003 at baseline `05b4c65836249e401564eafa4af4d64085dc8172`. The work is ready for owner review; no live mailbox call was made.
+
+### Change Summary
+
+Added metadata-only attachment listing with a same-message, Graph-host-pinned continuation; explicit small-file download with pre/post-fetch checks and bounded response streaming; and validated base64 attachments for standalone send and draft. Added audit redaction, strict result schemas, 44-tool smoke inventory, user guidance, and [XDR-MCP-M365-001](../decisions/XDR-MCP-M365-001-bounded-email-attachment-transport.md). The existing PDF routing saver and message-scoped reply/forward actions remain outside this surface.
+
+### Verification
+
+`bunx tsc --noEmit`, `bun run test`, `bun run test:coverage` (100% line, branch, function, and statement coverage), `bun run build`, and `bun run ki:test:smoke` passed. Focused `ki-engineering`, `ki-repo-mcp`, `ki-work-roadmap`, `ki-decision-records`, and `ki-guides` audits passed. Tests cover Graph metadata isolation, file type and size rejection, streamed response abort, base64 and request limits, authorization errors, unchanged text-only composition, and audit redaction. The modern and legacy MCP smoke paths see 44 tools. No live Microsoft Graph operation was authorised or run.
+
+### Outstanding concerns
+
+No live Graph attachment behavior is claimed. Files larger than the selected inline/download limits, item/reference attachment download, upload sessions, filesystem paths, and OneDrive coupling require separate decisions and work. A current Graph response can change between metadata and bytes requests; the implementation rejects inconsistent metadata rather than returning an unverified file.
+
+### Post-change review
+
+The new read tools are annotated `READ_ONLY_REMOTE`; composition remains at the existing write level. Content bytes appear only in an explicitly requested download or a caller-supplied send/draft request, never in a metadata page or audit arguments. Parsing and Graph error bodies are suppressed on attachment calls. The change stays within the approved boundary.
+
+### Mini recap
+
+General small-file attachment workflows are implemented and verified offline. The owner can review this packet for acceptance; live provider behavior remains an explicit later check.
 
 ## Discussion
 

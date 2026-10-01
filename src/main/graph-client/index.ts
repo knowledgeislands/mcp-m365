@@ -23,6 +23,11 @@ export interface GraphContext {
   ensureAuthenticated: (forceNew?: boolean) => Promise<string>
 }
 
+export interface GraphCallOptions {
+  maxResponseBytes?: number
+  redactErrorBody?: boolean
+}
+
 /**
  * Host-pin a full URL before we attach the Bearer token to it (SSRF defence,
  * standard §13.5). A full URL only ever reaches `callGraphAPI` via an
@@ -52,7 +57,8 @@ export const callGraphAPI = async <T = GraphResponse>(
   method: string,
   path: string,
   data: unknown = null,
-  queryParams: Record<string, unknown> = {}
+  queryParams: Record<string, unknown> = {},
+  callOptions: GraphCallOptions = {}
 ): Promise<T> => {
   let finalUrl: string
   if (path.startsWith('http://') || path.startsWith('https://')) {
@@ -103,8 +109,26 @@ export const callGraphAPI = async <T = GraphResponse>(
 
     const req = https.request(finalUrl, options, (res) => {
       let responseData = ''
+      let responseBytes = 0
+
+      const contentLength = Number(res.headers['content-length'])
+      if (
+        callOptions.maxResponseBytes !== undefined &&
+        Number.isFinite(contentLength) &&
+        contentLength > callOptions.maxResponseBytes
+      ) {
+        reject(new Error('Graph response exceeds the attachment response byte limit.'))
+        res.destroy()
+        return
+      }
 
       res.on('data', (chunk) => {
+        responseBytes += Buffer.byteLength(chunk)
+        if (callOptions.maxResponseBytes !== undefined && responseBytes > callOptions.maxResponseBytes) {
+          reject(new Error('Graph response exceeds the attachment response byte limit.'))
+          res.destroy()
+          return
+        }
         responseData += chunk
       })
 
@@ -117,12 +141,20 @@ export const callGraphAPI = async <T = GraphResponse>(
             const jsonResponse = JSON.parse(responseData) as T
             resolve(jsonResponse)
           } catch (error) {
-            reject(new Error(`Error parsing API response: ${errMessage(error)}`))
+            reject(
+              new Error(
+                callOptions.redactErrorBody
+                  ? 'Invalid Graph attachment response.'
+                  : `Error parsing API response: ${errMessage(error)}`
+              )
+            )
           }
         } else if (status === 401) {
           reject(new Error('UNAUTHORIZED'))
         } else {
-          reject(new Error(`API call failed with status ${status}: ${responseData}`))
+          reject(
+            new Error(`API call failed with status ${status}${callOptions.redactErrorBody ? '' : `: ${responseData}`}`)
+          )
         }
       })
     })

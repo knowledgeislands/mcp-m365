@@ -44,6 +44,19 @@ describe('appendAuditEvent / withAuditLog (mcp-m365)', () => {
     expect(event.args).toEqual({ id: 'm1' })
   })
 
+  it('never records inline attachment bytes or names', async () => {
+    const { withAuditLog } = await import('./audit-log.js')
+    const wrapped = withAuditLog(auditCfg(), 'm365_email_message_send', 'write', async () => ({
+      content: [{ type: 'text', text: 'ok' }]
+    }))
+    await wrapped({ to: 'a@example.com', attachments: [{ name: 'private.pdf', contentBytes: 'c2VjcmV0' }] })
+    await flushAsync()
+    const line = (await fs.readFile(logPath, 'utf-8')).trim()
+    expect(line).not.toContain('private.pdf')
+    expect(line).not.toContain('c2VjcmV0')
+    expect(JSON.parse(line).args.attachments).toBe('[redacted attachments]')
+  })
+
   it('redacts a rule document, which would otherwise be logged verbatim on every scheduled routing run', async () => {
     const { withAuditLog } = await import('./audit-log.js')
     const wrapped = withAuditLog(auditCfg(), 'm365_email_routing_triage', 'destructive', async () => ({
