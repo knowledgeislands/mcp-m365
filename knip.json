@@ -4,7 +4,8 @@
     "src/mcp-server/index.ts!",
     "src/config/index.ts!",
     "src/main/*/index.ts!",
-    "scripts/*.ts",
+    "scripts/integration.ts",
+    "scripts/smoke.ts",
     "src/auth-server/index.ts!"
   ],
   "project": ["src/**/*.ts", "scripts/**/*.ts"],
