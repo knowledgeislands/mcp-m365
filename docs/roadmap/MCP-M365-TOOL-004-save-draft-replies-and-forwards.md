@@ -4,12 +4,12 @@ area: TOOL
 title: Save draft replies
 theme: tool-surface
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 328b8269cc4c7491d0008014099752ad4ea914b7
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T20:52:04Z
+updated_at: 2026-10-02T02:20:58Z
 ---
 
 ## Goal
@@ -90,6 +90,10 @@ The new tools are distinct from the send actions and standalone draft creation. 
 ### Mini recap
 
 Reviewable message-scoped drafts are implemented and verified offline. The item remains Awaiting review until explicit acceptance; no live message was sent or remote Git ref pushed.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 

@@ -4,12 +4,12 @@ area: TOOL
 title: Add reply support
 theme: tool-surface
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 36c2cc22b7d59ed6f982d1a0e26a38fde12af1b4
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T20:46:59Z
+updated_at: 2026-10-02T02:20:58Z
 ---
 
 ## Goal
@@ -90,6 +90,10 @@ The tool names make recipient expansion visible before the caller opts into an e
 ### Mini recap
 
 Reply support and its documentation are delivered and verified offline. The item remains Awaiting review until explicit acceptance; no remote Git ref was pushed.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 

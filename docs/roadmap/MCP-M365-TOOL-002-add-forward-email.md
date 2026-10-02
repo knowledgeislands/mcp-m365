@@ -4,12 +4,12 @@ area: TOOL
 title: Add forward email
 theme: tool-surface
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: ab597c4b7d74deb355f5cfbf1f66c705762d3e80
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T20:56:26Z
+updated_at: 2026-10-02T02:20:58Z
 ---
 
 ## Goal
@@ -90,6 +90,10 @@ The input cannot override message body or headers, and the forward result does n
 ### Mini recap
 
 The additive forward action is delivered and verified offline, with no live send or remote Git push. The item remains Awaiting review until explicit acceptance.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 

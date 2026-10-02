@@ -4,12 +4,12 @@ area: TOOL
 title: Support email attachments
 theme: tool-surface
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 05b4c65836249e401564eafa4af4d64085dc8172
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T21:25:00Z
+updated_at: 2026-10-02T02:20:58Z
 ---
 
 ## Goal
@@ -91,6 +91,10 @@ The new read tools are annotated `READ_ONLY_REMOTE`; composition remains at the 
 ### Mini recap
 
 General small-file attachment workflows are implemented and verified offline. The owner can review this packet for acceptance; live provider behavior remains an explicit later check.
+
+## Done
+
+Accepted 2026-10-02 by Kris Brown on the review packet above.
 
 ## Discussion
 
