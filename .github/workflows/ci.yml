@@ -12,7 +12,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: jdx/mise-action@v4
       - run: bun install --frozen-lockfile
-      - name: Install isolated released KI CLI
+      - name: Link latest KI from main
         env:
           KI_ROOT: ${{ runner.temp }}/ki-fnd-001
         run: |
@@ -26,15 +26,15 @@ jobs:
           export XDG_CACHE_HOME="$KI_ROOT/cache"
           export XDG_STATE_HOME="$KI_ROOT/state"
           mkdir -p "$KI_ROOT"
-          curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/knowledgeislands/tools-ki/v0.4.1/install.sh \
-            --output "$KI_ROOT/install.sh"
-          bash "$KI_ROOT/install.sh" v0.4.1
+          git clone --quiet --depth 1 --branch main https://github.com/knowledgeislands/tools-ki.git "$RUNNER_TEMP/tools-ki-source"
+          printf 'KI source commit: %s\n' "$(git -C "$RUNNER_TEMP/tools-ki-source" rev-parse HEAD)"
+          (cd "$RUNNER_TEMP/tools-ki-source" && bun install --frozen-lockfile)
+          bash "$RUNNER_TEMP/tools-ki-source/install.sh" --link
           export PATH="$KI_CLI_INSTALL_DIR:$PATH"
           test "$(command -v ki)" = "$KI_CLI_INSTALL_DIR/ki"
-          test "$(ki --version)" = "0.4.1"
+          ki --version
           ki manage diag | tee "$KI_ROOT/ki-diag-before-bootstrap.txt"
-          grep -F "Installation: regular" "$KI_ROOT/ki-diag-before-bootstrap.txt"
+          grep -F "Installation: local" "$KI_ROOT/ki-diag-before-bootstrap.txt"
           grep -F "Executable: $KI_CLI_INSTALL_DIR/ki" "$KI_ROOT/ki-diag-before-bootstrap.txt"
           ki bootstrap
           ki registry add --repo .
