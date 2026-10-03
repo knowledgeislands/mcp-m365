@@ -8,7 +8,7 @@
     "mcp-m365-auth": "dist/auth-server/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.1.0",
+    "@modelcontextprotocol/server": "2.2.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
