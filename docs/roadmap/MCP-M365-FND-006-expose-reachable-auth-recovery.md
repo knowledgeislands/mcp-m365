@@ -4,13 +4,13 @@ area: FND
 title: Expose reachable auth recovery
 theme: foundation-tooling
 horizon: next
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: b36d28867903a7b4ff491c1c2e0ed761adfee9ce
 transferred_from: KI-ARCADIA-ECO-004
 created_at: 2026-10-04T10:40:30Z
-updated_at: 2026-10-04T12:14:24Z
+updated_at: 2026-10-04T12:16:52Z
 ---
 
 ## Goal
@@ -106,6 +106,10 @@ Centralising the message removes 31 copies that could drift independently, and t
 ### Mini recap
 
 A read-level caller whose Microsoft 365 sign-in has lapsed is now told the browser route that works at its level, with `m365_auth_start` correctly qualified, from one shared message.
+
+## Done
+
+Accepted 2026-10-04 on the review packet above, under the owner's delegated estate-push authority following an independent Fable review, which returned ACCEPT: the 31 literal replacements change no handler control flow, `m365_auth_start` keeps `WRITE_REMOTE` and is pinned through the real access gate, the hint is accurate at every access level, and typecheck and 1139 tests at 100% coverage pass. Advisory note retained: the hint's `bun run ki:server:auth:dev` assumes a source checkout, as recorded under Outstanding concerns.
 
 ## Discussion
 
