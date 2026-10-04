@@ -2,6 +2,7 @@
  * Delete email functionality (move to Deleted Items / trash)
  */
 
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
@@ -61,7 +62,7 @@ export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Prom
     }
   } catch (error: any) {
     if (error.message === 'Authentication required' || error.message === 'UNAUTHORIZED') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
     return errorText(`Failed to delete email: ${error.message}`)
   }

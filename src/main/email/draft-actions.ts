@@ -1,5 +1,6 @@
 /** Message-scoped drafts use Graph's own quoted-content and recipient preparation. */
 import { z } from 'zod'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
@@ -81,7 +82,7 @@ export const handleDraftAction = async (ctx: GraphContext, args: DraftActionArgs
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message === 'Authentication required' || message === 'UNAUTHORIZED') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
     if (message.includes('403')) return errorText(`Failed to create draft: ${message}. Confirm Mail.ReadWrite consent.`)
     return errorText(`Failed to create draft: ${message}`)

@@ -1,4 +1,6 @@
 /** Forward one original message without downloading or rebuilding its content. */
+
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { draftRecipientSchema } from './draft-actions.js'
@@ -46,7 +48,7 @@ export const handleForwardEmail = async (ctx: GraphContext, args: ForwardArgs) =
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message === 'Authentication required' || message === 'UNAUTHORIZED') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
     return errorText(`Failed to forward email: ${message}`)
   }

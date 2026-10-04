@@ -5,6 +5,7 @@
  * be used for prompt injection attacks. Only visible text is extracted.
  */
 import { EMAIL_DETAIL_FIELDS } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { processHtmlEmail } from '../../utils/html-sanitizer.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
@@ -103,7 +104,7 @@ ${body}`
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error accessing email: ${error.message}`)

@@ -71,7 +71,7 @@ Revoking there invalidates the refresh token, so the next silent refresh fails a
 
 ## Recover from a failed sign-in
 
-- **`Authentication required. Please use the 'm365_auth_start' tool first.`** — there are no usable tokens. Either you have not signed in, the token file was deleted, or a refresh failed. Run the sign-in flow again. If `m365_auth_start` is not in your client's tool list, that is the access level, not a fault: use the browser route.
+- **`Authentication required. Sign in again in a browser: …`** — there are no usable tokens. Either you have not signed in, the token file was deleted, or a refresh failed. Run the sign-in flow again. The message leads with the browser route; if `m365_auth_start` is not in your client's tool list, that is the access level, not a fault.
 - **`m365_auth_start` is not offered by the client at all.** It derives the `write` level. Raise `MCP_M365_ACCESS_LEVEL` and restart the server, or sign in through <http://localhost:3333/auth> instead.
 - **The browser never reaches the callback.** The callback server is not running, or it is not on the port in the redirect URI. Start it, and check `MCP_M365_AUTH_PORT` against the URI registered in Azure.
 - **<http://localhost:3333/auth> returns a configuration error.** The callback server has no client ID or client secret in its environment. It reads the same variables the MCP server does, so check `.env.development` or the environment you started it from.

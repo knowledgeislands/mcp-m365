@@ -1,4 +1,6 @@
 /** Reply actions let Graph own threading and recipient derivation. */
+
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
@@ -38,7 +40,7 @@ export const handleReplyEmail = async (ctx: GraphContext, args: ReplyArgs, kind:
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     if (message === 'Authentication required' || message === 'UNAUTHORIZED') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
     return errorText(`Failed to ${kind === 'replyAll' ? 'reply to all' : 'reply'}: ${message}`)
   }

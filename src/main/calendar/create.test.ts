@@ -1,5 +1,6 @@
 import type { Mock } from 'vitest'
 import { DEFAULT_TIMEZONE, GRAPH_API_ENDPOINT } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import { handleCreateEvent } from './create.js'
 
@@ -142,7 +143,7 @@ describe('handleCreateEvent', () => {
     }
 
     const result = await handleCreateEvent(ctx, args)
-    expect(result.content[0].text).toBe("Authentication required. Please use the 'm365_auth_start' tool first.")
+    expect(result.content[0].text).toBe(AUTH_REQUIRED_MESSAGE)
     expect(mockCallGraphAPI).not.toHaveBeenCalled()
   })
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { errCode, errMessage } from './errors.js'
+import { AUTH_HINT, AUTH_REQUIRED_MESSAGE, errCode, errMessage } from './errors.js'
 
 describe('errMessage', () => {
   it('returns message from Error instances', () => {
@@ -47,6 +47,21 @@ describe('errMessage', () => {
 
   it('appends auth hint when message hints at unauthorized', () => {
     expect(errMessage(new Error('InvalidAuthenticationToken'))).toContain('m365_auth_start')
+  })
+
+  it('leads with recovery that works at the default read level', () => {
+    // m365_auth_start is a write tool, so the browser route comes first and the
+    // tool is qualified by the access level and restart it needs.
+    expect(AUTH_HINT).toContain('`bun run ki:server:auth:dev`')
+    expect(AUTH_HINT).toContain('`/auth` page')
+    expect(AUTH_HINT.indexOf('/auth')).toBeLessThan(AUTH_HINT.indexOf('m365_auth_start'))
+    expect(AUTH_HINT).toContain('MCP_M365_ACCESS_LEVEL=write')
+    expect(AUTH_HINT).toMatch(/client restart/)
+    expect(AUTH_HINT).not.toMatch(/localhost|https?:\/\/|oauth-tokens|secret/i)
+  })
+
+  it('builds the authentication-required message from the same hint', () => {
+    expect(AUTH_REQUIRED_MESSAGE).toBe(`Authentication required. ${AUTH_HINT}`)
   })
 
   it('does not append auth hint on non-auth failures', () => {

@@ -2,6 +2,7 @@
  * Send email functionality
  */
 
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { assertAttachmentRequestSize, prepareInlineAttachments } from './attachments.js'
@@ -91,7 +92,7 @@ export const handleSendEmail = async (ctx: GraphContext, args: any): Promise<any
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error sending email: ${error.message}`)

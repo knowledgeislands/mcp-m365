@@ -316,7 +316,7 @@ describe('handleSearchEmails', () => {
     const result = await handleSearchEmails(ctx, { query: 'q', count: 10 })
 
     expect(result.isError).toBe(true)
-    expect(result.content[0].text).toContain("'m365_auth_start'")
+    expect(result.content[0].text).toContain('`m365_auth_start`')
     expect(result.structuredContent).toMatchObject({
       type: 'email-search',
       success: false,

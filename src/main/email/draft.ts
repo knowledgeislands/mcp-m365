@@ -2,6 +2,7 @@
  * Draft email functionality
  */
 
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { assertAttachmentRequestSize, prepareInlineAttachments } from './attachments.js'
@@ -75,7 +76,7 @@ export const handleDraftEmail = async (ctx: GraphContext, args: any): Promise<an
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     if (error.message?.includes('status 403')) {

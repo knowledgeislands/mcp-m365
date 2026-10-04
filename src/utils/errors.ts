@@ -10,8 +10,18 @@ interface GraphErrorShape {
 }
 
 // Appended to error messages when Microsoft Graph returns 401, so callers see
-// the remedy in-line rather than a bare HTTP code.
-const AUTH_HINT = 'Run the `m365_auth_start` tool to refresh the OAuth token.'
+// the remedy in-line rather than a bare HTTP code. `m365_auth_start` persists
+// tokens, so it is a write tool absent at the default read level; the hint
+// therefore leads with the browser route, which works at every level. It names
+// the callback server's `/auth` path rather than an address, because the
+// callback URL is operator configuration.
+export const AUTH_HINT =
+  'Sign in again in a browser: start the OAuth callback server (`bun run ki:server:auth:dev`) and open its ' +
+  '`/auth` page. The `m365_auth_start` tool runs the same flow but is registered only at ' +
+  'MCP_M365_ACCESS_LEVEL=write or above, and changing the level needs a client restart.'
+
+/** Returned by handlers when no usable token exists (`Error('Authentication required')`). */
+export const AUTH_REQUIRED_MESSAGE = `Authentication required. ${AUTH_HINT}`
 
 const looksLikeAuthFailure = (status: number | undefined, msg: string): boolean => {
   if (status === 401) return true

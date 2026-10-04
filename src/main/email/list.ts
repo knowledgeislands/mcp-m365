@@ -3,6 +3,7 @@
  */
 import { z } from 'zod'
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { callGraphAPIPaginated, type GraphContext } from '../graph-client/index.js'
 import { resolveFolderPath } from './folder-utils.js'
 
@@ -109,7 +110,7 @@ export const handleListEmails = async (ctx: GraphContext, args: any): Promise<an
     if (error.message === 'Authentication required') {
       return {
         isError: true as const,
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
+        content: [{ type: 'text', text: AUTH_REQUIRED_MESSAGE }]
       }
     }
     return {

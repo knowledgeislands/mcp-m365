@@ -3,6 +3,7 @@
  */
 import { z } from 'zod'
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { escapeKqlValue } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPIPaginated, type GraphContext } from '../graph-client/index.js'
@@ -96,7 +97,7 @@ export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<
         content: [
           {
             type: 'text',
-            text: "Authentication required. Please use the 'm365_auth_start' tool first."
+            text: AUTH_REQUIRED_MESSAGE
           }
         ],
         structuredContent: {

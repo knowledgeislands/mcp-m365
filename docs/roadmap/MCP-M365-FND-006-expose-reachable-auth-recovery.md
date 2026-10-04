@@ -4,13 +4,13 @@ area: FND
 title: Expose reachable auth recovery
 theme: foundation-tooling
 horizon: next
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: b36d28867903a7b4ff491c1c2e0ed761adfee9ce
 transferred_from: KI-ARCADIA-ECO-004
 created_at: 2026-10-04T10:40:30Z
-updated_at: 2026-10-04T12:12:19Z
+updated_at: 2026-10-04T12:14:24Z
 ---
 
 ## Goal
@@ -33,10 +33,10 @@ Capture recovery guidance and its access-tier reachability only. Preserve the tr
 
 ## Steps
 
-- [ ] Rewrite `AUTH_HINT` so it leads with the browser route (start the callback server with `bun run ki:server:auth:dev` and open its `/auth` page), then states that `m365_auth_start` runs the same flow only at `MCP_M365_ACCESS_LEVEL=write` or above and that changing the level needs a client restart. Name no fixed host or port and no token path; the callback address stays the operator's configured one, as the guides explain.
-- [ ] Add one exported `AUTH_REQUIRED_MESSAGE` built from the same hint, and replace the 31 duplicated "Authentication required" literals with it, keeping each handler's control flow unchanged.
-- [ ] Add tests: hint and message content; the read-level access gate omits `m365_auth_start` while `m365_auth_status` remains, and the write level registers it with unchanged `WRITE_REMOTE` annotations; update the handler tests that pin the old literal. No consent, token store or Graph call is involved.
-- [ ] Update the troubleshooting guide's entry for the old message text.
+- [x] Rewrite `AUTH_HINT` so it leads with the browser route (start the callback server with `bun run ki:server:auth:dev` and open its `/auth` page), then states that `m365_auth_start` runs the same flow only at `MCP_M365_ACCESS_LEVEL=write` or above and that changing the level needs a client restart. Name no fixed host or port and no token path; the callback address stays the operator's configured one, as the guides explain.
+- [x] Add one exported `AUTH_REQUIRED_MESSAGE` built from the same hint, and replace the 31 duplicated "Authentication required" literals with it, keeping each handler's control flow unchanged.
+- [x] Add tests: hint and message content; the read-level access gate omits `m365_auth_start` while `m365_auth_status` remains, and the write level registers it with unchanged `WRITE_REMOTE` annotations; update the handler tests that pin the old literal. No consent, token store or Graph call is involved.
+- [x] Update the troubleshooting guide's entry for the old message text.
 
 ## Files touched
 
@@ -67,6 +67,45 @@ None.
 ### Roadmap
 
 This record only.
+
+## Review
+
+### Delivered
+
+Every authentication failure now carries recovery a read-level caller can follow. `AUTH_HINT` leads with the browser route (start the callback server with `bun run ki:server:auth:dev` and open its `/auth` page), then says `m365_auth_start` runs the same flow only at `MCP_M365_ACCESS_LEVEL=write` or above and that changing the level needs a client restart. The 31 duplicated "Authentication required. Please use the 'm365_auth_start' tool first." literals are replaced by one `AUTH_REQUIRED_MESSAGE` built from the same hint. Annotations, the default read level, token handling and consent are unchanged.
+
+### Change Summary
+
+- `src/utils/errors.ts`: exported `AUTH_HINT` and new `AUTH_REQUIRED_MESSAGE`.
+- 31 handler modules under `src/main/`: the literal replaced with `AUTH_REQUIRED_MESSAGE`; control flow untouched.
+- `src/utils/errors.test.ts`: hint ordering and content, no host, URL, token path or secret; message composition.
+- `src/tools/auth/index.test.ts` (new): through `makeAccessGatedRegister`, `m365_auth_start` is absent at `read` while `m365_auth_status` remains, and present at `write` with `WRITE_REMOTE`; no handler runs.
+- `src/main/calendar/create.test.ts`, `src/main/email/list.test.ts`, `src/main/email/search.test.ts`: assertions follow the new message.
+- `docs/guides/user/troubleshooting.md`, `docs/guides/user/authentication.md`, `AGENTS.md` (security invariant 8): quoted message and hint contract updated.
+
+### Verification
+
+- `bun run test:coverage`: 1139 tests pass; statements, branches, functions and lines 100%.
+- `bunx tsc --noEmit`, `bun run build`, `bun run ki:test:smoke` (44 tools, valid envelope): pass.
+- `bunx biome check .`: clean apart from one pre-existing info; `bunx knip`: only pre-existing configuration hints.
+- `grep` finds no remaining "Please use the 'm365_auth_start' tool first" in `src`.
+- `ki repo audit --repo .`: no FAIL.
+- No account, token store, browser consent or Graph call was used.
+
+### Outstanding concerns
+
+- The hint is static: it does not print the configured callback address, by design, so an operator with a non-default `MCP_M365_REDIRECT_URI` must know their own callback host; the guides cover this.
+- `bun run ki:server:auth:dev` assumes a source checkout; installed users run the compiled auth server as the installation guide describes.
+- `AGENTS.md` and `docs/guides/user/authentication.md` were outside the planned Files touched but quoted the superseded text.
+- A release is needed for installed users to receive the new messages.
+
+### Post-change review
+
+Centralising the message removes 31 copies that could drift independently, and the registration test runs the real access-gate proxy over the real auth tool definitions, so an annotation change on `m365_auth_start` would fail it. The 401 path and the no-token path now give identical remedies.
+
+### Mini recap
+
+A read-level caller whose Microsoft 365 sign-in has lapsed is now told the browser route that works at its level, with `m365_auth_start` correctly qualified, from one shared message.
 
 ## Discussion
 

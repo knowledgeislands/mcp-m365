@@ -2,6 +2,7 @@
  * OneDrive simple upload functionality (files < 4MB)
  */
 import { ONEDRIVE_UPLOAD_THRESHOLD } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
@@ -51,7 +52,7 @@ export const handleUpload = async (ctx: GraphContext, args: any): Promise<any> =
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error uploading file: ${error.message}`)

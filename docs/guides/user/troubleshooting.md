@@ -25,7 +25,7 @@ bun install
 
 ## The sign-in fails
 
-**`Authentication required. Please use the 'm365_auth_start' tool first.`** There are no usable tokens — you have not signed in, the token file was deleted, or a refresh failed. Run the flow in [Sign in](authentication.md). The message names a tool that is not registered at the default access level; the browser route at <http://localhost:3333/auth> is the one to use, and it works at every level.
+**`Authentication required. Sign in again in a browser: …`** There are no usable tokens — you have not signed in, the token file was deleted, or a refresh failed. Run the flow in [Sign in](authentication.md). The message leads with the browser route through the callback server's `/auth` page, by default <http://localhost:3333/auth>, which works at every access level; `m365_auth_start` appears in your client only at `write` or above. A Graph failure that ends with the same "Sign in again" text has the same remedy.
 
 **`Port 3333 in use`.** Something else owns the callback port:
 

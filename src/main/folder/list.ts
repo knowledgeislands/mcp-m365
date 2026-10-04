@@ -2,6 +2,7 @@
  * List folders functionality
  */
 import { z } from 'zod'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import type { GraphContext } from '../graph-client/index.js'
 import { fetchFoldersRecursive } from './folder-utils.js'
 
@@ -56,7 +57,7 @@ export const handleListFolders = async (ctx: GraphContext, args: any): Promise<a
     if (error.message === 'Authentication required') {
       return {
         isError: true as const,
-        content: [{ type: 'text', text: "Authentication required. Please use the 'm365_auth_start' tool first." }]
+        content: [{ type: 'text', text: AUTH_REQUIRED_MESSAGE }]
       }
     }
 

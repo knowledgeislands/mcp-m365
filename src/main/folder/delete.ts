@@ -2,6 +2,7 @@
  * Delete folder functionality
  */
 
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 import { getFolderIdByName } from './folder-utils.js'
@@ -41,7 +42,7 @@ export const handleDeleteFolder = async (ctx: GraphContext, args: any): Promise<
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error deleting folder: ${formatFolderDeleteError(error, deleteContext)}`)

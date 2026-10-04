@@ -1,5 +1,6 @@
 import type { Mock, MockInstance } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { callGraphAPIPaginated } from '../graph-client/index.js'
 import { resolveFolderPath, WELL_KNOWN_FOLDERS } from './folder-utils.js'
 import { handleListEmails } from './list.js'
@@ -251,7 +252,7 @@ describe('handleListEmails', () => {
 
       const result = await handleListEmails(ctx, {})
 
-      expect(result.content[0].text).toBe("Authentication required. Please use the 'm365_auth_start' tool first.")
+      expect(result.content[0].text).toBe(AUTH_REQUIRED_MESSAGE)
       expect(mockCallGraphAPIPaginated).not.toHaveBeenCalled()
     })
 

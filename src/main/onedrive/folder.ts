@@ -2,6 +2,7 @@
  * OneDrive folder operations (create/delete)
  */
 
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { sanitizeOneDrivePath } from '../../utils/odata-helpers.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
@@ -46,7 +47,7 @@ export const handleCreateFolder = async (ctx: GraphContext, args: any): Promise<
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error creating folder: ${error.message}`)
@@ -105,7 +106,7 @@ export const handleDeleteItem = async (ctx: GraphContext, args: any): Promise<an
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error deleting item: ${error.message}`)

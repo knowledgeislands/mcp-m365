@@ -2,6 +2,7 @@
  * OneDrive search files functionality
  */
 import { ONEDRIVE_SELECT_FIELDS } from '../../config/index.js'
+import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
@@ -47,7 +48,7 @@ export const handleSearchFiles = async (ctx: GraphContext, args: any): Promise<a
     }
   } catch (error: any) {
     if (error.message === 'Authentication required') {
-      return errorText("Authentication required. Please use the 'm365_auth_start' tool first.")
+      return errorText(AUTH_REQUIRED_MESSAGE)
     }
 
     return errorText(`Error searching files: ${error.message}`)
