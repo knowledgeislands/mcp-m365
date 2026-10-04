@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-01T19:27:46Z
+updated_at: 2026-10-04T10:57:33Z
 ---
 
 ## Goal
@@ -42,6 +42,14 @@ Decisions still needed before this is promotable:
 - How `src/main/auth/index.test.ts` and `src/main/auth/handlers.test.ts` reach the repository's 100% coverage thresholds once the network path sits inside a third-party library rather than in `node:https` calls this repository can stub.
 
 Promotion to `next` is warranted once the cache-persistence and token-file-compatibility decisions are made and the coverage approach is agreed, because those three determine whether this is a contained swap or a migration with user-visible consequences.
+
+## Planning boundary and review outcome
+
+The MSAL migration remains a compatibility-sensitive refactor rather than a dependency replacement ready for implementation. Before selection/readiness, produce an explicit design for both the MCP refresh/exchange path and the standalone callback exchange. Identify the current token-file consumers, choose preserved-file versus migrated-cache behavior, and specify backup, atomic 0600 persistence, rollback, and recovery when migration fails. Preserve public auth factory signatures and authentication-required errors unless a separate compatibility change is approved.
+
+Choose how authority/tenant/token-endpoint overrides map to MSAL or are rejected with a documented migration path; do not silently ignore a configured endpoint. Decide cross-process token ownership and refresh serialization, rather than treating an in-process single-flight promise as a cross-process lock. Define an injectable MSAL test seam and offline fixture coverage for cache load/save, refresh omission, concurrent calls, code exchange, migration/rollback, errors, and token secrecy. Verify built Node 22 runtime compatibility and the existing full coverage gates.
+
+Expected later scope includes `src/main/auth/`, `src/auth-server/`, configuration and tests, package metadata/lockfile, and authentication/configuration/operator migration guides. A reversible migration design is required before adopting a new runtime dependency. Current Soon/Draft state remains honest; none of the cache, override, rollback, or concurrency decisions is approved by this analysis. Reachable read-tier recovery guidance is separately owned by MCP-M365-FND-006 and must not be duplicated into the MSAL migration.
 
 ## Discussion
 

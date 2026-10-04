@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-02T02:32:26Z
+updated_at: 2026-10-04T10:57:33Z
 ---
 
 ## Goal
@@ -23,6 +23,57 @@ Add mailbox triage helpers.
 ## Boundary
 
 Keep the work limited to the stated surface.
+
+## Shaping
+
+Propose verification-only reconciliation of the existing four-tool routing delivery. Owner confirmation that this delivered surface satisfies the broad Goal is needed before readiness; no new routing behavior is implied. Preserve Future/Draft until selection and plan approval.
+
+## Current state
+
+Delivery commit `af0dbd6eaceb4123218446ee76b14a2b3cccf5f5` is an ancestor of reviewed `8d7d09d7e9a197b80250073902d794e50b0012f9`. The four routing tools are present and connected; later rule-driven PDF-saving changes are present too. A fixture-only suite on that reviewed revision passed 37 files and 1,135 tests. This is historical verification evidence, not a fresh claim about subsequent commits or a complete delivery gate.
+
+### Existing behavior to reconcile
+
+`m365_email_routing_triage` and `m365_email_routing_aged` default to report mode; explicit live mode permits mailbox mutations. Their action bound defaults to 50 and caps at 200. Lint is read-only. Drift is deliberately annotated `DESTRUCTIVE_ONESHOT_REMOTE`: it advances the local tracking sweep and can prune tracked history, so it is not a read-only scan. Preserve its batch/progress-to-zero contract. Rules remain caller-owned and reread, tracking and destination paths remain confined, and PDF saving remains bounded and rule-driven.
+
+## Steps
+
+- [ ] Confirm that the existing routing surface satisfies this item's Goal and approve a verification-only delivery boundary.
+- [ ] Recheck historical commit ancestry, current primary checkout, and any linked task/worktree ownership before execution.
+- [ ] Map each existing safety, batch, progress, schema, and tool-inventory criterion to implementation, fixtures, and guide evidence.
+- [ ] Run complete gates against the immutable execution baseline, without live Graph operations or user tracking/rule files.
+- [ ] Correct only demonstrated documentation inconsistencies; stop and replan if a behavior repair is needed.
+- [ ] Produce a six-heading Review packet identifying delivered commits, fresh verification, limitations, and independent review.
+
+## Files touched
+
+This roadmap item, and only if demonstrated inconsistencies require it, README and `docs/guides/user/email-routing.md`. Source and fixture tests are evidence, not planned implementation edits.
+
+## Verify
+
+Run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, and focused engineering, MCP, work, and roadmap audits sequentially. Inspect report-default assertions, drift sweep termination, access annotations, path containment, shared result schemas, registration inventory, and smoke behavior. No real mailbox mutations, provider calls, token changes, or caller rule/tracking files are permitted by this verification slice.
+
+## Dependencies / blocks
+
+No local build-order blocker is identified because the source already exists. Owner agreement on Goal coverage and current task/worktree reconciliation remain prerequisites; missing ownership evidence is not evidence of availability. Auth-recovery work is independently owned by MCP-M365-FND-006.
+
+## Documentation impact
+
+### Decision Records
+
+No new architecture is proposed; this records and verifies existing delivery.
+
+### Specifications
+
+No new behavior is accepted; review existing annotations, bounds, result schemas, and progress guarantees against fixture evidence.
+
+### Guides
+
+Verify the existing email-routing guide, especially report defaults and drift's tracking mutation; amend only concrete inaccuracies.
+
+### Roadmap
+
+Keep this record and its Future/Draft state until selection and approval. Reconciliation must not fabricate extra implementation or infer acceptance from source presence.
 
 ## Discussion
 
