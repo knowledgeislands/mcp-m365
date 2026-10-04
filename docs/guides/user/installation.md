@@ -58,9 +58,9 @@ Restart the client after editing its configuration. Most MCP clients read the fi
 
 By default the server registers only its read-only tools. That is deliberate and it is the right place to start: confirm the connection works before widening it. When you are ready to send, move, or delete anything, add `MCP_M365_ACCESS_LEVEL` to the same `env` block and read the access-level section of [Configure the server](configuration.md) first.
 
-### Using the published package instead
+### Installation source
 
-The package publishes as `@knowledgeislands/mcp-m365` with two executables, `mcp-m365` for the MCP server and `mcp-m365-auth` for the OAuth callback server. If you install it rather than working from a checkout, point `command` at `mcp-m365` instead of at `node` and a `dist/` path, and drop `args`. Everything else in this guide — the credentials, the callback server, the sign-in — is identical.
+Build from the source checkout and use its absolute `dist/mcp-server/index.js` path in your client's configuration, as shown above. The `@knowledgeislands/mcp-m365` package is not currently available from npm; the package manifest's executable names do not provide a registry installation route.
 
 ## Start the OAuth callback server
 
