@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-04T10:57:33Z
+updated_at: 2026-10-04T18:01:50Z
 ---
 
 ## Goal
@@ -64,3 +64,9 @@ An existing user has a populated token file and a working consent. Any approach 
 ### Readiness review
 
 Readiness requires a chosen token-cache migration and rollback path preserving atomic 0600 writes and concurrent refresh handling across both processes. Existing OAuth service configuration overrides need explicit disposition; library adoption alone is not a complete plan.
+
+### Question for Kris (2026-10-04)
+
+Must the existing `~/.mcp-m365-tokens.json` keep working unchanged after the MSAL migration (no forced re-authentication), and may the `MCP_M365_TOKEN_ENDPOINT` override be dropped in favour of MSAL authority configuration?
+
+Classified as an owner decision by the Fable reviewer under delegated autonomy (2026-10-04): The cache-compatibility choice decides whether this is an internal refactor or a user-visible authentication regression, and end-to-end verification needs live Entra credentials.
