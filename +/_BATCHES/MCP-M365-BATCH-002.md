@@ -17,3 +17,8 @@ policy: safe-local-v1
 ## Run ledger
 
 <!-- ki-batch-run: MCP-M365-BATCH-002-RUN-001 94dd09ce71b2dc66cd106eb77dc8c72bcaf754dba44cd540ddde4289b9c87a46 -->
+| Item | Result | Baseline | Result commit | Exception |
+| --- | --- | --- | --- | --- |
+| MCP-M365-FND-001 | done | `e7e17a8ba4f8e6b27cab03fc9c1ad3d69db2521a` | `77f9e9ff546a31d68473ed4a27ae710363eab2ef` | None |
+
+<!-- ki-batch-close: MCP-M365-BATCH-002 done 77f9e9ff546a31d68473ed4a27ae710363eab2ef -->
