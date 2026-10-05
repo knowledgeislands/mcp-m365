@@ -3,13 +3,13 @@ id: MCP-M365-TOOL-006
 area: TOOL
 title: Add mailbox triage helpers
 theme: tool-surface
-horizon: future
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-04T10:57:33Z
+updated_at: 2026-10-05T07:35:47Z
 ---
 
 ## Goal
@@ -74,6 +74,10 @@ Verify the existing email-routing guide, especially report defaults and drift's 
 ### Roadmap
 
 Keep this record and its Future/Draft state until selection and approval. Reconciliation must not fabricate extra implementation or infer acceptance from source presence.
+
+## Outcome-authority selection
+
+Selected under the current human instruction to finish eligible MCP roadmap outcomes autonomously. Scheduling admits the bounded read-only getSchedule slice already specified; routing admits fixture-only reconciliation of the existing four-tool delivery. Earlier pending-approval text is historical shaping, superseded by this scoped selection. MSAL migration remains outside this batch because its endpoint/cache compatibility decisions are unresolved. No live Graph/OAuth action, push or pruning is included. Final state requires independent root review.
 
 ## Discussion
 

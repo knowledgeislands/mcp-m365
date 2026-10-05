@@ -3,13 +3,13 @@ id: MCP-M365-TOOL-005
 area: TOOL
 title: Add scheduling helpers
 theme: tool-surface
-horizon: future
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-04T10:57:33Z
+updated_at: 2026-10-05T07:35:47Z
 ---
 
 ## Goal
@@ -77,6 +77,10 @@ Add UTC usage, request limits, partial-error handling, and work/school-account r
 ### Roadmap
 
 Retain this canonical item and its Draft/Future state pending scope approval; do not silently promise the excluded scheduling assistance.
+
+## Outcome-authority selection
+
+Selected under the current human instruction to finish eligible MCP roadmap outcomes autonomously. Scheduling admits the bounded read-only getSchedule slice already specified; routing admits fixture-only reconciliation of the existing four-tool delivery. Earlier pending-approval text is historical shaping, superseded by this scoped selection. MSAL migration remains outside this batch because its endpoint/cache compatibility decisions are unresolved. No live Graph/OAuth action, push or pruning is included. Final state requires independent root review.
 
 ## Discussion
 

@@ -1,0 +1,15 @@
+---
+id: MCP-M365-BATCH-001
+repository: https://github.com/knowledgeislands/mcp-m365
+approved: true
+approved_at: 2026-10-05T07:35:48Z
+authority_mode: outcome
+authority_evidence: "Current user explicitly instructed autonomous completion of eligible MCP roadmap items with delegated delivery; root assigned bounded read-only scheduling and retrospective routing, preserving compatibility and excluding live provider actions"
+approved_payload_sha256: 202370ff0418a160240df73fbee8acdb33193fc261c1a3e879f6a1f84425a366
+expires_at: 2026-10-06T23:59:59Z
+item_ids: [MCP-M365-TOOL-005, MCP-M365-TOOL-006]
+completion_target: awaiting-review
+policy: safe-local-v1
+---
+
+# MCP-M365-BATCH-001
