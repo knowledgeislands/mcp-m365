@@ -3,78 +3,88 @@ id: MCP-M365-FND-001
 area: FND
 title: Use MSAL refresh
 theme: foundation-tooling
-horizon: soon
-status: draft
+horizon: now
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T07:40:47Z
+updated_at: 2026-10-05T08:02:28Z
 ---
+
+# MCP-M365-FND-001: Use MSAL refresh
 
 ## Goal
 
-Achieve the stated outcome: Replace hand-rolled OAuth refresh with MSAL.
+Microsoft's supported MSAL library owns token acquisition and refresh while existing users retain their token file, configured permissions, authentication entry points and effective endpoints without forced reauthentication.
 
 ## Context
 
-Replace the custom OAuth refresh implementation in `auth/index.ts` with `@azure/msal-node`, preserving the existing token-file shape and `ensureAuthenticated` call sites through a deliberate migration.
+Both `src/main/auth/index.ts` and `src/auth-server/index.ts` currently assemble OAuth exchange requests by hand and write legacy-shaped token JSON. The core accepts an explicit token endpoint; the standalone callback currently derives its effective endpoint from authority host and tenant. Current defaults use the configured XDG token location; the configured token path remains authoritative, not a hard-coded historical home-file path.
+
+The earlier blocker inferred impossibility from MSAL not returning refresh tokens in AuthenticationResult. The supported public `system.networkClient` interface instead receives the raw token response body. A repository-owned transport can retain the rotated refresh token privately and persist the existing file only after the public acquisition operation validates successfully. This route requires real pinned-library fixtures before either writer is migrated.
 
 ## Boundary
 
-Keep the work limited to the stated surface.
+Preserve exact existing token-file representation, configured scopes, public factory signatures, authentication-required error behavior, effective core and callback endpoints, atomic 0600 storage and single-use state/PKCE. Add only reversible token-operation locking/derived state needed for concurrent-process safety. Do not force reauthentication, silently drop custom endpoints, add canonical note/source authority, parse private MSAL cache internals, use live provider/consent flows, publish packages, push or prune. Root independent review is required before acceptance even though the outcome envelope targets Done.
 
-## Shaping
+## Current state
 
-The intended approach is to keep the module's public surface fixed and swap only what is underneath it. `createTokenStorage(cfg)` and `makeEnsureAuthenticated(storage)` in `src/main/auth/index.ts` are the only auth entry points the rest of the server uses — `src/mcp-server/index.ts` calls both once at boot and threads the result into `GraphContext.ensureAuthenticated` — so if those two signatures and the `Error('Authentication required')` contract hold, no `main/` handler and no tool registration changes.
+The main token factory injects tokenStorePath, client ID/secret, redirect URI, scopes, tenant and token endpoint. StoredTokens holds access_token, refresh_token, expires_in/expires_at, scope, token_type and permitted additional token response fields. Core refresh retains the prior refresh token when the provider omits a replacement and uses an in-process single-flight promise. Both writers replace the file atomically, but this is not cross-process serialization. The callback enforces exact single-use OAuth state and PKCE verifier binding; retain those guards independently of the MSAL exchange adapter.
 
-There are two hand-rolled OAuth code paths, not one, and both are in scope. `TokenStorage.refreshAccessToken` and `TokenStorage.exchangeCodeForTokens` in `src/main/auth/index.ts` build form bodies with `node:querystring` and post them with `node:https`; `src/auth-server/index.ts` has its own separate PKCE authorization-code exchange that builds the authorize URL, computes an S256 challenge, and writes the token response to the same token-store path with its own atomic temp-file-plus-rename. Migrating only the first would leave the consent flow hand-rolled and the two writing the same file in different shapes.
+## Steps
 
-`@azure/msal-node` is not in `package.json` today, so this is genuinely unstarted work and the package would be the first runtime dependency beyond `@modelcontextprotocol/sdk` and `zod`. It has to work under Node 22 from built `dist/`, which is how Claude Desktop launches the server.
+- [ ] Pin an official Node-compatible MSAL dependency and prove its public transport bridge with synthetic responses before replacing production exchange code. Stop on feasibility failure; preserve the current source and record exact evidence.
+- [ ] Introduce a lazy, config-injected adapter using only public acquireTokenByRefreshToken/acquireTokenByCode and a public INetworkModule transport. Disable PII logging and unbounded retries; allow requests only to approved effective endpoints and explicitly selected metadata behavior.
+- [ ] Capture raw successful token JSON privately through that transport; persist existing legacy fields only after successful MSAL validation. Preserve rotated or omitted refresh-token semantics, configured scope behavior, expiry buffering and old-file rollback on failure. Never expose tokens in results/errors/logs.
+- [ ] Prove custom core endpoints and the existing derived callback endpoint through real-library offline fixtures with no unexpected discovery call. Do not unify their current difference inside this migration.
+- [ ] Serialise shared-token-file operations across processes with bounded acquisition and safe stale-owner recovery. Reload inside the lock before refresh/code exchange; retain in-process single-flight. Do not steal a live lock or discard the prior token file on a failed write.
+- [ ] Migrate the core refresh/code exchange and standalone callback through the same supported adapter while retaining state/PKCE and effective endpoint semantics. Keep public factories and authentication errors compatible.
+- [ ] Verify real pinned-library rotated/omitted refresh, existing valid/expired token files, malformed provider responses, auth failures, parallel process refresh/code exchange, atomic permissions/write failure, cleanup and token secrecy with isolated fixtures.
+- [ ] Update operator/developer authentication documentation; run complete gates, write the six-heading Review packet and return the exact commit for independent review.
 
-`M365_DEFAULT_SCOPES` in `src/config/index.ts` is documented as the single source of truth for both consent-time and refresh-time scopes, precisely because drift between them causes silent 403s. MSAL applies its own handling to reserved scopes such as `offline_access`, so the migration needs an explicit answer for how that list is passed through without the two flows diverging again.
+## Files touched
 
-Decisions still needed before this is promotable:
+Expected scope: package metadata and Bun lockfile; new MSAL transport/adapter and token-lock helper with co-located fixtures under `src/main/auth/`; `src/main/auth/index.ts` and existing auth fixtures; `src/auth-server/index.ts` plus an injectable/testable callback exchange seam; configuration only if required to thread already-supported values; authentication/configuration/developer guides; this item and its exact batch account. No provider library internals, live token files or unrelated MCP concerns.
 
-- Whether to preserve the existing `~/.mcp-m365-tokens.json` shape by writing a custom MSAL cache-persistence plugin, or to adopt MSAL's own cache format and ship a migration for users who already have a token file.
-- Whether the safety properties currently owned by this module stay ours or are ceded to MSAL: the `0600` atomic temp-file write, and the single-flight `_refreshPromise` that stops concurrent handlers from racing the same refresh.
-- Whether the `MCP_M365_TENANT_ID`, `MCP_M365_AUTHORITY_HOST`, and `MCP_M365_TOKEN_ENDPOINT` overrides in `loadConfig()` survive as MSAL authority configuration, since MSAL derives its endpoints from an authority rather than taking a token endpoint directly.
-- How `src/main/auth/index.test.ts` and `src/main/auth/handlers.test.ts` reach the repository's 100% coverage thresholds once the network path sits inside a third-party library rather than in `node:https` calls this repository can stub.
+## Verify
 
-Promotion to `next` is warranted once the cache-persistence and token-file-compatibility decisions are made and the coverage approach is agreed, because those three determine whether this is a contained swap or a migration with user-visible consequences.
+Before migration, test a real pinned MSAL client against a mocked INetworkModule rather than mocking the acquisition client itself. Assertions must prove the intended endpoint and grant/PKCE/scope semantics, raw refresh capture, no unexpected metadata/discovery network, successful MSAL validation and no private-cache dependency. Use child-process fixture token stores to prove serialized reload/rotation, bounded wait, live-lock refusal, safe stale recovery and failed-write rollback with 0600 storage.
 
-## Planning boundary and review outcome
+After implementation run `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, Biome/Knip and focused engineering, MCP, work, roadmap and guides audits sequentially. Meet all existing 100% coverage thresholds. No gate can depend on live Entra credentials or real token storage. A feasibility or verification failure stops this item without fabricated completion.
 
-The MSAL migration remains a compatibility-sensitive refactor rather than a dependency replacement ready for implementation. Before selection/readiness, produce an explicit design for both the MCP refresh/exchange path and the standalone callback exchange. Identify the current token-file consumers, choose preserved-file versus migrated-cache behavior, and specify backup, atomic 0600 persistence, rollback, and recovery when migration fails. Preserve public auth factory signatures and authentication-required errors unless a separate compatibility change is approved.
+## Dependencies / blocks
 
-Choose how authority/tenant/token-endpoint overrides map to MSAL or are rejected with a documented migration path; do not silently ignore a configured endpoint. Decide cross-process token ownership and refresh serialization, rather than treating an in-process single-flight promise as a cross-process lock. Define an injectable MSAL test seam and offline fixture coverage for cache load/save, refresh omission, concurrent calls, code exchange, migration/rollback, errors, and token secrecy. Verify built Node 22 runtime compatibility and the existing full coverage gates.
+No local build-order dependency. The current user completion directive and root selection resolve the routine architecture choice in favor of a backward-compatible transport bridge; no cache-format migration or permission drop is admitted. All earlier cache/reauthentication questions are superseded only to that preserved-contract extent. A new incompatibility requires a stop, not an inferred answer to the pending asynchronous question.
 
-Expected later scope includes `src/main/auth/`, `src/auth-server/`, configuration and tests, package metadata/lockfile, and authentication/configuration/operator migration guides. A reversible migration design is required before adopting a new runtime dependency. Current Soon/Draft state remains honest; none of the cache, override, rollback, or concurrency decisions is approved by this analysis. Reachable read-tier recovery guidance is separately owned by MCP-M365-FND-006 and must not be duplicated into the MSAL migration.
+## Documentation impact
+
+### Decision Records
+
+Document the supported transport bridge and retained legacy-store authority if the verified architecture has durable maintenance consequences; do not describe a private MSAL cache translation that was never implemented.
+
+### Specifications
+
+Keep token-file shape, effective endpoints, permission behavior, state/PKCE and authentication failures compatible. Record cross-process lock and rollback guarantees precisely against fixtures.
+
+### Guides
+
+Explain unchanged configured token locations and sign-in flow, bounded lock/recovery behavior and retained custom endpoint semantics. Do not instruct existing users to delete working tokens or reauthenticate.
+
+### Roadmap
+
+This canonical item is Now/Ready under the current exact outcome envelope. Delivery stops at Awaiting review for root independent review before consolidated Done acceptance; pruning remains outside authority.
 
 ## Discussion
 
-### Why replace something that works
+### Public transport evidence
 
-The current implementation is functional and tested, so the argument is not correctness today but ownership: token refresh, expiry buffering, and PKCE are security-sensitive protocol details that Microsoft's own library tracks against changes to the identity platform. The counter-argument is that the hand-rolled code is small, dependency-free, and does exactly what this server needs, and that adopting MSAL trades that for a dependency whose cache format the server would then be coupled to.
+[Microsoft's configuration contract](https://learn.microsoft.com/en-us/entra/msal/javascript/node/configuration) documents a custom networkClient, authority metadata and cache hooks. The public [INetworkModule source](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/src/network/INetworkModule.ts) returns [NetworkResponse with its typed body](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-common/src/network/NetworkResponse.ts). [RefreshTokenRequest](https://github.com/AzureAD/microsoft-authentication-library-for-js/blob/dev/lib/msal-node/src/request/RefreshTokenRequest.ts) accepts a caller-supplied refresh token for public migration/acquisition. These supported seams establish a candidate compatibility route, not proof that an untested pinned version meets every invariant.
 
-### Compatibility is the deciding constraint
+### Cache compatibility
 
-An existing user has a populated token file and a working consent. Any approach that silently invalidates it forces re-authentication through `m365_auth_start`, which is a user-visible regression rather than an internal refactor. That is what makes the cache-persistence decision the gate on this item rather than a detail of its implementation.
+The [MSAL cache guidance](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching) correctly says AuthenticationResult omits refresh tokens. That does not prohibit a supported repository-owned transport from privately preserving token response fields needed by the existing file contract. Retain the legacy store as authority and avoid deserializing undocumented MSAL internals. No format conversion or forced consent is selected.
 
-### Readiness review
+### Endpoint and ownership guarantees
 
-Readiness requires a chosen token-cache migration and rollback path preserving atomic 0600 writes and concurrent refresh handling across both processes. Existing OAuth service configuration overrides need explicit disposition; library adoption alone is not a complete plan.
-
-### Question for Kris (2026-10-04)
-
-Must the existing `~/.mcp-m365-tokens.json` keep working unchanged after the MSAL migration (no forced re-authentication), and may the `MCP_M365_TOKEN_ENDPOINT` override be dropped in favour of MSAL authority configuration?
-
-Classified as an owner decision by the Fable reviewer under delegated autonomy (2026-10-04): The cache-compatibility choice decides whether this is an internal refactor or a user-visible authentication regression, and end-to-end verification needs live Entra credentials.
-
-### Current delivery exclusion
-
-The 2026-10-05 autonomous delivery admitted scheduling and routing independently, but did not admit this migration. Current `StoredTokens` persists access_token, refresh_token, expiry and scope; both the MCP TokenStorage path and standalone callback write that JSON shape with atomic 0600 replacement. Configured tokenStorePath remains authoritative, including the current XDG default; the older home-file example above is not a new target or migration instruction. Tenant, authority-host and explicit token-endpoint overrides remain supported today.
-
-[Microsoft's cache contract](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching) states that MSAL does not expose refresh tokens through its authentication result and recommends cache persistence. [Its configuration contract](https://learn.microsoft.com/en-us/entra/msal/javascript/node/configuration) supports authority metadata and an injectable network client, but that does not establish a safe bridge for every currently configured token endpoint or current JSON consumer. Preserving rotated refresh tokens and rollback across both processes therefore needs either an explicitly specified legacy-cache bridge or an approved migration to MSAL-owned cache with reauthentication disposition. Cross-process ownership/locking and custom endpoint metadata validation must be designed and fixture-verified before replacing either writer.
-
-This is a concrete unresolved public compatibility/architecture choice under safe-local-v1, not an assertion that a live Entra test or missing credentials makes offline engineering impossible. The root has requested the owner's cache/reauthentication choice; no dependency was installed, no custom endpoint was dropped and no token-file format was changed. Keep Soon/Draft until that choice supports a new exact execution envelope.
+Core endpoint override and standalone derived authority endpoint are distinct current behaviors. Preserve both rather than hiding their discrepancy inside library adoption. Token serialization stays repository-owned; MSAL validates and acquires. Locking must make concurrency safe without inventing permission to delete unknown live-process state.
