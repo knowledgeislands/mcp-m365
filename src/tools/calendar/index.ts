@@ -8,11 +8,14 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import {
+  AvailabilityInputSchema,
+  AvailabilityResultSchema,
   handleAcceptEvent,
   handleCancelEvent,
   handleCreateEvent,
   handleDeclineEvent,
   handleDeleteEvent,
+  handleGetAvailability,
   handleListEvents
 } from '../../main/calendar/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
@@ -20,6 +23,18 @@ import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_RE
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
 export const registerCalendarTools = (server: McpServer, ctx: GraphContext): void => {
+  server.registerTool(
+    'm365_calendar_availability_get',
+    {
+      description:
+        'Read free/busy availability for up to 20 SMTP targets over at most seven days in UTC. Work/school accounts only; returns availability codes or explicit errors, never event details. No calendar mutation.',
+      inputSchema: AvailabilityInputSchema,
+      outputSchema: AvailabilityResultSchema,
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleGetAvailability(ctx, args)
+  )
+
   server.registerTool(
     'm365_calendar_event_accept',
     {

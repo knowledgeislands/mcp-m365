@@ -61,6 +61,7 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_draft_forward`     | Preview or create a forward draft without sending.                     |
 | `m365_email_message_mark_read` | Mark email as read/unread.                                              |
 | `m365_email_message_delete`    | Move an email to Deleted Items (or hard delete with `permanent: true`). |
+| `m365_calendar_availability_get` | Read bounded UTC free/busy availability; work/school accounts only. |
 | `m365_calendar_events_list`    | List calendar events.                                                   |
 | `m365_calendar_event_create`   | Create calendar event.                                                  |
 | `m365_calendar_event_accept`   | Accept event invitation.                                                |

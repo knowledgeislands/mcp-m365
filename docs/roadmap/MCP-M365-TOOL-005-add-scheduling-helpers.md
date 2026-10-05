@@ -4,12 +4,12 @@ area: TOOL
 title: Add scheduling helpers
 theme: tool-surface
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 00bc15bb84e2dc1a5bc1934cb5da4734e7d49dd7
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T07:35:47Z
+updated_at: 2026-10-05T07:40:05Z
 ---
 
 ## Goal
@@ -40,13 +40,13 @@ Use one shared result schema for the handler and tool output: normalized UTC sta
 
 ## Steps
 
-- [ ] Approve the free/busy-only scope, UTC contract, bounds, output projection, and account restriction; retain suggestions and event mutation outside this slice.
-- [ ] Add typed input/result schemas and `handleGetAvailability`; independently validate direct-library inputs before authentication or network calls.
-- [ ] POST UTC `dateTimeTimeZone` objects to `me/calendar/getSchedule` using injected Graph context and a bounded response.
-- [ ] Preserve partial provider errors and reject malformed or excessive results without fabricating availability.
-- [ ] Register through `READ_ONLY_REMOTE` despite the HTTP POST, export the calendar handler, and update registration/smoke inventories.
-- [ ] Test input boundaries, exact request, partial failures, malformed response, authentication/transport failures, and privacy projection with isolated fixtures.
-- [ ] Document the tool and restrictions; run the stated gates and prepare a Review packet.
+- [x] Approve the free/busy-only scope, UTC contract, bounds, output projection, and account restriction; retain suggestions and event mutation outside this slice.
+- [x] Add typed input/result schemas and `handleGetAvailability`; independently validate direct-library inputs before authentication or network calls.
+- [x] POST UTC `dateTimeTimeZone` objects to `me/calendar/getSchedule` using injected Graph context and a bounded response.
+- [x] Preserve partial provider errors and reject malformed or excessive results without fabricating availability.
+- [x] Register through `READ_ONLY_REMOTE` despite the HTTP POST, export the calendar handler, and update registration/smoke inventories.
+- [x] Test input boundaries, exact request, partial failures, malformed response, authentication/transport failures, and privacy projection with isolated fixtures.
+- [x] Document the tool and restrictions; run the stated gates and prepare a Review packet.
 
 ## Files touched
 
@@ -81,6 +81,32 @@ Retain this canonical item and its Draft/Future state pending scope approval; do
 ## Outcome-authority selection
 
 Selected under the current human instruction to finish eligible MCP roadmap outcomes autonomously. Scheduling admits the bounded read-only getSchedule slice already specified; routing admits fixture-only reconciliation of the existing four-tool delivery. Earlier pending-approval text is historical shaping, superseded by this scoped selection. MSAL migration remains outside this batch because its endpoint/cache compatibility decisions are unresolved. No live Graph/OAuth action, push or pruning is included. Final state requires independent root review.
+
+## Review
+
+### Delivered
+
+Added the bounded read-only free/busy slice through `m365_calendar_availability_get`. Execution baseline is `00bc15bb84e2dc1a5bc1934cb5da4734e7d49dd7`; this item does not claim meeting-slot suggestions or calendar mutation.
+
+### Change Summary
+
+Strict shared schemas enforce UTC timestamps, 1–20 unique SMTP targets, a positive seven-day maximum and 5–1440 minute intervals. The handler validates direct-library input before authentication, POSTs to getSchedule with a 256 KiB response cap, and projects only ordered availability codes or explicit target errors. Missing, duplicated, unexpected and malformed schedule responses cannot fabricate free time. Graph's documented view codes are 0–3; working elsewhere is represented as 0. Registration uses READ_ONLY_REMOTE and matching output schema; public calendar exports, smoke inventory, README and the user availability guide are updated.
+
+### Verification
+
+Fresh local typecheck, full tests, coverage, build and modern/legacy protocol smoke pass. LCOV verifies 2,907/2,907 lines, 2,109/2,109 branches and 424/424 functions covered. Focused engineering, MCP, work, roadmap and guides audits pass. New synthetic fixtures cover input boundaries, invalid-input no-call behavior, exact UTC request, partial/missing provider results, malformed/extra/duplicate targets, privacy projection, transport/authentication failure and read-tier registration. Provider API and availability code contracts were checked against Microsoft Learn on 2026-10-05. No live Graph or OAuth flow was executed.
+
+### Outstanding concerns
+
+Delegated personal Microsoft accounts are unsupported by the provider and documented. Fixture verification does not establish availability or consent for any live account. Scheduling assistance beyond free/busy remains excluded from the selected first delivery. Independent root review is pending.
+
+### Post-change review
+
+Reviewed input-before-authentication ordering, response cardinality/slot checks, no mutation endpoint, privacy projection, direct-library export and schema/structured-result consistency. Required gates passed on the combined source; no token values, event subjects or provider error-message details are returned. Independent review is separate from this author review.
+
+### Mini recap
+
+MCP-M365-TOOL-005 now delivers the scoped scheduling goal and is Awaiting review. Usage, UTC conversion, provider restrictions and unavailable-state meanings live in the user calendar-availability guide. No additional learning route or live-account validation is implied.
 
 ## Discussion
 

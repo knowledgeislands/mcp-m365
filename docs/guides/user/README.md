@@ -33,3 +33,7 @@ For file attachments, [list metadata, download a small file, or attach bounded b
 ## Recover from a failure
 
 [Troubleshoot](troubleshooting.md) collects the failures a first-time reader actually hits — a refused client secret, a redirect-URI mismatch, a tenant that rejects `/common`, a tool that is missing rather than broken, a port already in use, a routing path outside its roots — each with the message that identifies it and the command or setting that recovers from it.
+
+## Read calendar availability
+
+[Calendar availability](calendar-availability.md) explains UTC inputs, bounded free/busy codes, partial errors and account restrictions.
