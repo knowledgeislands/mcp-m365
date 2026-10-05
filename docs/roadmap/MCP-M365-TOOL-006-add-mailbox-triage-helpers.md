@@ -4,12 +4,12 @@ area: TOOL
 title: Add mailbox triage helpers
 theme: tool-surface
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: ac82371a5035513c93b4304f2556ce6fd6d4a39f
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T07:35:47Z
+updated_at: 2026-10-05T07:40:47Z
 ---
 
 ## Goal
@@ -38,12 +38,12 @@ Delivery commit `af0dbd6eaceb4123218446ee76b14a2b3cccf5f5` is an ancestor of rev
 
 ## Steps
 
-- [ ] Confirm that the existing routing surface satisfies this item's Goal and approve a verification-only delivery boundary.
-- [ ] Recheck historical commit ancestry, current primary checkout, and any linked task/worktree ownership before execution.
-- [ ] Map each existing safety, batch, progress, schema, and tool-inventory criterion to implementation, fixtures, and guide evidence.
-- [ ] Run complete gates against the immutable execution baseline, without live Graph operations or user tracking/rule files.
-- [ ] Correct only demonstrated documentation inconsistencies; stop and replan if a behavior repair is needed.
-- [ ] Produce a six-heading Review packet identifying delivered commits, fresh verification, limitations, and independent review.
+- [x] Confirm that the existing routing surface satisfies this item's Goal and approve a verification-only delivery boundary.
+- [x] Recheck historical commit ancestry, current primary checkout, and any linked task/worktree ownership before execution.
+- [x] Map each existing safety, batch, progress, schema, and tool-inventory criterion to implementation, fixtures, and guide evidence.
+- [x] Run complete gates against the immutable execution baseline, without live Graph operations or user tracking/rule files.
+- [x] Correct only demonstrated documentation inconsistencies; stop and replan if a behavior repair is needed.
+- [x] Produce a six-heading Review packet identifying delivered commits, fresh verification, limitations, and independent review.
 
 ## Files touched
 
@@ -78,6 +78,32 @@ Keep this record and its Future/Draft state until selection and approval. Reconc
 ## Outcome-authority selection
 
 Selected under the current human instruction to finish eligible MCP roadmap outcomes autonomously. Scheduling admits the bounded read-only getSchedule slice already specified; routing admits fixture-only reconciliation of the existing four-tool delivery. Earlier pending-approval text is historical shaping, superseded by this scoped selection. MSAL migration remains outside this batch because its endpoint/cache compatibility decisions are unresolved. No live Graph/OAuth action, push or pruning is included. Final state requires independent root review.
+
+## Review
+
+### Delivered
+
+Reconciled the existing four-tool mailbox-routing delivery against this item's broad Goal. Historical delivery `af0dbd6eaceb4123218446ee76b14a2b3cccf5f5` is an ancestor of execution baseline `ac82371a5035513c93b4304f2556ce6fd6d4a39f`. This verification-only cycle introduces no extra routing implementation or live mailbox action.
+
+### Change Summary
+
+Confirmed registered triage, aged, lint and drift handlers and the current guide. Triage/aged default to report mode with 50-action default and 200 maximum; lint is read-only; drift remains destructive remote because it persists sweep progress and prunes local tracking, rather than being a read-only scan. Rules are caller-owned and reread, paths are lexical/realpath confined, identity survives Graph move IDs, result schemas pair with registration, and PDF-saving behavior remains bounded and rule-driven. No concrete guide inconsistency required edits.
+
+### Verification
+
+Fresh full typecheck, tests, coverage, build and modern/legacy smoke checks pass on the combined source, as do engineering, MCP, work, roadmap and guides audits. Coverage is 100% across required metrics; LCOV totals are 2,907 lines, 2,109 branches and 424 functions, all covered. Evidence maps to `src/main/triage/run.test.ts` (report/no mutation, live bounded actions and path refusal), `drift.test.ts` (tracking mutation and remaining values 2,1,0), `src/utils/paths.test.ts` (containment), attachment fixtures (bounded save), `src/tools/triage/index.ts` (annotations/schemas), and the email-routing guide. Fresh worktree inventory shows only the primary main checkout; this record has no linked task or owner hold. No live Graph, token-store, caller rules or caller tracking files were touched.
+
+### Outstanding concerns
+
+This accepts the selected verification-only goal coverage, not new routing requirements. Existing live-mode and drift effects remain intentionally gated. Independent root review and acceptance are pending.
+
+### Post-change review
+
+Reviewed historical commit ancestry, registered surface, defaults and limits, path guards, identity, drift progress termination and truthful effect annotations. The guide already describes tracking pruning and persisted sweep state, so no replacement source or documentation was fabricated. No behavior repair was needed.
+
+### Mini recap
+
+MCP-M365-TOOL-006 has a fresh evidence-backed delivery packet and is Awaiting review. Its operating knowledge stays in the existing email-routing guide and fixtures. Historical checkpoint limits remain historical; no live-account assurance is inferred.
 
 ## Discussion
 

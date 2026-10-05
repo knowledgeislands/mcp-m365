@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-04T18:01:50Z
+updated_at: 2026-10-05T07:40:47Z
 ---
 
 ## Goal
@@ -70,3 +70,11 @@ Readiness requires a chosen token-cache migration and rollback path preserving a
 Must the existing `~/.mcp-m365-tokens.json` keep working unchanged after the MSAL migration (no forced re-authentication), and may the `MCP_M365_TOKEN_ENDPOINT` override be dropped in favour of MSAL authority configuration?
 
 Classified as an owner decision by the Fable reviewer under delegated autonomy (2026-10-04): The cache-compatibility choice decides whether this is an internal refactor or a user-visible authentication regression, and end-to-end verification needs live Entra credentials.
+
+### Current delivery exclusion
+
+The 2026-10-05 autonomous delivery admitted scheduling and routing independently, but did not admit this migration. Current `StoredTokens` persists access_token, refresh_token, expiry and scope; both the MCP TokenStorage path and standalone callback write that JSON shape with atomic 0600 replacement. Configured tokenStorePath remains authoritative, including the current XDG default; the older home-file example above is not a new target or migration instruction. Tenant, authority-host and explicit token-endpoint overrides remain supported today.
+
+[Microsoft's cache contract](https://learn.microsoft.com/en-us/entra/msal/javascript/node/caching) states that MSAL does not expose refresh tokens through its authentication result and recommends cache persistence. [Its configuration contract](https://learn.microsoft.com/en-us/entra/msal/javascript/node/configuration) supports authority metadata and an injectable network client, but that does not establish a safe bridge for every currently configured token endpoint or current JSON consumer. Preserving rotated refresh tokens and rollback across both processes therefore needs either an explicitly specified legacy-cache bridge or an approved migration to MSAL-owned cache with reauthentication disposition. Cross-process ownership/locking and custom endpoint metadata validation must be designed and fixture-verified before replacing either writer.
+
+This is a concrete unresolved public compatibility/architecture choice under safe-local-v1, not an assertion that a live Entra test or missing credentials makes offline engineering impossible. The root has requested the owner's cache/reauthentication choice; no dependency was installed, no custom endpoint was dropped and no token-file format was changed. Keep Soon/Draft until that choice supports a new exact execution envelope.
