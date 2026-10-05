@@ -1,0 +1,9 @@
+{
+  "name": "mcp-m365-boundary-tooling",
+  "private": true,
+  "description": "Isolated dependency-boundary checker: dependency-cruiser needs a TypeScript below 7. Never a runtime dependency or release payload.",
+  "dependencies": {
+    "dependency-cruiser": "^18.5.0",
+    "typescript": "^6.0.3"
+  }
+}

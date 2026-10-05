@@ -6,27 +6,9 @@ import type { Config } from '../../config/index.js'
 import { M365_DEFAULT_SCOPES, resolveXdgStateHome } from '../../config/index.js'
 import { acquireLegacyTokens } from './msal.js'
 import { withTokenLock } from './token-lock.js'
+import type { StoredTokens, TokenStorageConfig } from './types.js'
 
-export interface TokenStorageConfig {
-  tokenStorePath?: string
-  clientId?: string
-  clientSecret?: string
-  redirectUri?: string
-  scopes?: string[]
-  tenantId?: string
-  tokenEndpoint?: string
-  refreshTokenBuffer?: number
-}
-
-export interface StoredTokens {
-  access_token?: string
-  refresh_token?: string
-  expires_in?: number
-  expires_at?: number
-  scope?: string
-  token_type?: string
-  [key: string]: any
-}
+export type { StoredTokens, TokenStorageConfig } from './types.js'
 
 class TokenStorage {
   config: Required<TokenStorageConfig>

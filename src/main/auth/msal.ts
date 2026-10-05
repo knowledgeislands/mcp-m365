@@ -5,7 +5,7 @@ import {
   type NetworkRequestOptions,
   type NetworkResponse
 } from '@azure/msal-node'
-import type { StoredTokens, TokenStorageConfig } from './index.js'
+import type { StoredTokens, TokenStorageConfig } from './types.js'
 
 /** No discovery, redirects, retries or provider error text can escape this transport. */
 export const tokenNetwork: INetworkModule = {

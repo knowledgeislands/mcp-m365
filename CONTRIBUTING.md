@@ -10,9 +10,10 @@ You'll need [Bun](https://bun.sh) 1.3+ for the dev loop, and Node.js 22+ to run 
 git clone https://github.com/knowledgeislands/mcp-m365.git
 cd mcp-m365
 bun install
+bun install --cwd tooling/boundaries
 ```
 
-`bun install` triggers `prepare` which configures the husky pre-commit hook — so every commit will auto-run `lint-staged` and format your changes.
+`bun install` triggers `prepare` which configures the husky pre-commit hook — so every commit will auto-run `lint-staged` and format your changes. The second install provides the isolated module-boundary checker that `bun run test` drives.
 
 ## Dev loop
 

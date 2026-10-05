@@ -7,7 +7,8 @@
     "scripts/integration.ts",
     "scripts/smoke.ts",
     "src/auth-server/index.ts!",
-    "scripts/fixtures/*.ts"
+    "scripts/fixtures/*.ts",
+    ".dependency-cruiser.ts"
   ],
   "project": ["src/**/*.ts", "scripts/**/*.ts"],
   "ignore": ["src/generated/**", ".claude/skills/**", ".agents/skills/**"],

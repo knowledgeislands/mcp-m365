@@ -8,7 +8,7 @@
  */
 
 import type { Config } from '../../config/index.js'
-import type TokenStorage from './index.js'
+import type { TokenStatusReader } from './types.js'
 
 export const handleAbout = async (cfg: Config): Promise<any> => {
   return {
@@ -34,7 +34,7 @@ export const handleAuthenticate = async (cfg: Config): Promise<any> => {
   }
 }
 
-export const handleCheckAuthStatus = async (tokenStorage: TokenStorage): Promise<any> => {
+export const handleCheckAuthStatus = async (tokenStorage: TokenStatusReader): Promise<any> => {
   const tokens = await tokenStorage.getTokens()
 
   if (!tokens?.access_token) {
