@@ -8,24 +8,24 @@
     "mcp-m365-auth": "dist/auth-server/index.js"
   },
   "dependencies": {
-    "@modelcontextprotocol/server": "2.1.0",
+    "@modelcontextprotocol/server": "2.3.0",
     "zod": "4.6.5"
   },
   "devDependencies": {
-    "@biomejs/biome": "2.5.14",
+    "@biomejs/biome": "2.5.15",
     "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^21.2.3",
-    "@modelcontextprotocol/client": "2.1.0",
-    "@types/node": "^26.6.3",
-    "@vitest/coverage-v8": "^5.0.2",
+    "@modelcontextprotocol/client": "2.3.0",
+    "@types/node": "^26.6.4",
+    "@vitest/coverage-v8": "^5.0.3",
     "husky": "^9.1.7",
-    "knip": "^6.38.0",
+    "knip": "^6.39.0",
     "lint-staged": "^17.6.0",
-    "mcporter": "^0.14.1",
-    "rumdl": "^0.2.77",
+    "mcporter": "^0.14.2",
+    "rumdl": "^0.2.78",
     "syncpack": "^15.3.3",
     "typescript": "^7.0.2",
-    "vitest": "^5.0.2"
+    "vitest": "^5.0.3"
   },
   "engines": {
     "node": ">=22"
