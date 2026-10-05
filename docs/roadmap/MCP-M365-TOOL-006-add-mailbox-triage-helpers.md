@@ -4,12 +4,12 @@ area: TOOL
 title: Add mailbox triage helpers
 theme: tool-surface
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: ac82371a5035513c93b4304f2556ce6fd6d4a39f
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T07:40:47Z
+updated_at: 2026-10-05T07:43:46Z
 ---
 
 ## Goal
@@ -104,6 +104,10 @@ Reviewed historical commit ancestry, registered surface, defaults and limits, pa
 ### Mini recap
 
 MCP-M365-TOOL-006 has a fresh evidence-backed delivery packet and is Awaiting review. Its operating knowledge stays in the existing email-routing guide and fixtures. Historical checkpoint limits remain historical; no live-account assurance is inferred.
+
+## Done
+
+Accepted 2026-10-05 under the user’s current all-MCP completion instruction and standing approval to accept Awaiting-review items. The root coordinator independently reviewed exact candidate `34be44f48ed04ddbb40313c89decd789e287ec2f`, the implementation/annotation/privacy boundaries and six-part review evidence. Required full gates pass; no live Graph or OAuth assurance is claimed.
 
 ## Discussion
 

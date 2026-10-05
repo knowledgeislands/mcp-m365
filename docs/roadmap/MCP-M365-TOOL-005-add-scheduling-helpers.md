@@ -4,12 +4,12 @@ area: TOOL
 title: Add scheduling helpers
 theme: tool-surface
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 00bc15bb84e2dc1a5bc1934cb5da4734e7d49dd7
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T07:40:05Z
+updated_at: 2026-10-05T07:43:46Z
 ---
 
 ## Goal
@@ -107,6 +107,10 @@ Reviewed input-before-authentication ordering, response cardinality/slot checks,
 ### Mini recap
 
 MCP-M365-TOOL-005 now delivers the scoped scheduling goal and is Awaiting review. Usage, UTC conversion, provider restrictions and unavailable-state meanings live in the user calendar-availability guide. No additional learning route or live-account validation is implied.
+
+## Done
+
+Accepted 2026-10-05 under the user’s current all-MCP completion instruction and standing approval to accept Awaiting-review items. The root coordinator independently reviewed exact candidate `34be44f48ed04ddbb40313c89decd789e287ec2f`, the implementation/annotation/privacy boundaries and six-part review evidence. Required full gates pass; no live Graph or OAuth assurance is claimed.
 
 ## Discussion
 
