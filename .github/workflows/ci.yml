@@ -26,6 +26,8 @@ jobs:
           export XDG_CACHE_HOME="$KI_ROOT/cache"
           export XDG_STATE_HOME="$KI_ROOT/state"
           mkdir -p "$KI_ROOT"
+          mkdir -p "$XDG_CONFIG_HOME/ki"
+          printf 'mcpServers: []\n' > "$XDG_CONFIG_HOME/ki/mcp-servers.yaml"
           git clone --quiet --depth 1 --branch main https://github.com/knowledgeislands/tools-ki.git "$RUNNER_TEMP/tools-ki-source"
           printf 'KI source commit: %s\n' "$(git -C "$RUNNER_TEMP/tools-ki-source" rev-parse HEAD)"
           (cd "$RUNNER_TEMP/tools-ki-source" && bun install --frozen-lockfile)
@@ -33,17 +35,18 @@ jobs:
           export PATH="$KI_CLI_INSTALL_DIR:$PATH"
           test "$(command -v ki)" = "$KI_CLI_INSTALL_DIR/ki"
           ki --version
-          ki manage diag | tee "$KI_ROOT/ki-diag-before-bootstrap.txt"
+          ki diag --full | tee "$KI_ROOT/ki-diag-before-bootstrap.txt"
           grep -F "Installation: local" "$KI_ROOT/ki-diag-before-bootstrap.txt"
-          grep -F "Executable: $KI_CLI_INSTALL_DIR/ki" "$KI_ROOT/ki-diag-before-bootstrap.txt"
+          grep -F "Executable: $RUNNER_TEMP/tools-ki-source/src/main.ts" "$KI_ROOT/ki-diag-before-bootstrap.txt"
           ki bootstrap
           ki registry add --repo .
           ki repo repair --repo .
           project_key=${GITHUB_WORKSPACE//\//-}
           mkdir -p "$HOME/.claude/projects/$project_key/memory"
           touch "$HOME/.claude/projects/$project_key/memory/MEMORY.md"
-          ki manage diag | tee "$KI_ROOT/ki-diag.txt"
-          grep -F "Status: valid" "$KI_ROOT/ki-diag.txt"
+          ki diag | tee "$KI_ROOT/ki-diag.txt"
+          grep -F "Configuration: valid" "$KI_ROOT/ki-diag.txt"
+          grep -F "Registry: valid" "$KI_ROOT/ki-diag.txt"
           ki harness list | grep -F 'knowledgeislands/ki-agentic-harness'
           {
             echo "KI_CLI_INSTALL_DIR=$KI_CLI_INSTALL_DIR"
