@@ -8,6 +8,7 @@
     "mcp-m365-auth": "dist/auth-server/index.js"
   },
   "dependencies": {
+    "@azure/msal-node": "7.0.1",
     "@modelcontextprotocol/server": "2.3.0",
     "zod": "4.6.5"
   },

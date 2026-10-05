@@ -40,6 +40,10 @@ This is why `offline_access` is not optional. Without it, the session lasts abou
 
 Tokens are never logged and never returned by a tool. `m365_auth_status` deliberately reports metadata only.
 
+MSAL acquires and validates new tokens while the existing JSON token file remains the session authority. Existing working token files continue to load without a format conversion or fresh sign-in. A rotated refresh token replaces the previous one; when Microsoft omits a replacement, the previous refresh token is retained. Failed acquisition or persistence leaves the prior file intact.
+
+The MCP and callback processes serialize refresh and sign-in writes through a private adjacent `<token-file>.lock` directory and reload the file before acquisition. Lock waits stop after five seconds. A lock is recovered automatically only when its recorded process is demonstrably dead; a live, inaccessible or unknown owner is retained. If repeated calls fail while a lock remains, stop both servers and inspect its `owner.json` and any `.lock.recovery` directory before removing proven abandoned lock evidence. Keep the token file itself. An interrupted lock creation with no readable owner needs this manual review; lock age alone never authorizes removal.
+
 ## Force a fresh sign-in
 
 Delete the token file and start again:

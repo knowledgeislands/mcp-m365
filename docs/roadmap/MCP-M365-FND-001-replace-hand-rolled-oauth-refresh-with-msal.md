@@ -4,12 +4,12 @@ area: FND
 title: Use MSAL refresh
 theme: foundation-tooling
 horizon: now
-status: ready
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: e7e17a8ba4f8e6b27cab03fc9c1ad3d69db2521a
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T08:02:28Z
+updated_at: 2026-10-05T08:21:03Z
 ---
 
 # MCP-M365-FND-001: Use MSAL refresh
@@ -34,14 +34,14 @@ The main token factory injects tokenStorePath, client ID/secret, redirect URI, s
 
 ## Steps
 
-- [ ] Pin an official Node-compatible MSAL dependency and prove its public transport bridge with synthetic responses before replacing production exchange code. Stop on feasibility failure; preserve the current source and record exact evidence.
-- [ ] Introduce a lazy, config-injected adapter using only public acquireTokenByRefreshToken/acquireTokenByCode and a public INetworkModule transport. Disable PII logging and unbounded retries; allow requests only to approved effective endpoints and explicitly selected metadata behavior.
-- [ ] Capture raw successful token JSON privately through that transport; persist existing legacy fields only after successful MSAL validation. Preserve rotated or omitted refresh-token semantics, configured scope behavior, expiry buffering and old-file rollback on failure. Never expose tokens in results/errors/logs.
-- [ ] Prove custom core endpoints and the existing derived callback endpoint through real-library offline fixtures with no unexpected discovery call. Do not unify their current difference inside this migration.
-- [ ] Serialise shared-token-file operations across processes with bounded acquisition and safe stale-owner recovery. Reload inside the lock before refresh/code exchange; retain in-process single-flight. Do not steal a live lock or discard the prior token file on a failed write.
-- [ ] Migrate the core refresh/code exchange and standalone callback through the same supported adapter while retaining state/PKCE and effective endpoint semantics. Keep public factories and authentication errors compatible.
-- [ ] Verify real pinned-library rotated/omitted refresh, existing valid/expired token files, malformed provider responses, auth failures, parallel process refresh/code exchange, atomic permissions/write failure, cleanup and token secrecy with isolated fixtures.
-- [ ] Update operator/developer authentication documentation; run complete gates, write the six-heading Review packet and return the exact commit for independent review.
+- [x] Pin an official Node-compatible MSAL dependency and prove its public transport bridge with synthetic responses before replacing production exchange code. Stop on feasibility failure; preserve the current source and record exact evidence.
+- [x] Introduce a lazy, config-injected adapter using only public acquireTokenByRefreshToken/acquireTokenByCode and a public INetworkModule transport. Disable PII logging and unbounded retries; allow requests only to approved effective endpoints and explicitly selected metadata behavior.
+- [x] Capture raw successful token JSON privately through that transport; persist existing legacy fields only after successful MSAL validation. Preserve rotated or omitted refresh-token semantics, configured scope behavior, expiry buffering and old-file rollback on failure. Never expose tokens in results/errors/logs.
+- [x] Prove custom core endpoints and the existing derived callback endpoint through real-library offline fixtures with no unexpected discovery call. Do not unify their current difference inside this migration.
+- [x] Serialise shared-token-file operations across processes with bounded acquisition and safe stale-owner recovery. Reload inside the lock before refresh/code exchange; retain in-process single-flight. Do not steal a live lock or discard the prior token file on a failed write.
+- [x] Migrate the core refresh/code exchange and standalone callback through the same supported adapter while retaining state/PKCE and effective endpoint semantics. Keep public factories and authentication errors compatible.
+- [x] Verify real pinned-library rotated/omitted refresh, existing valid/expired token files, malformed provider responses, auth failures, parallel process refresh/code exchange, atomic permissions/write failure, cleanup and token secrecy with isolated fixtures.
+- [x] Update operator/developer authentication documentation; run complete gates, write the six-heading Review packet and return the exact commit for independent review.
 
 ## Files touched
 
@@ -73,7 +73,39 @@ Explain unchanged configured token locations and sign-in flow, bounded lock/reco
 
 ### Roadmap
 
-This canonical item is Now/Ready under the current exact outcome envelope. Delivery stops at Awaiting review for root independent review before consolidated Done acceptance; pruning remains outside authority.
+This canonical item is Now/Awaiting review under the current exact outcome envelope. Delivery stops at Awaiting review for root independent review before consolidated Done acceptance; pruning remains outside authority.
+
+## Review
+
+### Delivered
+
+Delivered the approved backward-compatible MSAL acquisition boundary from immutable baseline `e7e17a8ba4f8e6b27cab03fc9c1ad3d69db2521a`. Both core refresh/code exchange and standalone callback/PKCE use pinned `@azure/msal-node` 7.0.1 public APIs. Existing populated token JSON loads unchanged without forced sign-in. This delivery commit contains the reviewable source, fixtures and evidence; its exact full commit is returned to root for independent review before acceptance. No live provider, account, token store, consent, push, publish or pruning operation was performed.
+
+### Change Summary
+
+- `src/main/auth/msal.ts` and its real-library fixtures add a fresh transient confidential client, supported raw-response transport capture, static authority metadata/known authorities, exact destination and configured-scope preservation, a 1 MiB response limit, absolute 15-second request cancellation, disabled internal retries/PII logging and redacted errors. Persistence receives tokens only after successful public MSAL validation.
+- `src/main/auth/index.ts`, `token-lock.ts`, `callback.ts`, their co-located tests, `src/auth-server/index.ts` and isolated `scripts/fixtures/` migrate both writers, retain core six-field exchange and callback full-response shapes, preserve refresh rotation/omission and legacy refresh extension fields, reload under a shared bounded process lock, retain single-flight, and publish memory only after atomic 0600 replacement. Failure cleans owned temporary files and leaves the prior token file intact. Core explicit endpoint and callback host/tenant-derived endpoint remain deliberately distinct.
+- Package metadata/Bun lock pin the official dependency; Knip declares runtime fixture entry points. `AGENTS.md`, authentication and local-development guides describe the supported bridge, retained session file, exact endpoint behavior, bounded locking and conservative recovery. Routine compatibility choices stay inside the approved preservation boundary.
+
+### Verification
+
+The disposable pre-migration experiment and committed fixtures use the actual pinned MSAL acquisition algorithm with synthetic transport responses. They prove code/PKCE, custom endpoints without discovery, exact configured scopes, rotation/omission, malformed responses, redacted provider/transport failures and usable expiry. Root synthetic probes identified malformed refresh-token types and overflowing expiry that MSAL itself accepts; explicit adapter validation now rejects non-string/empty present refresh tokens and non-safe absolute expiry before either writer can persist them. Real-library regressions prove prior file and memory survive these failures for refresh and code grants, while numeric-string lifetime compatibility remains covered. Existing valid JSON is neither rewritten nor reauthenticated. Filesystem fixtures prove atomic 0600 replacement, failed-write/rename rollback and cleanup.
+
+Real subprocess fixtures prove two-process refresh deduplication/reload, code-exchange/refresh serialization, live-lock refusal, terminated-owner recovery, and retention of malformed, missing, oversized, inaccessible, symlinked or otherwise unknown lock evidence. A real callback-server subprocess proves exact single-use state after success, failure and cancellation, verifier/challenge binding, derived endpoint, safe error HTML/stderr and unchanged prior file on failed exchange. No live Microsoft requests occur.
+
+Sequential gates pass: `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, `bunx @biomejs/biome check .`, `bunx knip`, plus focused `ki repo audit --skill` checks for `ki-engineering`, `ki-repo-mcp`, `ki-work`, `ki-work-roadmap`, `ki-guides` and `ki-authoring`. The full suite has 42 passing files and 1177 passing tests; coverage is 100% on lines, statements, functions and branches. Smoke proves modern discovery/real tool calls, legacy fallback and the unchanged 45-tool surface. Final delivery checks re-run after the absolute request-cancellation hardening and review-record edits.
+
+### Outstanding concerns
+
+Live Entra issuance/consent is intentionally unobserved; only the actual pinned library algorithm against isolated synthetic responses is proven. File locks assume processes on the same local host. PID reuse or inaccessible liveness prevents recovery; an interrupted owner creation or recovery guard remains for manual inspection rather than unsafe age-based deletion. These limits and recovery instructions are documented. No failing gate remains. One pre-existing Biome non-null-assertion warning in `calendar/availability.test.ts` and seven existing Knip configuration hints remain out of scope; neither fails its gate.
+
+### Post-change review
+
+The migration meets the approved goal without cache-format conversion, private cache parsing, forced authentication, endpoint unification or scope reduction. The provider algorithm is genuinely MSAL-owned while the repository retains legacy persistence and compatibility. Regression risk concentrates at the supported transport seam and local lock recovery; real-library, filesystem, callback and subprocess fixtures cover both. Root independent exact-commit review remains required before consolidated batch acceptance. This packet is delivery evidence, not self-acceptance.
+
+### Mini recap
+
+Both OAuth writers now use public MSAL, legacy sessions survive, concurrent writers serialize/reload, and failed acquisition/persistence preserves existing disk state. Required verification and all existing coverage thresholds pass. The developer and authentication guides carry durable bridge/recovery guidance; no external authority, publication, live-provider operation or work-item deletion occurred. Hand the exact committed candidate to root/reviewer; retain this item at Awaiting review until independent review and aggregate batch closure.
 
 ## Discussion
 

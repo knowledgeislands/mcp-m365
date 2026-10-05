@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import crypto from 'node:crypto'
-import fs from 'node:fs'
 import http from 'node:http'
-import https from 'node:https'
 import querystring from 'node:querystring'
 import url from 'node:url'
 import { loadConfig } from '../config/index.js'
+import { exchangeCallbackTokens } from '../main/auth/callback.js'
 import * as templates from './templates.js'
 
 const config = loadConfig()
@@ -72,7 +71,7 @@ const server = http.createServer((req, res) => {
     if (query.code) {
       console.log('Authorization code received, exchanging for tokens...')
 
-      exchangeCodeForTokens(query.code, pending.codeVerifier)
+      exchangeCallbackTokens(AUTH_CONFIG, query.code, pending.codeVerifier)
         .then(() => {
           console.log('Token exchange successful')
           res.writeHead(200, { 'Content-Type': 'text/html' })
@@ -129,78 +128,6 @@ const server = http.createServer((req, res) => {
     res.end('Not Found')
   }
 })
-
-const exchangeCodeForTokens = (code: string, codeVerifier: string): Promise<any> => {
-  return new Promise((resolve, reject) => {
-    const postData = querystring.stringify({
-      client_id: AUTH_CONFIG.clientId,
-      client_secret: AUTH_CONFIG.clientSecret,
-      code: code,
-      redirect_uri: AUTH_CONFIG.redirectUri,
-      grant_type: 'authorization_code',
-      scope: AUTH_CONFIG.scopes.join(' '),
-      code_verifier: codeVerifier
-    })
-
-    const options: https.RequestOptions = {
-      hostname: AUTH_CONFIG.authorityHost.replace(/^https?:\/\//, '').split('/')[0],
-      path: `/${AUTH_CONFIG.tenantId}/oauth2/v2.0/token`,
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }
-
-    const req = https.request(options, (res) => {
-      let data = ''
-
-      res.on('data', (chunk) => {
-        data += chunk
-      })
-
-      res.on('end', () => {
-        const status = res.statusCode ?? 0
-        if (status >= 200 && status < 300) {
-          try {
-            const tokenResponse = JSON.parse(data)
-            const expiresAt = Date.now() + tokenResponse.expires_in * 1000
-            tokenResponse.expires_at = expiresAt
-
-            const tmpPath = `${AUTH_CONFIG.tokenStorePath}.tmp.${process.pid}.${Math.random().toString(36).slice(2)}`
-            fs.writeFileSync(tmpPath, JSON.stringify(tokenResponse, null, 2), { encoding: 'utf8', mode: 0o600 })
-            fs.renameSync(tmpPath, AUTH_CONFIG.tokenStorePath)
-            console.log(`Tokens saved to ${AUTH_CONFIG.tokenStorePath}`)
-
-            resolve(tokenResponse)
-          } catch (error: any) {
-            reject(new Error(`Error parsing token response: ${error.message}`))
-          }
-        } else {
-          // Do not include the raw response body in the error — it may contain
-          // reflected request parameters (e.g. the auth code). Extract only the
-          // safe `error_description` field from the JSON, or use a generic message.
-          let safeDetail = `status ${status}`
-          try {
-            const errBody = JSON.parse(data)
-            if (errBody.error_description) safeDetail = errBody.error_description
-            else if (errBody.error) safeDetail = errBody.error
-          } catch {
-            // body was not JSON — safe detail stays as the status code only
-          }
-          reject(new Error(`Token exchange failed: ${safeDetail}`))
-        }
-      })
-    })
-
-    req.on('error', (error) => {
-      reject(error)
-    })
-
-    req.write(postData)
-    req.end()
-  })
-}
 
 const PORT = AUTH_CONFIG.authServerPort
 server.listen(PORT, () => {

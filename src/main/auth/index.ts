@@ -1,11 +1,11 @@
 import crypto from 'node:crypto'
 import { promises as fs } from 'node:fs'
-import https from 'node:https'
 import os from 'node:os'
 import path from 'node:path'
-import querystring from 'node:querystring'
 import type { Config } from '../../config/index.js'
 import { M365_DEFAULT_SCOPES, resolveXdgStateHome } from '../../config/index.js'
+import { acquireLegacyTokens } from './msal.js'
+import { withTokenLock } from './token-lock.js'
 
 export interface TokenStorageConfig {
   tokenStorePath?: string
@@ -82,19 +82,19 @@ class TokenStorage {
     }
   }
 
-  async _saveTokensToFile(): Promise<boolean> {
-    if (!this.tokens) {
-      return false
-    }
-    // Atomic write: temp file + rename. POSIX guarantees `rename` is atomic
-    // on the same filesystem, so a crash mid-write cannot leave the token
-    // file truncated. A write/rename failure propagates to the caller (we do
-    // not log it here — main/ surfaces errors by throwing, not printing).
+  async _saveTokensToFile(candidate: StoredTokens | null = this.tokens): Promise<boolean> {
+    if (!candidate) return false
     const finalPath = this.config.tokenStorePath
     const tmpPath = `${finalPath}.tmp.${process.pid}.${crypto.randomBytes(6).toString('hex')}`
-    await fs.writeFile(tmpPath, JSON.stringify(this.tokens, null, 2), { mode: 0o600 })
-    await fs.rename(tmpPath, finalPath)
-    return true
+    try {
+      await fs.writeFile(tmpPath, JSON.stringify(candidate, null, 2), { mode: 0o600, flag: 'wx' })
+      await fs.rename(tmpPath, finalPath)
+      return true
+    } catch {
+      throw new Error('OAuth tokens could not be saved')
+    } finally {
+      await fs.unlink(tmpPath).catch(() => {})
+    }
   }
 
   async getTokens(): Promise<StoredTokens | null> {
@@ -122,175 +122,86 @@ class TokenStorage {
 
   async getValidAccessToken(): Promise<string | null> {
     await this.getTokens()
-
-    if (!this.tokens?.access_token) {
+    if (!this.tokens?.access_token) return null
+    if (!this.isTokenExpired()) return this.tokens.access_token
+    if (!this.tokens.refresh_token) {
+      this.tokens = null
       return null
     }
-
-    if (this.isTokenExpired()) {
-      if (this.tokens.refresh_token) {
-        try {
-          return await this.refreshAccessToken()
-        } catch {
-          // Refresh failed — drop the now-useless token set so the next call
-          // reports unauthenticated rather than retrying a dead refresh token.
-          this.tokens = null
-          await this._saveTokensToFile()
-          return null
-        }
-      } else {
-        this.tokens = null
-        await this._saveTokensToFile()
-        return null
-      }
+    try {
+      return await this.refreshAccessToken()
+    } catch {
+      this.tokens = null
+      return null
     }
-    return this.tokens.access_token
   }
 
   async refreshAccessToken(): Promise<string> {
-    if (!this.tokens?.refresh_token) {
-      throw new Error('No refresh token available to refresh the access token.')
-    }
-
-    const tokens = this.tokens
-    const accessTokenOrThrow = (t: StoredTokens): string => {
-      if (!t.access_token) throw new Error('Refresh succeeded but no access token returned.')
-      return t.access_token
-    }
-
-    if (this._refreshPromise) {
-      return this._refreshPromise.then(accessTokenOrThrow)
-    }
-
-    const postData = querystring.stringify({
-      client_id: this.config.clientId,
-      client_secret: this.config.clientSecret,
-      grant_type: 'refresh_token',
-      refresh_token: tokens.refresh_token,
-      scope: this.config.scopes.join(' ')
-    })
-
-    const requestOptions: https.RequestOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
+    if (this._refreshPromise) return this._refreshPromise.then((tokens) => tokens.access_token as string)
+    if (!this.tokens?.refresh_token) throw new Error('No refresh token available to refresh the access token.')
+    const observed = this.tokens
+    this._refreshPromise = withTokenLock(this.config.tokenStorePath, async () => {
+      await this._loadTokensFromFile()
+      if (!this.tokens?.refresh_token) throw new Error('No refresh token available to refresh the access token.')
+      // A different process already refreshed or signed in while we waited.
+      if (
+        !this.isTokenExpired() &&
+        this.tokens.access_token &&
+        (this.tokens.access_token !== observed.access_token || this.tokens.expires_at !== observed.expires_at)
+      ) {
+        return this.tokens
       }
-    }
-
-    this._refreshPromise = new Promise<StoredTokens>((resolve, reject) => {
-      const req = https.request(this.config.tokenEndpoint, requestOptions, (res) => {
-        let data = ''
-        res.on('data', (chunk) => (data += chunk))
-        res.on('end', async () => {
-          try {
-            const responseBody = JSON.parse(data)
-            /* v8 ignore next — Node always sets statusCode on a delivered response */
-            const status = res.statusCode ?? 0
-            if (status >= 200 && status < 300) {
-              tokens.access_token = responseBody.access_token
-              if (responseBody.refresh_token) {
-                tokens.refresh_token = responseBody.refresh_token
-              }
-              tokens.expires_in = responseBody.expires_in
-              tokens.expires_at = Date.now() + responseBody.expires_in * 1000
-              try {
-                await this._saveTokensToFile()
-                resolve(tokens)
-              } catch (saveError: any) {
-                reject(new Error(`Access token refreshed but failed to save: ${saveError.message}`))
-              }
-            } else {
-              reject(new Error(responseBody.error_description || `Token refresh failed with status ${status}`))
-            }
-          } catch (e) {
-            reject(e)
-          } finally {
-            this._refreshPromise = null
-          }
-        })
-      })
-      req.on('error', (error) => {
-        reject(error)
-        this._refreshPromise = null
-      })
-      req.write(postData)
-      req.end()
+      const prior = this.tokens
+      const response = await acquireLegacyTokens(this.config, { refreshToken: prior.refresh_token as string })
+      const candidate = {
+        ...prior,
+        access_token: response.access_token,
+        refresh_token: response.refresh_token || prior.refresh_token,
+        expires_in: response.expires_in,
+        expires_at: response.expires_at
+      }
+      await this._saveTokensToFile(candidate)
+      this.tokens = candidate
+      return candidate
+    }).finally(() => {
+      this._refreshPromise = null
     })
-
-    return this._refreshPromise.then(accessTokenOrThrow)
+    return this._refreshPromise.then((tokens) => tokens.access_token as string)
   }
 
-  async exchangeCodeForTokens(authCode: string): Promise<StoredTokens> {
+  async exchangeCodeForTokens(
+    authCode: string,
+    codeVerifier?: string,
+    preserveResponse = false
+  ): Promise<StoredTokens> {
     if (!this.config.clientId || !this.config.clientSecret) {
       throw new Error('Client ID or Client Secret is not configured. Cannot exchange code for tokens.')
     }
-    const postData = querystring.stringify({
-      client_id: this.config.clientId,
-      client_secret: this.config.clientSecret,
-      grant_type: 'authorization_code',
-      code: authCode,
-      redirect_uri: this.config.redirectUri,
-      scope: this.config.scopes.join(' ')
-    })
-
-    const requestOptions: https.RequestOptions = {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        'Content-Length': Buffer.byteLength(postData)
-      }
-    }
-
-    return new Promise<StoredTokens>((resolve, reject) => {
-      const req = https.request(this.config.tokenEndpoint, requestOptions, (res) => {
-        let data = ''
-        res.on('data', (chunk) => (data += chunk))
-        res.on('end', async () => {
-          try {
-            const responseBody = JSON.parse(data)
-            /* v8 ignore next — Node always sets statusCode on a delivered response */
-            const status = res.statusCode ?? 0
-            if (status >= 200 && status < 300) {
-              this.tokens = {
-                access_token: responseBody.access_token,
-                refresh_token: responseBody.refresh_token,
-                expires_in: responseBody.expires_in,
-                expires_at: Date.now() + responseBody.expires_in * 1000,
-                scope: responseBody.scope,
-                token_type: responseBody.token_type
-              }
-              try {
-                await this._saveTokensToFile()
-                resolve(this.tokens)
-              } catch (saveError: any) {
-                reject(new Error(`Tokens exchanged but failed to save: ${saveError.message}`))
-              }
-            } else {
-              reject(new Error(responseBody.error_description || `Token exchange failed with status ${status}`))
-            }
-          } catch (e: any) {
-            reject(new Error(`Error processing token response: ${e.message}. (response body redacted)`))
+    return withTokenLock(this.config.tokenStorePath, async () => {
+      await this._loadTokensFromFile()
+      const response = await acquireLegacyTokens(this.config, { code: authCode, codeVerifier })
+      const candidate: StoredTokens = preserveResponse
+        ? response
+        : {
+            access_token: response.access_token,
+            refresh_token: response.refresh_token,
+            expires_in: response.expires_in,
+            expires_at: response.expires_at,
+            scope: response.scope,
+            token_type: response.token_type
           }
-        })
-      })
-      req.on('error', (error) => {
-        reject(error)
-      })
-      req.write(postData)
-      req.end()
+      if (!candidate.refresh_token && this.tokens?.refresh_token) candidate.refresh_token = this.tokens.refresh_token
+      await this._saveTokensToFile(candidate)
+      this.tokens = candidate
+      return candidate
     })
   }
 
   async clearTokens(): Promise<void> {
-    this.tokens = null
-    try {
-      await fs.unlink(this.config.tokenStorePath)
-    } catch {
-      // Best-effort: a missing file is the success case (nothing to delete),
-      // and any other unlink failure is swallowed because the in-memory tokens
-      // are already cleared — which is what callers actually depend on.
-    }
+    await withTokenLock(this.config.tokenStorePath, async () => {
+      this.tokens = null
+      await fs.unlink(this.config.tokenStorePath).catch(() => {})
+    })
   }
 }
 

@@ -75,6 +75,14 @@ Three splits in that tree are load-bearing rather than stylistic, and a change t
 
 The server-change procedure in [Extend the server](extending-the-server.md) covers the per-connection factory and tool-naming conventions that matter when adding or wiring a tool. Root `CLAUDE.md` retains the repository-wide architecture inventory for agents.
 
+## Authentication acquisition and persistence
+
+The pinned `@azure/msal-node` client uses public `acquireTokenByRefreshToken` and `acquireTokenByCode`. Its supported `INetworkModule` captures the raw token response privately, then returns legacy-shaped tokens only after MSAL validates acquisition. No MSAL cache is persisted or inspected. A fresh transient client per operation avoids private cache translation; the existing JSON token file remains authoritative.
+
+Static authority metadata and `knownAuthorities` avoid discovery. The transport permits only the effective token destination, applies the exact configured scope list after MSAL's identity-default normalization, rejects redirects, bounds response bytes and request time, and disables internal retries and PII logging. Core acquisition honors `MCP_M365_TOKEN_ENDPOINT`; the standalone callback retains its existing host/tenant-derived endpoint and ignores that override. Do not silently unify these behaviors while changing the adapter.
+
+`token-lock.ts` serializes both writers across processes with a five-second wait. It reloads the token file inside the lock, retains in-process refresh deduplication, and reclaims only a demonstrably dead PID. Unknown ownership, PID reuse, inaccessible liveness and interrupted recovery remain conservative failures. Atomic 0600 replacement publishes in-memory tokens only after persistence succeeds; fixture tests cover rotation, omission, rollback, code/refresh races, live-lock refusal, stale-owner recovery, and the callback's single-use state/PKCE behavior without Microsoft traffic.
+
 ## Run the verification gate
 
 ```bash

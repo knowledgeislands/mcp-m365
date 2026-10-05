@@ -13,3 +13,7 @@ policy: safe-local-v1
 ---
 
 # MCP-M365-BATCH-002
+
+## Run ledger
+
+<!-- ki-batch-run: MCP-M365-BATCH-002-RUN-001 94dd09ce71b2dc66cd106eb77dc8c72bcaf754dba44cd540ddde4289b9c87a46 -->
