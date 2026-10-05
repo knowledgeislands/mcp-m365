@@ -4,12 +4,12 @@ area: FND
 title: Use MSAL refresh
 theme: foundation-tooling
 horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: e7e17a8ba4f8e6b27cab03fc9c1ad3d69db2521a
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T08:32:34Z
+updated_at: 2026-10-05T08:35:55Z
 ---
 
 # MCP-M365-FND-001: Use MSAL refresh
@@ -106,6 +106,10 @@ The migration meets the approved goal without cache-format conversion, private c
 ### Mini recap
 
 Both OAuth writers now use public MSAL, legacy sessions survive, concurrent writers serialize/reload, and failed acquisition/persistence preserves existing disk state. Required verification and all existing coverage thresholds pass. The developer and authentication guides carry durable bridge/recovery guidance; no external authority, publication, live-provider operation or work-item deletion occurred. Hand the exact committed candidate to root/reviewer; retain this item at Awaiting review until independent review and aggregate batch closure.
+
+## Done
+
+Accepted under named done-target MCP-M365-BATCH-002 outcome authority and the principal’s standing acceptance instruction. Independent reviewer `review_gsuite_m365` approved corrected exact candidate `eee6851a49cadb57341c3e57f76b73f13af6a510`. Compiled-library probes on actual Node 22.16.0 verified both grant paths, malformed-response rejection with unchanged old file/memory, legacy valid-file loading without acquisition, refresh rotation/omission, exact scopes/endpoints and callback PKCE. Independent real child processes proved refresh coalescing, code/refresh rotation preservation, live-lock refusal and failed-rename rollback/privacy/cleanup. The reviewer reran 89 focused auth tests including single-use callback state and provider privacy. Full author gates and the complete packet satisfy all Steps. No live Entra issuance or consent is claimed; documented conservative local-lock recovery limits remain.
 
 ## Discussion
 
