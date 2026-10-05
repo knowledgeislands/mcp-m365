@@ -119,7 +119,7 @@
     "ki:test:record": "mcporter record m365-integration --server hnr-mcp-m365 -- bun scripts/integration.ts && cp ~/.mcporter/recordings/m365-integration.ndjson fixtures/recordings/m365-integration.ndjson",
     "ki:test:replay": "cp fixtures/recordings/m365-integration.ndjson ~/.mcporter/recordings/m365-integration.ndjson && mcporter replay m365-integration -- bun scripts/integration.ts",
     "ki:test:smoke": "bun run build && bun scripts/smoke.ts",
-    "prepare": "husky",
+    "prepare": "husky && bun install --frozen-lockfile --cwd tooling/boundaries",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "test:watch": "vitest"
