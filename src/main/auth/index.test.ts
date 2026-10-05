@@ -280,6 +280,32 @@ it('expired token without a refresh token returns null without rewriting disk', 
   expect(storage.tokens).toBeNull()
   expect(await fs.readFile(storage.config.tokenStorePath)).toEqual(bytes)
 })
+describe.each(['refresh', 'code'])('scalar lifetime validation for %s grant', (grant) => {
+  it.each([[3600], true, false, null, { valueOf: 3600 }, '', ' ', '0x10', 'NaN', 'Infinity', 'garbage', '1e308'])(
+    'rejects malformed expiry %j without changing the prior file or memory',
+    async (expires_in) => {
+      await seed()
+      await storage.getTokens()
+      const bytes = await fs.readFile(storage.config.tokenStorePath)
+      network.mockResolvedValueOnce({ status: 200, headers: {}, body: { ...response, expires_in } })
+      const operation =
+        grant === 'refresh' ? storage.refreshAccessToken() : storage.exchangeCodeForTokens('fixture-code')
+      await expect(operation).rejects.toThrow('OAuth token acquisition failed')
+      expect(await fs.readFile(storage.config.tokenStorePath)).toEqual(bytes)
+      expect(storage.tokens).toEqual(expired)
+      expect(await fs.readdir(dir)).toEqual(['tokens.json'])
+    }
+  )
+  it('retains valid numeric-string lifetime compatibility through acquisition and persistence', async () => {
+    await seed()
+    await storage.getTokens()
+    network.mockResolvedValueOnce({ status: 200, headers: {}, body: { ...response, expires_in: '3600' } })
+    if (grant === 'refresh') await storage.refreshAccessToken()
+    else await storage.exchangeCodeForTokens('fixture-code')
+    expect((await read()).expires_in).toBe('3600')
+    expect((await read()).expires_at).toBeGreaterThan(Date.now() + 3500000)
+  })
+})
 it('atomic save handles absent tokens and clears memory/file under the same lock', async () => {
   expect(await storage._saveTokensToFile()).toBe(false)
   await seed()

@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: e7e17a8ba4f8e6b27cab03fc9c1ad3d69db2521a
 created_at: 2026-07-29T00:37:05Z
-updated_at: 2026-10-05T08:21:03Z
+updated_at: 2026-10-05T08:32:34Z
 ---
 
 # MCP-M365-FND-001: Use MSAL refresh
@@ -89,11 +89,11 @@ Delivered the approved backward-compatible MSAL acquisition boundary from immuta
 
 ### Verification
 
-The disposable pre-migration experiment and committed fixtures use the actual pinned MSAL acquisition algorithm with synthetic transport responses. They prove code/PKCE, custom endpoints without discovery, exact configured scopes, rotation/omission, malformed responses, redacted provider/transport failures and usable expiry. Root synthetic probes identified malformed refresh-token types and overflowing expiry that MSAL itself accepts; explicit adapter validation now rejects non-string/empty present refresh tokens and non-safe absolute expiry before either writer can persist them. Real-library regressions prove prior file and memory survive these failures for refresh and code grants, while numeric-string lifetime compatibility remains covered. Existing valid JSON is neither rewritten nor reauthenticated. Filesystem fixtures prove atomic 0600 replacement, failed-write/rename rollback and cleanup.
+The disposable pre-migration experiment and committed fixtures use the actual pinned MSAL acquisition algorithm with synthetic transport responses. They prove code/PKCE, custom endpoints without discovery, exact configured scopes, rotation/omission, malformed responses, redacted provider/transport failures and usable expiry. Root synthetic probes identified malformed refresh-token types and overflowing expiry that MSAL itself accepts; explicit adapter validation now rejects non-string/empty present refresh tokens and non-safe absolute expiry before either writer can persist them. Real-library regressions prove prior file and memory survive these failures for refresh and code grants, while numeric-string lifetime compatibility remains covered. Independent review of candidate `0d9d54c7dd59ea3345726d506dedfd8e3f8c6d1f` then reproduced JavaScript coercion of array/boolean lifetimes; the correction requires a numeric scalar or nonblank decimal numeric string before conversion. Both grant paths reject arrays, booleans, null, objects and malformed/overflow strings with unchanged prior disk/memory, while valid string `3600` persists compatibly. The reviewed candidate remains in history and this correction is a separate commit for fresh exact-candidate review. Existing valid JSON is neither rewritten nor reauthenticated. Filesystem fixtures prove atomic 0600 replacement, failed-write/rename rollback and cleanup.
 
 Real subprocess fixtures prove two-process refresh deduplication/reload, code-exchange/refresh serialization, live-lock refusal, terminated-owner recovery, and retention of malformed, missing, oversized, inaccessible, symlinked or otherwise unknown lock evidence. A real callback-server subprocess proves exact single-use state after success, failure and cancellation, verifier/challenge binding, derived endpoint, safe error HTML/stderr and unchanged prior file on failed exchange. No live Microsoft requests occur.
 
-Sequential gates pass: `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, `bunx @biomejs/biome check .`, `bunx knip`, plus focused `ki repo audit --skill` checks for `ki-engineering`, `ki-repo-mcp`, `ki-work`, `ki-work-roadmap`, `ki-guides` and `ki-authoring`. The full suite has 42 passing files and 1177 passing tests; coverage is 100% on lines, statements, functions and branches. Smoke proves modern discovery/real tool calls, legacy fallback and the unchanged 45-tool surface. Final delivery checks re-run after the absolute request-cancellation hardening and review-record edits.
+Sequential gates pass: `bunx tsc --noEmit`, `bun run test`, `bun run test:coverage`, `bun run build`, `bun run ki:test:smoke`, `bunx @biomejs/biome check .`, `bunx knip`, plus focused `ki repo audit --skill` checks for `ki-engineering`, `ki-repo-mcp`, `ki-work`, `ki-work-roadmap`, `ki-guides` and `ki-authoring`. The full suite has 42 passing files and 1203 passing tests; coverage is 100% on lines, statements, functions and branches. Smoke proves modern discovery/real tool calls, legacy fallback and the unchanged 45-tool surface. Final delivery checks re-run after the absolute request-cancellation hardening and review-record edits.
 
 ### Outstanding concerns
 
@@ -101,7 +101,7 @@ Live Entra issuance/consent is intentionally unobserved; only the actual pinned 
 
 ### Post-change review
 
-The migration meets the approved goal without cache-format conversion, private cache parsing, forced authentication, endpoint unification or scope reduction. The provider algorithm is genuinely MSAL-owned while the repository retains legacy persistence and compatibility. Regression risk concentrates at the supported transport seam and local lock recovery; real-library, filesystem, callback and subprocess fixtures cover both. Root independent exact-commit review remains required before consolidated batch acceptance. This packet is delivery evidence, not self-acceptance.
+The migration meets the approved goal without cache-format conversion, private cache parsing, forced authentication, endpoint unification or scope reduction. The provider algorithm is genuinely MSAL-owned while the repository retains legacy persistence and compatibility. Regression risk concentrates at the supported transport seam and local lock recovery; real-library, filesystem, callback and subprocess fixtures cover both. The independently reviewed candidate required the explicit expiry-type correction above. Root independent review of the new exact correction commit remains required before consolidated batch acceptance. This packet is delivery evidence, not self-acceptance.
 
 ### Mini recap
 

@@ -105,7 +105,11 @@ export async function acquireLegacyTokens(
             redirectUri: config.redirectUri,
             scopes: config.scopes
           })
-    const lifetime = Number(raw?.expires_in)
+    const expiry: unknown = raw?.expires_in
+    const scalarExpiry =
+      typeof expiry === 'number' ||
+      (typeof expiry === 'string' && /^[+-]?(?:\d+\.?\d*|\.\d+)(?:e[+-]?\d+)?$/i.test(expiry.trim()))
+    const lifetime = scalarExpiry ? Number(expiry) : Number.NaN
     const expiresAt = Date.now() + lifetime * 1000
     if (
       !result?.accessToken ||

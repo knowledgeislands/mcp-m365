@@ -77,7 +77,7 @@ The server-change procedure in [Extend the server](extending-the-server.md) cove
 
 ## Authentication acquisition and persistence
 
-The pinned `@azure/msal-node` client uses public `acquireTokenByRefreshToken` and `acquireTokenByCode`. Its supported `INetworkModule` captures the raw token response privately, then returns legacy-shaped tokens only after MSAL validates acquisition. No MSAL cache is persisted or inspected. A fresh transient client per operation avoids private cache translation; the existing JSON token file remains authoritative.
+The pinned `@azure/msal-node` client uses public `acquireTokenByRefreshToken` and `acquireTokenByCode`. Its supported `INetworkModule` captures the raw token response privately, then returns legacy-shaped tokens only after MSAL validates acquisition. Provider refresh tokens must be nonempty strings when present, and lifetimes must be finite positive numeric scalars or decimal numeric strings yielding a safe absolute expiry; MSAL success alone does not validate every legacy field. No MSAL cache is persisted or inspected. A fresh transient client per operation avoids private cache translation; the existing JSON token file remains authoritative.
 
 Static authority metadata and `knownAuthorities` avoid discovery. The transport permits only the effective token destination, applies the exact configured scope list after MSAL's identity-default normalization, rejects redirects, bounds response bytes and request time, and disables internal retries and PII logging. Core acquisition honors `MCP_M365_TOKEN_ENDPOINT`; the standalone callback retains its existing host/tenant-derived endpoint and ignores that override. Do not silently unify these behaviors while changing the adapter.
 
