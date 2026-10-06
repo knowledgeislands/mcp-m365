@@ -5,6 +5,12 @@ on:
     branches: [main]
   pull_request:
 
+permissions:
+  contents: read
+
+env:
+  KI_VERSION: v0.6.1
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -13,7 +19,7 @@ jobs:
       - uses: jdx/mise-action@v4
       - run: bun install --frozen-lockfile
       - run: bun install --frozen-lockfile --cwd tooling/boundaries
-      - name: Link latest KI from main
+      - name: Install released KI
         env:
           KI_ROOT: ${{ runner.temp }}/ki-fnd-001
         run: |
@@ -29,16 +35,12 @@ jobs:
           mkdir -p "$KI_ROOT"
           mkdir -p "$XDG_CONFIG_HOME/ki"
           printf 'mcpServers: []\n' > "$XDG_CONFIG_HOME/ki/mcp-servers.yaml"
-          git clone --quiet --depth 1 --branch main https://github.com/knowledgeislands/tools-ki.git "$RUNNER_TEMP/tools-ki-source"
-          printf 'KI source commit: %s\n' "$(git -C "$RUNNER_TEMP/tools-ki-source" rev-parse HEAD)"
-          (cd "$RUNNER_TEMP/tools-ki-source" && bun install --frozen-lockfile)
-          bash "$RUNNER_TEMP/tools-ki-source/install.sh" --link
+          curl --fail -sSL --proto '=https' -o "$RUNNER_TEMP/install.sh" \
+            "https://raw.githubusercontent.com/knowledgeislands/tools-ki/$KI_VERSION/install.sh"
+          bash "$RUNNER_TEMP/install.sh" "$KI_VERSION"
           export PATH="$KI_CLI_INSTALL_DIR:$PATH"
           test "$(command -v ki)" = "$KI_CLI_INSTALL_DIR/ki"
-          ki --version
-          ki diag --full | tee "$KI_ROOT/ki-diag-before-bootstrap.txt"
-          grep -F "Installation: local" "$KI_ROOT/ki-diag-before-bootstrap.txt"
-          grep -F "Executable: $RUNNER_TEMP/tools-ki-source/src/main.ts" "$KI_ROOT/ki-diag-before-bootstrap.txt"
+          test "v$(ki --version)" = "$KI_VERSION"
           ki bootstrap
           ki registry add --repo .
           ki repo repair --repo .
@@ -58,17 +60,8 @@ jobs:
             echo "XDG_STATE_HOME=$XDG_STATE_HOME"
           } >> "$GITHUB_ENV"
           echo "$KI_CLI_INSTALL_DIR" >> "$GITHUB_PATH"
+      # Main gate: runs Biome, TypeScript, Syncpack, Knip and test:coverage.
       - run: ki repo audit --repo .
-      - run: bun run test
-      - run: bun run test:coverage
-      - name: Upload coverage report
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage
-          path: reports/coverage/
-          retention-days: 14
-      # Smoke test: boots the built server and verifies the wire-level tool surface
-      # matches the in-process registration tests. Runs after test:coverage so
-      # unit-test failures surface first; test:smoke builds dist/ inline.
+      # Smoke test: boots the built server and verifies the wire-level tool
+      # surface; test:smoke builds dist/ inline.
       - run: bun run ki:test:smoke
