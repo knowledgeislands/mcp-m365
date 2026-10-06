@@ -101,7 +101,7 @@
     ]
   },
   "main": "dist/mcp-server/index.js",
-  "packageManager": "bun@1.4.1",
+  "packageManager": "bun@1.4.2",
   "repository": {
     "type": "git",
     "url": "git+https://github.com/knowledgeislands/mcp-m365.git"
