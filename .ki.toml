@@ -15,6 +15,7 @@ repo_type = "project"
 primary_shape = "ki-repo-mcp"
 repository = "https://github.com/knowledgeislands/mcp-m365"
 title = "mcp-m365"
+capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
 description = "MCP for Outlook email and calendar plus OneDrive access through Microsoft Graph."
 repo_code = "MCP-M365"
 supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
@@ -76,8 +77,3 @@ auto_memory = "disabled"
 # -----------------------------------------------------------------------------
 
 [skills.ki-trades]
-
-[skills.ki-trades.routes."knowledgeislands/ki-agentic-harness"]
-export = ["work", "knowledge"]
-import = ["knowledge"]
-standing.export.knowledge = ["shared-capability-maintenance"]
