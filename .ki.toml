@@ -1,14 +1,14 @@
 # Knowledge Islands repository configuration.
 # Its presence declares conformance with the Knowledge Islands repository standard.
 
-# =============================================================================
-
 # -----------------------------------------------------------------------------
 # Foundation
 # -----------------------------------------------------------------------------
 
 [repo]
-harnesses = ["knowledgeislands/ki-agentic-harness"]
+harnesses = [
+  "knowledgeislands/ki-agentic-harness",
+]
 
 [skills.ki-repo]
 repo_type = "project"
@@ -18,15 +18,14 @@ title = "mcp-m365"
 capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
 description = "MCP for Outlook email and calendar plus OneDrive access through Microsoft Graph."
 repo_code = "MCP-M365"
-supported_runtimes = ["claude-code", "claude-desktop", "chatgpt-codex"]
+supported_runtimes = [
+  "claude-code",
+  "claude-desktop",
+  "chatgpt-codex",
+]
 visibility = "public"
 
 [skills.ki-authoring]
-[skills.ki-binding]
-[skills.ki-binding-claude]
-[skills.ki-binding-chatgpt]
-[skills.ki-housekeeping-chatgpt]
-auto_memory = "disabled"
 
 # -----------------------------------------------------------------------------
 # Repository shape
@@ -46,6 +45,24 @@ auto_memory = "disabled"
 
 [skills.ki-guides]
 
+[skills.ki-binding]
+
+[skills.ki-binding-claude]
+
+[skills.ki-binding-chatgpt]
+
+[skills.ki-housekeeping-claude]
+auto_memory = "disabled"
+
+[skills.ki-housekeeping-chatgpt]
+auto_memory = "disabled"
+
+[skills.ki-tokenomics]
+
+[skills.ki-tokenomics-claude]
+
+[skills.ki-tokenomics-chatgpt]
+
 # -----------------------------------------------------------------------------
 # Change management
 # -----------------------------------------------------------------------------
@@ -59,20 +76,13 @@ organisation_code = "KIS"
 adapter = "roadmap"
 
 [skills.ki-work-roadmap]
-components = ["tool-surface"]
+components = [
+  "tool-surface",
+]
 
 [skills.ki-work-roadmap.areas]
 FND = "Engineering foundations"
 TOOL = "Tool surface"
-
-[skills.ki-housekeeping-claude]
-auto_memory = "disabled"
-
-[skills.ki-tokenomics]
-
-[skills.ki-tokenomics-claude]
-
-[skills.ki-tokenomics-chatgpt]
 
 # -----------------------------------------------------------------------------
 # Relationships
