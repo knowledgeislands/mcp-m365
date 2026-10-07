@@ -62,7 +62,7 @@ adapter = "roadmap"
 components = ["tool-surface"]
 
 [skills.ki-work-roadmap.areas]
-FND = "Foundation tooling"
+FND = "Engineering foundations"
 TOOL = "Tool surface"
 
 [skills.ki-housekeeping-claude]
