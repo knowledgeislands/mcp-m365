@@ -15,9 +15,9 @@ repo_type = "project"
 primary_shape = "ki-repo-mcp"
 repository = "https://github.com/knowledgeislands/mcp-m365"
 title = "mcp-m365"
-capital = "https://github.com/knowledgeislands/ki-arcadia-principal"
+capital = "https://github.com/knowledgeislands/ki-principal"
 description = "MCP for Outlook email and calendar plus OneDrive access through Microsoft Graph."
-repo_code = "MCP-M365"
+repo_code = "KI-MCP-M365"
 supported_runtimes = [
   "claude-code",
   "claude-desktop",

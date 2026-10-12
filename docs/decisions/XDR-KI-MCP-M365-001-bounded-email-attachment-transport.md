@@ -1,5 +1,5 @@
 ---
-id: XDR-MCP-M365-001
+id: XDR-KI-MCP-M365-001
 title: Bounded Email Attachment Transport
 date: 2026-10-01
 status: current
@@ -7,7 +7,7 @@ decision_type: security
 decision_type_url: https://knowledgeislands.info/specifications/decision-records/xdr
 ---
 
-# XDR-MCP-M365-001: Bounded Email Attachment Transport
+# XDR-KI-MCP-M365-001: Bounded Email Attachment Transport
 
 ## Context
 
