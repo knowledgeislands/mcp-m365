@@ -3,13 +3,13 @@ id: KI-MCP-M365-TOOL-009
 area: TOOL
 title: Forwarded-to predicate
 kind: deliver
-horizon: next
-status: ready
+horizon: now
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: d46bc502465be1f276795c5bedde4a51825d4d07
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-17T14:32:32Z
 ---
 
 ## Goal
@@ -47,15 +47,15 @@ At baseline `e401aa3` the engine has no way to relate one message to another. A 
 
 ## Steps
 
-- [ ] Parser: accept the negatable predicate `forwarded-to:<address>`, which must be a full address (no wildcard).
-- [ ] Matcher: `forwarded-to:<address>` holds only when the run layer resolved exactly one forward for that address. Pure, no I/O.
-- [ ] Pure matching in `src/main/triage/lookups.ts`: normalise subjects (strip repeated `RE:`, `FW:` and `Fwd:` prefixes, case and whitespace); accept a candidate only when it is from the mailbox owner, addressed (to or cc) to the address, its subject starts with `FW:` or `Fwd:` and normalises to the original's, it was received after the original and within 90 days, and, when both carry attachments, they share a file name. Candidates with the same `internetMessageId` count once, so the Sent Items copy and the copy that comes back through the shared address are one forward.
-- [ ] Graph: `mailboxOwner()` reads the signed-in user's addresses once per call; `searchForwards()` runs a `$search` on sender, recipient and subject words, and the pure filter above decides; `attachmentNames()` lists names only when both messages have attachments. All cached for the call.
-- [ ] Run layer: extend the lazy lookup so a message reaching the first rule that tests `forwarded-to:` has each address in the block resolved, then classify again.
-- [ ] Report: a matched item carries `forward` (address, subject and received time of the forward); the result gains `forwardMatched` (count) and `forwardAmbiguous` (each message with two or more candidates, its address and the candidate count), and the text summary lists the ambiguous ones for the owner.
-- [ ] Lint: `malformed-address` covers `forwarded-to:` values; a wildcard value is a parse error.
-- [ ] Tests first: parser, matcher, lookups, graph-ops and run, covering the six Verification cases, the de-duplicated Sent Items copy, and the backward-compatibility case.
-- [ ] Documentation: the routing guide (including that only one side of a pair needs `save-attachments:`), the aged and triage tool descriptions, AGENTS.md's routing-engine section, and CHANGELOG.
+- [x] Parser: accept the negatable predicate `forwarded-to:<address>`, which must be a full address (no wildcard).
+- [x] Matcher: `forwarded-to:<address>` holds only when the run layer resolved exactly one forward for that address. Pure, no I/O.
+- [x] Pure matching in `src/main/triage/lookups.ts`: normalise subjects (strip repeated `RE:`, `FW:` and `Fwd:` prefixes, case and whitespace); accept a candidate only when it is from the mailbox owner, addressed (to or cc) to the address, its subject starts with `FW:` or `Fwd:` and normalises to the original's, it was received after the original and within 90 days, and, when both carry attachments, they share a file name. Candidates with the same `internetMessageId` count once, so the Sent Items copy and the copy that comes back through the shared address are one forward.
+- [x] Graph: `mailboxOwner()` reads the signed-in user's addresses once per call; `searchForwards()` runs a `$search` on sender, recipient and subject words, and the pure filter above decides; `attachmentNames()` lists names only when both messages have attachments. All cached for the call.
+- [x] Run layer: extend the lazy lookup so a message reaching the first rule that tests `forwarded-to:` has each address in the block resolved, then classify again.
+- [x] Report: a matched item carries `forward` (address, subject and received time of the forward); the result gains `forwardMatched` (count) and `forwardAmbiguous` (each message with two or more candidates, its address and the candidate count), and the text summary lists the ambiguous ones for the owner.
+- [x] Lint: `malformed-address` covers `forwarded-to:` values; a wildcard value is a parse error.
+- [x] Tests first: parser, matcher, lookups, graph-ops and run, covering the six Verification cases, the de-duplicated Sent Items copy, and the backward-compatibility case.
+- [x] Documentation: the routing guide (including that only one side of a pair needs `save-attachments:`), the aged and triage tool descriptions, AGENTS.md's routing-engine section, and CHANGELOG.
 
 ## Files touched
 
@@ -91,6 +91,50 @@ None. The guide and tool descriptions are the rule language's contract.
 ### Roadmap
 
 None beyond this record. Listing an unmatched item after a period remains the caller's reporting concern, as the Boundary states.
+
+## Review
+
+### Delivered
+
+The `forwarded-to:<address>` predicate as planned: parser and lint validation of a full address, a pure matcher that holds only for exactly one resolved forward, the pure candidate filter and subject normalisation in `src/main/triage/lookups.ts`, three cached Graph reads, the run layer's lazy resolution, and the `forward`, `forwardMatched` and `forwardAmbiguous` report fields. Excluded as planned: any change to the forward copy, a timer-based fallback, and Outlook's `PidTagLastVerbExecuted` marker. Baseline `d46bc50`; the evidence is the uncommitted working tree reviewed here and this committed record.
+
+### Change Summary
+
+- `types.ts`: `forwarded-to` joins the predicate keys but not the broad keys; `EmailRecord` gains `forwards`, keyed by lower-cased address, and `ForwardMatch` holds a forward's subject and received time.
+- `parser.ts`, `lint.ts`: a value with a wildcard, space or quote is a parse error; `malformed-address` now also checks `forwarded-to:` values and asks for a full address. `forwarded-to` stays out of the address keys that drive subsumption, so collision and shadowing analysis is unchanged.
+- `matcher.ts`: the predicate holds when the record carries exactly one forward for the address. Pure, as before.
+- `lookups.ts`: `normaliseSubject()` strips repeated `RE:`, `FW:` and `Fwd:` prefixes, case and spacing; `forwardCandidates()` applies the owner, recipient, subject and 90-day conditions and counts copies with one `internetMessageId` (or, lacking one, one identity) once; `sharesAttachmentName()`, `forwardAddressesToResolve()` and `forwardFor()` support the run layer.
+- `graph-ops.ts`: `mailboxOwner()` reads `me` for `mail` and `userPrincipalName`; `searchForwards()` runs a KQL `$search` on `recipients:` and the normalised subject, top 50, quoting as `src/main/email/search.ts` does; `attachmentNames()` lists names only.
+- `run.ts`: after the thread step, the loop resolves only the addresses in groups whose other terms already hold, at or above the current match, then classifies again until stable, so a forward that unseats a match still reaches a thread rule below. The owner is read once per call, searches are cached by address and normalised subject, and names by message id. A failed lookup becomes a warning and reads as no forward. The new result fields appear only when the block tests `forwarded-to:`.
+- Documentation: a new section of the routing guide covering the four conditions, the three outcomes and the one-side `save-attachments:` convention; the aged, triage and lint tool descriptions; AGENTS.md's lazy-lookup invariant; CHANGELOG.
+
+### Verification
+
+- `bunx tsc --noEmit`: passed.
+- `bunx @biomejs/biome check .`: passed, apart from the pre-existing warning in `src/main/calendar/availability.test.ts`.
+- `bunx rumdl check .`: passed.
+- `bun run test`: 1307 tests passed in 44 files.
+- `bun run test:coverage`: 100% statements, branches, functions and lines.
+- `bun run build`: passed.
+- `bun run ki:test:smoke`: passed, 45 tools.
+- Fixture tests cover the six planned cases (one match, two candidates, outside the window, no shared attachment name, a different address, a subject differing only by prefix and case), the de-duplicated Sent Items copy, and the backward-compatibility case: a rule file without `forwarded-to:` reads neither `me` nor runs a search, and its result has no new fields.
+
+### Outstanding concerns
+
+- Graph's acceptance of the `$search` shape (`recipients:` with a quoted subject phrase) and of `me` with `$select` is proved by fixtures only; no live call was authorised. The owner's report-mode replay against the seven known forwards is the first live proof. A rejected query surfaces as a per-message warning, not a failed run.
+- The plan named sender, recipient and subject words for the search. The sender is not in the query: the owner's addresses are checked by the pure filter instead, which keeps the query to one form whatever addresses the account carries. `recipients:` covers To and Cc.
+- `$search` returns at most 50 candidates. A subject forwarded to the same address more than 50 times could miss the real forward; it then reads as no match, which leaves the item held rather than archiving it wrongly.
+- Deployment needs a rebuild and a restart of the live mcporter daemon by the owner; neither was done here.
+
+No follow-on work needs its own identifier.
+
+### Post-change review
+
+The goal is met within the boundary: a held item is archived once exactly one forward of it exists, and an ambiguous case moves nothing and is named for the owner. Regression risk is low: every new call is reachable only from a rule that tests `forwarded-to:`, and the parser accepts every file it accepted before. The record is ready for acceptance once the owner has reviewed the diff; live acceptance is the report-mode replay of the seven known forwards.
+
+### Mini recap
+
+Delivered the forwarded-to predicate tests first, with documentation and full gates green. The open concern is live confirmation of the search query shape. Learning route: the lazy-lookup loop in `run.ts` now serves two cross-message predicates, and AGENTS.md records how a third should join it.
 
 ## Discussion
 

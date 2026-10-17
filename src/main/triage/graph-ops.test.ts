@@ -4,13 +4,16 @@ import { getAllFolders } from '../email/folder-utils.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import {
   applyActions,
+  attachmentNames,
   buildFolderMap,
   childPaths,
   findMessage,
   hasExecutableActions,
   listConversation,
   listFolderMessages,
-  resolveMessageId
+  mailboxOwner,
+  resolveMessageId,
+  searchForwards
 } from './graph-ops.js'
 import type { EmailRecord } from './types.js'
 
@@ -112,6 +115,56 @@ describe('listConversation', () => {
   it('returns an empty list when Graph sends no value array', async () => {
     mockCall.mockResolvedValue({})
     expect(await listConversation(ctx, TOKEN, 'conv-1')).toEqual([])
+  })
+})
+
+describe('mailboxOwner', () => {
+  it('reads the signed-in user once, lower-cased and de-duplicated', async () => {
+    mockCall.mockResolvedValue({ mail: 'Kris@Kris.me.uk', userPrincipalName: 'kris@kris.me.uk' })
+    expect(await mailboxOwner(ctx, TOKEN)).toEqual(['kris@kris.me.uk'])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me', null, {
+      $select: 'mail,userPrincipalName'
+    })
+  })
+
+  it('keeps both addresses when they differ and ignores anything that is not an address', async () => {
+    mockCall.mockResolvedValue({ mail: 'owner@example.com', userPrincipalName: 'owner_example.com#EXT#' })
+    expect(await mailboxOwner(ctx, TOKEN)).toEqual(['owner@example.com'])
+    mockCall.mockResolvedValue(null)
+    expect(await mailboxOwner(ctx, TOKEN)).toEqual([])
+  })
+})
+
+describe('searchForwards', () => {
+  it('searches by recipient and the normalised subject, without quotes that would break the query', async () => {
+    mockCall.mockResolvedValue({ value: [graphMessage()] })
+    expect(await searchForwards(ctx, TOKEN, 'finance@example.com', 'RE: Invoice "42"  due')).toEqual([graphMessage()])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me/messages', null, {
+      $search: '"recipients:"finance@example.com" subject:"invoice 42 due""',
+      $select: 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,hasAttachments,internetMessageId',
+      $top: 50
+    })
+  })
+
+  it('searches by recipient alone when the subject is only prefixes', async () => {
+    mockCall.mockResolvedValue({})
+    expect(await searchForwards(ctx, TOKEN, 'finance@example.com', 'FW:')).toEqual([])
+    expect(mockCall.mock.calls[0]?.[5]).toMatchObject({ $search: '"recipients:"finance@example.com""' })
+  })
+})
+
+describe('attachmentNames', () => {
+  it('lists names only, dropping entries without one', async () => {
+    mockCall.mockResolvedValue({ value: [{ name: 'invoice.pdf' }, {}, null] })
+    expect(await attachmentNames(ctx, TOKEN, 'msg-1')).toEqual(['invoice.pdf'])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me/messages/msg-1/attachments', null, {
+      $select: 'name'
+    })
+  })
+
+  it('returns an empty list when Graph sends no value array', async () => {
+    mockCall.mockResolvedValue({})
+    expect(await attachmentNames(ctx, TOKEN, 'msg-1')).toEqual([])
   })
 })
 

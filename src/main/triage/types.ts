@@ -21,7 +21,8 @@ export const PREDICATE_KEYS = [
   'age',
   'folder',
   'has',
-  'thread'
+  'thread',
+  'forwarded-to'
 ] as const
 export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 
@@ -173,6 +174,20 @@ export interface EmailRecord {
    * so the matcher itself stays pure. Absent means no filed sibling was found.
    */
   thread?: ThreadFiling
+  /**
+   * Forward copies of this message the mailbox owner sent, keyed by the
+   * lower-cased address a `forwarded-to:` rule names. Filled by the run layer
+   * only for an address a reachable rule tests; an empty list means it looked
+   * and found none. `forwarded-to:` holds only for exactly one.
+   */
+  forwards?: Readonly<Record<string, readonly ForwardMatch[]>>
+}
+
+/** One distinct forward of a message, counted once however many copies the mailbox holds. */
+export interface ForwardMatch {
+  subject: string
+  /** ISO 8601 received timestamp of the forward copy. */
+  received: string
 }
 
 /** The resolved answer to "where is this conversation filed?". */

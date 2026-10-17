@@ -22,27 +22,37 @@ import { isThreadTarget, resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
 import {
   type ActionContext,
   applyActions,
+  attachmentNames,
   buildFolderMap,
   childPaths,
   type FolderMap,
   hasExecutableActions,
   listConversation,
-  listFolderMessages
+  listFolderMessages,
+  mailboxOwner,
+  searchForwards
 } from './graph-ops.js'
 import { type LintFinding, lintRules } from './lint.js'
 import {
   bindThreadTarget,
   type FiledFolders,
+  type ForwardCandidate,
   filedFolders,
   firstThreadRule,
+  forwardAddressesToResolve,
+  forwardCandidates,
+  forwardFor,
+  normaliseSubject,
   resolveThread,
-  type ThreadSibling
+  sharesAttachmentName,
+  type ThreadSibling,
+  testsForwards
 } from './lookups.js'
 import { classify } from './matcher.js'
 import { toEmailRecord } from './message.js'
 import { destinationPaths, parseRules, selectBlock } from './parser.js'
 import { readTracking, type TrackingEntry, upsertEntries, writeTracking } from './tracking.js'
-import type { Action, EmailRecord, Rule, ThreadFiling } from './types.js'
+import type { Action, AndGroup, EmailRecord, ForwardMatch, Rule, ThreadFiling } from './types.js'
 
 /**
  * Findings that make a run unsafe rather than merely untidy. A rule file can
@@ -134,7 +144,18 @@ const triageItemSchema = z.object({
   destination: z.string(),
   applied: z.array(appliedActionSchema),
   /** Present when the item was routed by `move:@thread`: the folder it followed, and any others its thread is filed in. */
-  thread: z.object({ folder: z.string(), alternatives: z.array(z.string()), skipped: z.array(z.string()) }).optional()
+  thread: z.object({ folder: z.string(), alternatives: z.array(z.string()), skipped: z.array(z.string()) }).optional(),
+  /** Present when the item was matched by `forwarded-to:`: the one forward that satisfied it. */
+  forward: z.object({ address: z.string(), subject: z.string(), received: z.string() }).optional()
+})
+
+/** A message with two or more distinct forwards to one address: reported for the owner, never acted on. */
+const forwardAmbiguitySchema = z.object({
+  subject: z.string(),
+  from: z.string(),
+  received: z.string(),
+  address: z.string(),
+  candidates: z.number()
 })
 
 export const triageRunResultSchema = z
@@ -149,7 +170,11 @@ export const triageRunResultSchema = z
     /** The tracking cache this run used. Reported so a mistaken override is visible immediately. */
     trackingPath: z.string(),
     items: z.array(triageItemSchema),
-    warnings: z.array(z.string())
+    warnings: z.array(z.string()),
+    /** Items in this batch matched by a forward rather than by age or content. Present only when the block tests `forwarded-to:`. */
+    forwardMatched: z.number().optional(),
+    /** Messages a `forwarded-to:` test found two or more forwards for. Present only when the block tests `forwarded-to:`. */
+    forwardAmbiguous: z.array(forwardAmbiguitySchema).optional()
   })
   .loose()
 
@@ -179,6 +204,7 @@ interface Candidate {
   ruleset: string
   destination: string
   thread?: ThreadFiling
+  forward?: TriageRunResult['items'][number]['forward']
 }
 
 /** How a thread-follow item was placed, including a split thread's other folders. */
@@ -229,6 +255,76 @@ const makeThreadResolver = (
   }
 }
 
+/** How a `forwarded-to:` item was matched. */
+const viaForward = (item: TriageRunResult['items'][number]): string =>
+  item.forward ? ` — forwarded to ${item.forward.address} (${item.forward.received})` : ''
+
+/** Attach a no-op handler so a cached lookup that fails before anyone awaits it is not an unhandled rejection. */
+const cached = <T>(promise: Promise<T>): Promise<T> => {
+  promise.catch(() => {})
+  return promise
+}
+
+const toForwardCandidate = (message: any): ForwardCandidate => {
+  const { id, subject, from, to, cc, received, hasAttachments } = toEmailRecord(message)
+  return {
+    ...(id ? { id } : {}),
+    subject,
+    from,
+    to,
+    cc,
+    received,
+    ...(hasAttachments !== undefined ? { hasAttachments } : {}),
+    ...(typeof message?.internetMessageId === 'string' ? { internetMessageId: message.internetMessageId } : {})
+  }
+}
+
+/**
+ * The owner's distinct forwards of a message to one address. The owner's
+ * addresses are read once per call, each search once per address and subject,
+ * and each message's attachment names once. When both messages carry
+ * attachments they must share a file name. A failed lookup is reported and
+ * reads as "no forward", so the message is left where it is.
+ */
+const makeForwardResolver = (ctx: TriageContext, accessToken: string, warnings: string[]) => {
+  let owner: Promise<string[]> | undefined
+  const searches = new Map<string, Promise<any[]>>()
+  const names = new Map<string, Promise<string[]>>()
+  const namesOf = (id: string): Promise<string[]> => {
+    let listed = names.get(id)
+    if (!listed) {
+      listed = cached(attachmentNames(ctx, accessToken, id))
+      names.set(id, listed)
+    }
+    return listed
+  }
+  return async (record: EmailRecord, address: string): Promise<ForwardMatch[]> => {
+    owner ??= cached(mailboxOwner(ctx, accessToken))
+    const key = `${address}\n${normaliseSubject(record.subject)}`
+    let found = searches.get(key)
+    if (!found) {
+      found = cached(searchForwards(ctx, accessToken, address, record.subject))
+      searches.set(key, found)
+    }
+    try {
+      const candidates = forwardCandidates(record, address, await owner, (await found).map(toForwardCandidate))
+      const matches: ForwardMatch[] = []
+      for (const candidate of candidates) {
+        if (record.hasAttachments && candidate.hasAttachments) {
+          // Without an id on both sides the names cannot be compared, so the pair is not proved.
+          if (!record.id || !candidate.id) continue
+          if (!sharesAttachmentName(await namesOf(record.id), await namesOf(candidate.id))) continue
+        }
+        matches.push({ subject: candidate.subject, received: candidate.received })
+      }
+      return matches
+    } catch (error) {
+      warnings.push(`forward lookup failed for "${record.subject}": ${errMessage(error)}`)
+      return []
+    }
+  }
+}
+
 const summarise = (result: TriageRunResult): string => {
   const lines = [
     `${result.mode === 'report' ? '[report] would process' : 'Processed'} ${result.acted} of ${result.considered} message(s) in the "${result.block}" pass.` +
@@ -242,7 +338,17 @@ const summarise = (result: TriageRunResult): string => {
         ? 'pending'
         : item.applied.map((a) => `${a.action}${a.ok ? '' : ` FAILED (${a.detail})`}`).join(', ')
     lines.push(
-      `- "${item.subject}" <${item.from}> → ${item.destination} [${item.ruleset}] ${outcome}${viaThread(item)}`
+      `- "${item.subject}" <${item.from}> → ${item.destination} [${item.ruleset}] ${outcome}${viaThread(item)}${viaForward(item)}`
+    )
+  }
+  if (result.forwardMatched) lines.push(`${result.forwardMatched} message(s) matched by a forward.`)
+  if (result.forwardAmbiguous?.length) {
+    lines.push(
+      '',
+      'Ambiguous forwards (nothing moved — decide by hand):',
+      ...result.forwardAmbiguous.map(
+        (a) => `- "${a.subject}" <${a.from}> ${a.received}: ${a.candidates} forwards to ${a.address}`
+      )
     )
   }
   if (result.warnings.length > 0) {
@@ -307,16 +413,49 @@ const runPass = async (
   const threadFrom = firstThreadRule(rules)
   const threadOf =
     threadFrom === -1 ? null : makeThreadResolver(ctx, accessToken, map, filedFolders(parsed.blocks), lookupWarnings)
+  // Forward lookups are lazier still: only for a group whose other terms hold.
+  const forwardOf = testsForwards(rules) ? makeForwardResolver(ctx, accessToken, lookupWarnings) : null
+  const forwardAmbiguous: z.infer<typeof forwardAmbiguitySchema>[] = []
   let unmatched = 0
   for (const listed of records) {
     let record = listed
     let match = classify(rules, record, { now })
-    if (threadOf && record.conversationId && (match.ruleIndex === -1 || match.ruleIndex >= threadFrom)) {
-      const thread = await threadOf(record)
-      if (thread) {
-        record = { ...record, thread }
-        match = classify(rules, record, { now })
+    let threadLooked = false
+    // Each lookup can move the match, and a new match may reach a lookup the
+    // old one did not, so resolve until classification is stable. It ends:
+    // the thread is looked up at most once, and each address once.
+    for (;;) {
+      if (
+        threadOf &&
+        !threadLooked &&
+        record.conversationId &&
+        (match.ruleIndex === -1 || match.ruleIndex >= threadFrom)
+      ) {
+        threadLooked = true
+        const thread = await threadOf(record)
+        if (thread) {
+          record = { ...record, thread }
+          match = classify(rules, record, { now })
+        }
+        continue
       }
+      const addresses = forwardOf ? forwardAddressesToResolve(rules, record, { now }, match.ruleIndex) : []
+      if (addresses.length === 0) break
+      const forwards: Record<string, readonly ForwardMatch[]> = { ...record.forwards }
+      for (const address of addresses) {
+        const found = await (forwardOf as NonNullable<typeof forwardOf>)(record, address)
+        forwards[address] = found
+        if (found.length > 1)
+          forwardAmbiguous.push({
+            subject: record.subject,
+            from: record.from,
+            received: record.received,
+            address,
+            candidates: found.length
+          })
+      }
+      record = { ...record, forwards }
+      match = classify(rules, record, { now })
     }
     if (!('rule' in match)) {
       unmatched++
@@ -324,13 +463,15 @@ const runPass = async (
     }
     if (!hasExecutableActions(match.rule.actions)) continue
     const actions = bindThreadTarget(match.rule.actions, record.thread?.folder)
+    const forward = forwardFor(match.rule.groups[match.groupIndex] as AndGroup, record)
     candidates.push({
       record,
       rule: match.rule,
       actions,
       ruleset: match.ruleset,
       destination: describeDestination(actions),
-      ...(match.rule.actions.some(isThreadTarget) ? { thread: record.thread } : {})
+      ...(match.rule.actions.some(isThreadTarget) ? { thread: record.thread } : {}),
+      ...(forward ? { forward } : {})
     })
   }
 
@@ -356,7 +497,8 @@ const runPass = async (
       ruleset: candidate.ruleset,
       destination: candidate.destination,
       applied,
-      ...(candidate.thread ? { thread: candidate.thread } : {})
+      ...(candidate.thread ? { thread: candidate.thread } : {}),
+      ...(candidate.forward ? { forward: candidate.forward } : {})
     })
 
     if (mode !== 'live' || applied.some((a) => !a.ok)) continue
@@ -396,7 +538,11 @@ const runPass = async (
     remaining: truncated || candidates.length > batch.length,
     unmatched,
     items,
-    warnings: [...findings.filter((finding) => !BLOCKING_CODES.has(finding.code)).map(formatFinding), ...lookupWarnings]
+    warnings: [
+      ...findings.filter((finding) => !BLOCKING_CODES.has(finding.code)).map(formatFinding),
+      ...lookupWarnings
+    ],
+    ...(forwardOf ? { forwardMatched: items.filter((item) => item.forward).length, forwardAmbiguous } : {})
   })
 }
 

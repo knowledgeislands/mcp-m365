@@ -771,6 +771,247 @@ describe('handleTriageRun — thread-follow', () => {
   })
 })
 
+describe('forwarded-to', () => {
+  const FORWARD_FOLDERS = [
+    ...FOLDERS,
+    { id: 'held-id', displayName: '210 Held', parentFolderId: 'triage-id' },
+    { id: 'other-id', displayName: '112 Other', parentFolderId: 'triage-id' },
+    { id: 'archive-id', displayName: '_ARCHIVE', parentFolderId: 'root' },
+    { id: 'paid-id', displayName: 'Paid', parentFolderId: 'archive-id' }
+  ]
+
+  const FORWARD_RULES = [
+    '## Inbound',
+    '',
+    '```rules v1',
+    '* -> move:000 Unknown',
+    '```',
+    '',
+    '## Aged',
+    '',
+    '```rules v1',
+    'folder:"991 Junk" age:7d -> delete',
+    'folder:"210 Held" forwarded-to:finance@example.com !status:flagged -> move:_ARCHIVE/Paid, mark:read',
+    '```'
+  ].join('\n')
+
+  /** A payment document held until the owner forwards it. */
+  const invoice = (over: Record<string, unknown> = {}) =>
+    message({
+      id: 'inv-1',
+      subject: 'Invoice 42',
+      from: { emailAddress: { address: 'billing@supplier.example' } },
+      receivedDateTime: '2026-08-01T09:00:00Z',
+      parentFolderId: 'held-id',
+      hasAttachments: true,
+      ...over
+    })
+
+  /** The owner's forward of it to the finance mailbox. */
+  const forward = (over: Record<string, unknown> = {}) => ({
+    id: 'fw-1',
+    subject: 'FW: Invoice 42',
+    from: { emailAddress: { address: 'owner@example.com' } },
+    toRecipients: [{ emailAddress: { address: 'finance@example.com' } }],
+    receivedDateTime: '2026-08-02T09:00:00Z',
+    hasAttachments: true,
+    internetMessageId: '<fw-1@example.com>',
+    ...over
+  })
+
+  const isSearch = (query: any): boolean => typeof query?.$search === 'string'
+
+  /** `held` sits in 210 Held; every forward search returns `found`; `names` lists each message's attachments. */
+  const stubForwards = (
+    held: unknown[],
+    found: unknown[] | Error,
+    names: Record<string, string[]> = {},
+    extra: (method: string, apiPath: string, query: any) => unknown = () => undefined
+  ) => {
+    mockGetAllFolders.mockResolvedValue(FORWARD_FOLDERS)
+    mockCall.mockImplementation(
+      async (_endpoint: string, _token: string, method: string, apiPath: string, _body: unknown, query: any) => {
+        const answer = extra(method, apiPath, query)
+        if (answer !== undefined) return answer
+        if (method === 'GET' && apiPath === 'me')
+          return { mail: 'owner@example.com', userPrincipalName: 'owner@example.com' }
+        if (method === 'GET' && apiPath === 'me/messages' && isSearch(query)) {
+          if (found instanceof Error) throw found
+          return { value: found }
+        }
+        if (method === 'GET' && apiPath.endsWith('/attachments'))
+          return { value: (names[apiPath.split('/')[2] as string] ?? []).map((name) => ({ name })) }
+        if (method === 'GET' && apiPath === 'me/mailFolders/held-id/messages') return { value: held }
+        if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
+        if (method === 'GET' && apiPath.startsWith('me/messages/')) return invoice()
+        if (method === 'POST') return { id: 'inv-moved' }
+        return {}
+      }
+    )
+  }
+
+  const calls = (predicate: (call: any[]) => boolean) => mockCall.mock.calls.filter(predicate)
+  const searches = () =>
+    calls(([, , method, apiPath, , query]) => method === 'GET' && apiPath === 'me/messages' && isSearch(query))
+  const ownerReads = () => calls(([, , method, apiPath]) => method === 'GET' && apiPath === 'me')
+  const attachmentReads = () => calls(([, , , apiPath]) => String(apiPath).endsWith('/attachments'))
+
+  it('archives a held item once its single forward is found, and says which forward', async () => {
+    stubForwards([invoice()], [forward()], { 'inv-1': ['invoice-42.pdf'], 'fw-1': ['Invoice-42.PDF'] })
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: '_ARCHIVE/Paid',
+      forward: { address: 'finance@example.com', subject: 'FW: Invoice 42', received: '2026-08-02T09:00:00Z' }
+    })
+    expect(result.structuredContent).toMatchObject({ forwardMatched: 1, forwardAmbiguous: [] })
+    expect(result.content[0].text).toContain('pending — forwarded to finance@example.com (2026-08-02T09:00:00Z)')
+    expect(result.content[0].text).toContain('1 message(s) matched by a forward.')
+  })
+
+  it('runs the rule on the original in live mode and leaves the forward copy alone', async () => {
+    stubForwards([invoice()], [forward()], { 'inv-1': ['invoice-42.pdf'], 'fw-1': ['invoice-42.pdf'] })
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES, mode: 'live' })
+
+    expect(result.structuredContent.items[0].applied).toEqual([
+      { action: 'move:_ARCHIVE/Paid', ok: true },
+      { action: 'mark:read', ok: true }
+    ])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'POST', 'me/messages/inv-1/move', {
+      destinationId: 'paid-id'
+    })
+    expect(calls(([, , method, apiPath]) => method !== 'GET' && String(apiPath).includes('fw-1'))).toHaveLength(0)
+  })
+
+  it('counts the Sent Items copy and the copy returned through the shared address as one forward', async () => {
+    stubForwards([invoice({ hasAttachments: false })], [forward(), forward({ id: 'fw-1-returned' })])
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(result.structuredContent.forwardMatched).toBe(1)
+    expect(attachmentReads()).toHaveLength(0)
+  })
+
+  it('falls back to subject, sender and time to de-duplicate copies with no message id', async () => {
+    const bare = forward({ hasAttachments: undefined, internetMessageId: undefined })
+    stubForwards([invoice({ hasAttachments: false })], [bare, { ...bare, id: 'fw-1-returned' }])
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(result.structuredContent.forwardMatched).toBe(1)
+  })
+
+  it('moves nothing when two distinct forwards are found, and lists the message for the owner', async () => {
+    stubForwards(
+      [invoice()],
+      [
+        forward(),
+        forward({ id: 'fw-2', internetMessageId: '<fw-2@example.com>', receivedDateTime: '2026-08-09T09:00:00Z' })
+      ],
+      { 'inv-1': ['invoice-42.pdf'], 'fw-1': ['invoice-42.pdf'], 'fw-2': ['invoice-42.pdf'] }
+    )
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+
+    expect(result.structuredContent).toMatchObject({ acted: 0, unmatched: 1, forwardMatched: 0 })
+    expect(result.structuredContent.forwardAmbiguous).toEqual([
+      {
+        subject: 'Invoice 42',
+        from: 'billing@supplier.example',
+        received: '2026-08-01T09:00:00Z',
+        address: 'finance@example.com',
+        candidates: 2
+      }
+    ])
+    expect(result.content[0].text).toContain('Ambiguous forwards (nothing moved — decide by hand):')
+    expect(result.content[0].text).toContain(
+      '- "Invoice 42" <billing@supplier.example> 2026-08-01T09:00:00Z: 2 forwards to finance@example.com'
+    )
+    // The original's names are read once, however many candidates it is compared with.
+    expect(attachmentReads().map(([, , , apiPath]) => apiPath)).toEqual([
+      'me/messages/inv-1/attachments',
+      'me/messages/fw-1/attachments',
+      'me/messages/fw-2/attachments'
+    ])
+  })
+
+  it('does not match a forward that shares no attachment name with the original', async () => {
+    stubForwards([invoice()], [forward()], { 'inv-1': ['invoice-42.pdf'], 'fw-1': ['unrelated.pdf'] })
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(result.structuredContent).toMatchObject({ acted: 0, unmatched: 1, forwardAmbiguous: [] })
+  })
+
+  it('does not prove a pair whose attachments cannot be compared for want of an id', async () => {
+    const { id: _id, ...noId } = invoice()
+    stubForwards([noId, invoice({ id: 'inv-2', subject: 'Invoice 43' })], [forward({ id: undefined })])
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(result.structuredContent.unmatched).toBe(2)
+    expect(attachmentReads()).toHaveLength(0)
+  })
+
+  it('looks up only messages a forwarded-to group could match, once per owner and subject', async () => {
+    stubForwards(
+      [
+        invoice({ hasAttachments: false }),
+        invoice({ id: 'inv-2', hasAttachments: false, receivedDateTime: '2026-08-01T10:00:00Z' }),
+        invoice({ id: 'inv-3', subject: 'Flagged', flag: { flagStatus: 'flagged' } })
+      ],
+      []
+    )
+    await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(ownerReads()).toHaveLength(1)
+    expect(searches()).toHaveLength(1)
+    expect(searches()[0]?.[5]).toMatchObject({ $search: '"recipients:"finance@example.com" subject:"invoice 42""' })
+  })
+
+  it('reports a failed lookup as a warning and leaves the message where it is', async () => {
+    stubForwards([invoice()], new Error('search unavailable'))
+    const result = await handleAgedRun(ctx, { rules: FORWARD_RULES })
+    expect(result.structuredContent).toMatchObject({ acted: 0, unmatched: 1 })
+    expect(result.structuredContent.warnings).toContain('forward lookup failed for "Invoice 42": search unavailable')
+  })
+
+  it('follows a match unseated by a forward down to a thread-follow rule below it', async () => {
+    const rules = [
+      '## Inbound',
+      '',
+      '```rules v1',
+      'subject:invoice !forwarded-to:finance@example.com -> move:210 Held',
+      'thread:filed -> move:@thread   # lint:allow-collision',
+      '* -> move:000 Unknown',
+      '```'
+    ].join('\n')
+    const inbound = invoice({ parentFolderId: 'inbox-id', conversationId: 'conv-1', hasAttachments: false })
+    stubForwards([], [forward({ hasAttachments: false })], {}, (method, apiPath, query) => {
+      if (method === 'GET' && apiPath === 'me/mailFolders/inbox-id/messages') return { value: [inbound] }
+      if (method === 'GET' && String(query?.$filter ?? '').includes('conversationId eq'))
+        return {
+          value: [
+            {
+              id: 'sib-1',
+              subject: 'Invoice 42',
+              from: { emailAddress: { address: 'billing@supplier.example' } },
+              receivedDateTime: '2026-07-01T09:00:00Z',
+              parentFolderId: 'held-id'
+            }
+          ]
+        }
+      return undefined
+    })
+    const result = await handleTriageRun(ctx, { rules })
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: '_TRIAGE/210 Held',
+      ruleset: 'thread:filed',
+      thread: { folder: '_TRIAGE/210 Held' }
+    })
+    expect(result.structuredContent.items[0].forward).toBeUndefined()
+  })
+
+  it('leaves a rule file without forwarded-to exactly as it was — no owner read, no search, no new fields', async () => {
+    stubForwards([invoice()], [forward()])
+    const result = await handleAgedRun(ctx, { rules: RULES })
+    expect(ownerReads()).toHaveLength(0)
+    expect(searches()).toHaveLength(0)
+    expect(result.structuredContent).not.toHaveProperty('forwardMatched')
+    expect(result.structuredContent).not.toHaveProperty('forwardAmbiguous')
+  })
+})
+
 describe('handleAgedRun', () => {
   it('walks the _TRIAGE subfolders and classifies against the aged block', async () => {
     mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {

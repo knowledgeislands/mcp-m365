@@ -282,12 +282,20 @@ const checkAddressPatterns = (rules: readonly Rule[], findings: LintFinding[]): 
   for (const rule of rules) {
     for (const group of rule.groups) {
       for (const term of group.terms) {
-        if (!isPredicate(term) || !ADDRESS_KEYS.includes(term.key) || term.value.includes('@')) continue
+        if (!isPredicate(term) || term.value.includes('@')) continue
+        // `forwarded-to:` takes one address, never a pattern; the parser refuses a wildcard.
+        const expects =
+          term.key === 'forwarded-to'
+            ? 'a full address'
+            : ADDRESS_KEYS.includes(term.key)
+              ? 'an address or `*@domain`'
+              : ''
+        if (!expects) continue
         findings.push({
           severity: 'warning',
           code: 'malformed-address',
           line: rule.line,
-          message: `\`${renderGroup(group)}\` — \`${term.key}:\` expects an address or \`*@domain\`; "${term.value}" has no \`@\` and will never match`,
+          message: `\`${renderGroup(group)}\` — \`${term.key}:\` expects ${expects}; "${term.value}" has no \`@\` and will never match`,
           source: rule.source
         })
       }

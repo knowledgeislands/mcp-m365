@@ -1,6 +1,19 @@
-import { bindThreadTarget, filedFolders, firstThreadRule, resolveThread, type ThreadSibling } from './lookups.js'
+import {
+  bindThreadTarget,
+  type ForwardCandidate,
+  filedFolders,
+  firstThreadRule,
+  forwardAddressesToResolve,
+  forwardCandidates,
+  forwardFor,
+  normaliseSubject,
+  resolveThread,
+  sharesAttachmentName,
+  type ThreadSibling,
+  testsForwards
+} from './lookups.js'
 import { parseRules } from './parser.js'
-import type { EmailRecord, Rule, RuleBlock } from './types.js'
+import type { AndGroup, EmailRecord, Rule, RuleBlock } from './types.js'
 
 const NOTE = [
   '## Inbound',
@@ -206,5 +219,128 @@ describe('bindThreadTarget', () => {
 
   it('leaves the actions alone when nothing was resolved', () => {
     expect(bindThreadTarget(actions, undefined)).toBe(actions)
+  })
+})
+
+describe('normaliseSubject', () => {
+  it.each([
+    ['FW: Invoice 42', 'invoice 42'],
+    ['Fwd:  RE: fw:Invoice   42 ', 'invoice 42'],
+    ['re : Invoice 42', 'invoice 42'],
+    ['Invoice: 42', 'invoice: 42'],
+    ['', '']
+  ])('%s → %s', (subject, expected) => {
+    expect(normaliseSubject(subject)).toBe(expected)
+  })
+})
+
+describe('forwardCandidates', () => {
+  const OWNER = ['kris@kris.me.uk']
+  const original = { subject: 'Invoice 42', received: '2026-08-01T09:00:00Z' }
+  const forward = (over: Partial<ForwardCandidate> = {}): ForwardCandidate => ({
+    id: 'fw-1',
+    subject: 'FW: Invoice 42',
+    from: 'kris@kris.me.uk',
+    to: ['finance@example.com'],
+    cc: [],
+    received: '2026-08-02T09:00:00Z',
+    internetMessageId: '<fw-1@example.com>',
+    ...over
+  })
+  const kept = (candidates: ForwardCandidate[], address = 'finance@example.com') =>
+    forwardCandidates(original, address, OWNER, candidates).map((c) => c.id)
+
+  it("accepts the owner's forward to the address", () => {
+    expect(kept([forward()])).toEqual(['fw-1'])
+  })
+
+  it('accepts a subject differing only by prefix, case and whitespace, and a CC recipient', () => {
+    expect(kept([forward({ subject: 'Fwd:  invoice   42', to: [], cc: ['Finance@Example.com'] })])).toEqual(['fw-1'])
+  })
+
+  it('counts the Sent Items copy and the returned copy once', () => {
+    expect(kept([forward(), forward({ id: 'fw-1-returned', received: '2026-08-02T09:00:05Z' })])).toEqual(['fw-1'])
+  })
+
+  it('counts two forwards with different message ids, or none at all, separately', () => {
+    expect(kept([forward(), forward({ id: 'fw-2', internetMessageId: '<fw-2@example.com>' })])).toEqual([
+      'fw-1',
+      'fw-2'
+    ])
+    const { internetMessageId: _a, ...bare } = forward()
+    expect(kept([bare, { ...bare, id: 'fw-3', received: '2026-08-03T09:00:00Z' }])).toEqual(['fw-1', 'fw-3'])
+  })
+
+  it.each([
+    ['another sender', { from: 'someone@example.com' }],
+    ['a different address', { to: ['other@example.com'] }],
+    ['a reply rather than a forward', { subject: 'RE: Invoice 42' }],
+    ['a different subject', { subject: 'FW: Invoice 43' }],
+    ['a copy received before the original', { received: '2026-07-31T09:00:00Z' }],
+    ['a forward after 90 days', { received: '2026-10-31T09:00:00Z' }],
+    ['an unreadable timestamp', { received: 'not-a-date' }]
+  ])('rejects %s', (_label, over) => {
+    expect(kept([forward(over)])).toEqual([])
+  })
+
+  it('accepts a forward on the ninetieth day', () => {
+    expect(kept([forward({ received: '2026-10-30T09:00:00Z' })])).toEqual(['fw-1'])
+  })
+
+  it('finds nothing for an original with an unreadable timestamp', () => {
+    expect(forwardCandidates({ ...original, received: '' }, 'finance@example.com', OWNER, [forward()])).toEqual([])
+  })
+})
+
+describe('sharesAttachmentName', () => {
+  it('compares names ignoring case and surrounding space, never matching blanks', () => {
+    expect(sharesAttachmentName(['Invoice.pdf', 'logo.png'], [' invoice.PDF'])).toBe(true)
+    expect(sharesAttachmentName(['invoice.pdf'], ['receipt.pdf'])).toBe(false)
+    expect(sharesAttachmentName([''], [''])).toBe(false)
+  })
+})
+
+describe('forward rule helpers', () => {
+  const rulesOf = (body: string): Rule[] => blocksOf(`rules v1\n${body}`)[0]?.rules ?? []
+  const NOW = { now: new Date('2026-08-06T09:00:00Z') }
+  const held: EmailRecord = { ...self, folder: 'Held' }
+  const one = [{ subject: 'FW: Partner sync', received: '2026-08-06T08:00:00Z' }]
+
+  const RULES = rulesOf(
+    [
+      'folder:Junk age:7d -> delete',
+      'folder:Held forwarded-to:finance@example.com -> move:_ARCHIVE/Paid',
+      'folder:Held forwarded-to:Ops@example.com | folder:Other forwarded-to:audit@example.com -> move:_ARCHIVE/Ops',
+      'folder:Held !forwarded-to:finance@example.com sender:*@partner.example.com -> move:Waiting'
+    ].join('\n')
+  )
+
+  it('knows whether a block tests forwarded-to at all', () => {
+    expect(testsForwards(RULES)).toBe(true)
+    expect(testsForwards(rulesOf('subject:a -> move:A'))).toBe(false)
+  })
+
+  it('asks only for addresses in groups whose other terms hold, up to the current match', () => {
+    expect(forwardAddressesToResolve(RULES, held, NOW, -1)).toEqual(['finance@example.com', 'ops@example.com'])
+    expect(forwardAddressesToResolve(RULES, held, NOW, 1)).toEqual(['finance@example.com'])
+    expect(forwardAddressesToResolve(RULES, { ...self, folder: 'Junk' }, NOW, -1)).toEqual([])
+  })
+
+  it('does not ask again for an address already looked up', () => {
+    const looked = { ...held, forwards: { 'finance@example.com': [] } }
+    expect(forwardAddressesToResolve(RULES, looked, NOW, -1)).toEqual(['ops@example.com'])
+  })
+
+  it('reports the forward behind a matching group, ignoring a negated test', () => {
+    const rule = RULES[1] as Rule
+    expect(forwardFor(rule.groups[0] as AndGroup, { ...held, forwards: { 'finance@example.com': one } })).toEqual({
+      address: 'finance@example.com',
+      ...one[0]
+    })
+    expect(forwardFor(rule.groups[0] as AndGroup, held)).toBeUndefined()
+    const negated = RULES[3] as Rule
+    expect(
+      forwardFor(negated.groups[0] as AndGroup, { ...held, forwards: { 'finance@example.com': one } })
+    ).toBeUndefined()
   })
 })

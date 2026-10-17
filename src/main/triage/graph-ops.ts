@@ -12,11 +12,13 @@
  *   threaded into any remaining actions for that message.
  */
 import { errMessage } from '../../utils/errors.js'
+import { escapeKqlValue } from '../../utils/odata-helpers.js'
 import type { AttachmentSaver } from '../attachments/save.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import type { GraphContext } from '../graph-client/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
 import { resolveMoveTarget } from './folders.js'
+import { normaliseSubject } from './lookups.js'
 import { TRIAGE_EXPAND, TRIAGE_SELECT_FIELDS, toEmailRecord } from './message.js'
 import { identityKey } from './tracking.js'
 import type { Action, EmailRecord } from './types.js'
@@ -176,6 +178,62 @@ export const listConversation = async (
     $top: CONVERSATION_TOP
   })
   return Array.isArray(response?.value) ? response.value : []
+}
+
+/** The signed-in user's addresses, lower-cased: who "the mailbox owner" is for `forwarded-to:`. Read, not configured. */
+export const mailboxOwner = async (ctx: GraphContext, accessToken: string): Promise<string[]> => {
+  const me: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', 'me', null, {
+    $select: 'mail,userPrincipalName'
+  })
+  const addresses = [me?.mail, me?.userPrincipalName].filter(
+    (address): address is string => typeof address === 'string' && address.includes('@')
+  )
+  return [...new Set(addresses.map((address) => address.toLowerCase()))]
+}
+
+/** Most candidates read for one forward search. */
+const FORWARD_SEARCH_TOP = 50
+
+/** What the forward filter tests, and `internetMessageId` so two copies of one forward count once. */
+const FORWARD_SELECT = 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,hasAttachments,internetMessageId'
+
+/**
+ * Candidate forwards of a message to `address`.
+ *
+ * Graph's `$search` matches words, not exact values, and cannot be combined
+ * with `$filter` or `$orderby`, so it only narrows the field: the sender, the
+ * exact recipient, the subject and the received window are decided by the pure
+ * filter in `lookups.ts`.
+ */
+export const searchForwards = async (
+  ctx: GraphContext,
+  accessToken: string,
+  address: string,
+  subject: string
+): Promise<any[]> => {
+  const terms = [`recipients:"${escapeKqlValue(address)}"`]
+  const words = escapeKqlValue(normaliseSubject(subject))
+  if (words) terms.push(`subject:"${words}"`)
+  const response: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', 'me/messages', null, {
+    $search: `"${terms.join(' ')}"`,
+    $select: FORWARD_SELECT,
+    $top: FORWARD_SEARCH_TOP
+  })
+  return Array.isArray(response?.value) ? response.value : []
+}
+
+/** A message's attachment file names. Names only — no content is read. */
+export const attachmentNames = async (ctx: GraphContext, accessToken: string, messageId: string): Promise<string[]> => {
+  const response: any = await callGraphAPI(
+    ctx.graphApiEndpoint,
+    accessToken,
+    'GET',
+    `me/messages/${messageId}/attachments`,
+    null,
+    { $select: 'name' }
+  )
+  const listed: any[] = Array.isArray(response?.value) ? response.value : []
+  return listed.map((attachment) => attachment?.name).filter((name): name is string => typeof name === 'string')
 }
 
 /** Identity-resolved Graph id, or null when the message is gone. */

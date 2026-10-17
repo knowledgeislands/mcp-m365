@@ -142,6 +142,10 @@ const validateValue = (key: PredicateKey, value: string): string | null => {
     return `invalid has: "${value}" (expected ${HAS_VALUES.join(', ')})`
   if (key === 'thread' && !(THREAD_VALUES as readonly string[]).includes(value))
     return `invalid thread: "${value}" (expected ${THREAD_VALUES.join(', ')})`
+  // A forward is looked up by recipient, so the value is one address: a pattern
+  // would make "exactly one forward" depend on which addresses happen to exist.
+  if (key === 'forwarded-to' && /[*\s"]/.test(value))
+    return `invalid forwarded-to: "${value}" (expected a full address, not a pattern)`
   return null
 }
 

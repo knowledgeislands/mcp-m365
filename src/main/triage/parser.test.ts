@@ -413,3 +413,26 @@ describe('parseRules — thread-follow', () => {
     })
   })
 })
+
+describe('parseRules — forwarded-to', () => {
+  it('parses the predicate with a full address, negated or not', () => {
+    expect(firstRule('forwarded-to:finance@example.com -> move:X').groups[0]?.terms[0]).toMatchObject({
+      key: 'forwarded-to',
+      value: 'finance@example.com',
+      negated: false
+    })
+    expect(firstRule('!forwarded-to:"finance@example.com" -> move:X').groups[0]?.terms[0]).toMatchObject({
+      key: 'forwarded-to',
+      value: 'finance@example.com',
+      quoted: true,
+      negated: true
+    })
+  })
+
+  it('rejects a wildcard or a value with spaces', () => {
+    expect(errorsFor('forwarded-to:*@example.com -> move:X')[0]).toMatch(
+      /invalid forwarded-to: "\*@example.com" \(expected a full address, not a pattern\)/
+    )
+    expect(errorsFor('forwarded-to:"finance @example.com" -> move:X')[0]).toMatch(/invalid forwarded-to/)
+  })
+})

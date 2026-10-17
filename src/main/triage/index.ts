@@ -11,6 +11,7 @@ export { isThreadTarget, resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
 export {
   type AppliedAction,
   applyActions,
+  attachmentNames,
   buildFolderMap,
   childPaths,
   type FolderMap,
@@ -18,7 +19,9 @@ export {
   hasExecutableActions,
   listConversation,
   listFolderMessages,
-  resolveMessageId
+  mailboxOwner,
+  resolveMessageId,
+  searchForwards
 } from './graph-ops.js'
 export {
   ALLOW_COLLISION,
@@ -32,10 +35,18 @@ export {
 export {
   bindThreadTarget,
   type FiledFolders,
+  FORWARD_WINDOW_DAYS,
+  type ForwardCandidate,
   filedFolders,
   firstThreadRule,
+  forwardAddressesToResolve,
+  forwardCandidates,
+  forwardFor,
+  normaliseSubject,
   resolveThread,
-  type ThreadSibling
+  sharesAttachmentName,
+  type ThreadSibling,
+  testsForwards
 } from './lookups.js'
 export {
   classify,
@@ -81,6 +92,7 @@ export type {
   ActionKind,
   AndGroup,
   EmailRecord,
+  ForwardMatch,
   Matched,
   MatchResult,
   NoMatch,

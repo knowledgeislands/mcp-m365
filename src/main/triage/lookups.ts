@@ -1,9 +1,12 @@
 /**
- * Thread-follow resolution: where is this message's conversation already filed?
+ * Cross-message lookups: where is this message's conversation already filed,
+ * and has the mailbox owner forwarded it?
  *
  * Pure, like the parser and matcher. The run layer fetches a conversation's
- * messages from Graph and hands them here as plain data; this module decides
- * which of their folders count as "filed" and which one a reply follows.
+ * messages, or the candidate forward copies, from Graph and hands them here as
+ * plain data; this module decides what they mean.
+ *
+ * Thread-follow: which folders count as "filed", and which one a reply follows.
  *
  * "Filed" is read from the rule file, never configured separately, so the
  * answer moves with the rules:
@@ -16,8 +19,19 @@
  *   which, so a sibling there is skipped and reported.
  */
 import { isThreadTarget, resolveMoveTarget } from './folders.js'
+import { evaluateTerm, type MatchContext } from './matcher.js'
 import { identityKey } from './tracking.js'
-import type { Action, EmailRecord, Rule, RuleBlock, ThreadFiling } from './types.js'
+import type {
+  Action,
+  AndGroup,
+  EmailRecord,
+  ForwardMatch,
+  PredicateTerm,
+  Rule,
+  RuleBlock,
+  Term,
+  ThreadFiling
+} from './types.js'
 
 /** The folders a sibling can be found in, and what each one means for a reply. */
 export interface FiledFolders {
@@ -155,3 +169,119 @@ export const bindThreadTarget = (actions: readonly Action[], folder: string | un
   folder
     ? actions.map((action): Action => (isThreadTarget(action) ? { kind: 'move', value: folder, quoted: true } : action))
     : actions
+
+/** How long after the original a forward still counts as handing it on. */
+export const FORWARD_WINDOW_DAYS = 90
+
+const MS_PER_DAY = 86_400_000
+const REPLY_PREFIX_RE = /^\s*(?:re|fwd?)\s*:\s*/i
+const FORWARD_PREFIX_RE = /^\s*fwd?\s*:/i
+
+/** A subject with every leading `RE:`, `FW:` and `Fwd:` removed, whitespace collapsed and lower-cased. */
+export const normaliseSubject = (subject: string): string => {
+  let rest = subject
+  while (REPLY_PREFIX_RE.test(rest)) rest = rest.replace(REPLY_PREFIX_RE, '')
+  return rest.replace(/\s+/g, ' ').trim().toLowerCase()
+}
+
+/** A message that might be the owner's forward of another, as Graph's search returned it. */
+export interface ForwardCandidate extends Pick<EmailRecord, 'id' | 'subject' | 'from' | 'to' | 'cc' | 'received'> {
+  hasAttachments?: boolean
+  /** RFC 5322 Message-ID. The Sent Items copy and the copy returned through a shared address share it. */
+  internetMessageId?: string
+}
+
+/**
+ * The distinct forwards of `original` to `address`, on every test except the
+ * attachment one, which needs a further Graph call and so is applied by the
+ * caller with {@link sharesAttachmentName} to these survivors only.
+ *
+ * A candidate is a forward when the mailbox owner sent it, `address` is among
+ * its To or CC recipients, its subject is `FW:` or `Fwd:` and normalises to the
+ * original's, and it was received after the original and within
+ * {@link FORWARD_WINDOW_DAYS}. Copies sharing an `internetMessageId` count
+ * once, or every forward to a shared address the owner also receives would
+ * read as two.
+ */
+export const forwardCandidates = (
+  original: Pick<EmailRecord, 'subject' | 'received'>,
+  address: string,
+  owner: readonly string[],
+  candidates: readonly ForwardCandidate[]
+): ForwardCandidate[] => {
+  const start = Date.parse(original.received)
+  if (Number.isNaN(start)) return []
+  const end = start + FORWARD_WINDOW_DAYS * MS_PER_DAY
+  const recipient = address.toLowerCase()
+  const owners = new Set(owner.map((a) => a.toLowerCase()))
+  const subject = normaliseSubject(original.subject)
+
+  const seen = new Set<string>()
+  const kept: ForwardCandidate[] = []
+  for (const candidate of candidates) {
+    const at = Date.parse(candidate.received)
+    if (!owners.has(candidate.from.toLowerCase())) continue
+    if (![...candidate.to, ...candidate.cc].some((a) => a.toLowerCase() === recipient)) continue
+    if (!FORWARD_PREFIX_RE.test(candidate.subject) || normaliseSubject(candidate.subject) !== subject) continue
+    if (!(at > start && at <= end)) continue
+    const key = candidate.internetMessageId || identityKey(candidate)
+    if (seen.has(key)) continue
+    seen.add(key)
+    kept.push(candidate)
+  }
+  return kept
+}
+
+/** Do two attachment name lists share a file name, ignoring case? */
+export const sharesAttachmentName = (a: readonly string[], b: readonly string[]): boolean => {
+  const names = new Set(a.map((name) => name.trim().toLowerCase()).filter(Boolean))
+  return b.some((name) => names.has(name.trim().toLowerCase()))
+}
+
+const isForwardTerm = (term: Term): term is PredicateTerm => term.kind === 'predicate' && term.key === 'forwarded-to'
+
+/** Does any rule test `forwarded-to:`? A file without one never looks a forward up. */
+export const testsForwards = (rules: readonly Rule[]): boolean =>
+  rules.some((rule) => rule.groups.some((group) => group.terms.some(isForwardTerm)))
+
+/**
+ * The `forwarded-to:` addresses whose answer could change this message's
+ * classification and have not been looked up yet.
+ *
+ * Only rules up to the current match can matter — a later rule is reached only
+ * if a lookup unseats the current one, and the caller asks again then — and
+ * only a group whose every other term already holds. That keeps the lookup to
+ * the messages a rule is actually about: `folder:"Held" forwarded-to:x` costs
+ * a search for mail in `Held`, not for every message the pass reads.
+ */
+export const forwardAddressesToResolve = (
+  rules: readonly Rule[],
+  record: EmailRecord,
+  ctx: MatchContext,
+  matchIndex: number
+): string[] => {
+  const last = matchIndex === -1 ? rules.length - 1 : matchIndex
+  const wanted = new Set<string>()
+  for (const rule of rules.slice(0, last + 1))
+    for (const group of rule.groups) {
+      const forwards = group.terms.filter(isForwardTerm)
+      if (forwards.length === 0) continue
+      if (!group.terms.every((term) => isForwardTerm(term) || evaluateTerm(term, record, ctx))) continue
+      for (const term of forwards) {
+        const address = term.value.toLowerCase()
+        if (!record.forwards?.[address]) wanted.add(address)
+      }
+    }
+  return [...wanted]
+}
+
+/** The forward that satisfied a matching group's `forwarded-to:` test, for the report. */
+export const forwardFor = (group: AndGroup, record: EmailRecord): ({ address: string } & ForwardMatch) | undefined => {
+  for (const term of group.terms) {
+    if (!isForwardTerm(term) || term.negated) continue
+    const address = term.value.toLowerCase()
+    const [only] = record.forwards?.[address] ?? []
+    if (only) return { address, ...only }
+  }
+  return undefined
+}

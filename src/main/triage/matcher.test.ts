@@ -194,6 +194,16 @@ describe('evaluatePredicate', () => {
     expect(evaluatePredicate(t, record({ conversationId: 'conv-1' }), ctx)).toBe(false)
     expect(evaluatePredicate(t, record(), ctx)).toBe(false)
   })
+
+  it('holds forwarded-to only for exactly one resolved forward to that address', () => {
+    const t = term('forwarded-to:Finance@Example.com')
+    const one = [{ subject: 'FW: Invoice', received: '2026-08-02T09:00:00Z' }]
+    expect(evaluatePredicate(t, record({ forwards: { 'finance@example.com': one } }), ctx)).toBe(true)
+    expect(evaluatePredicate(t, record({ forwards: { 'finance@example.com': [...one, ...one] } }), ctx)).toBe(false)
+    expect(evaluatePredicate(t, record({ forwards: { 'finance@example.com': [] } }), ctx)).toBe(false)
+    expect(evaluatePredicate(t, record({ forwards: { 'other@example.com': one } }), ctx)).toBe(false)
+    expect(evaluatePredicate(t, record(), ctx)).toBe(false)
+  })
 })
 
 describe('evaluateTerm and evaluateGroup', () => {

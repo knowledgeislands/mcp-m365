@@ -36,7 +36,7 @@ predicates -> actions [# comment]
 
 Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything — valid only as the mandatory final fallback.
 
-- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`, `thread:`.
+- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`, `thread:`, `forwarded-to:`.
 - **Actions:** `move:`, `tag:`, `mark:`, `save-attachments:`, `delete`, `suggest`.
 
 ```text
@@ -73,13 +73,40 @@ When the conversation is filed in more than one folder, the most recent filed si
 
 `move:@thread` is defined only when `thread:filed` holds, so lint refuses a rule that uses it in any OR-arm without an un-negated `thread:filed`. A quoted `move:"@thread"` is an ordinary folder name. `thread:filed` also works in the `aged` block, for example `folder:"000 Unknown" thread:filed -> move:@thread` to re-file unknown mail once its thread has been filed.
 
+## Archive an item once you have forwarded it
+
+Some mail waits in a folder until you hand it on yourself, such as an invoice you forward to a finance mailbox. `forwarded-to:` lets an `aged` rule archive each one once the forward exists, instead of ageing the folder out on a timer:
+
+```text
+folder:"210 Held" forwarded-to:finance@example.com !status:flagged -> move:_ARCHIVE/Paid, mark:read
+```
+
+`forwarded-to:<address>` takes a full address, never a pattern, and can be negated. It holds when exactly one forward of the message exists that meets all four conditions:
+
+- you sent it, from any address the signed-in account carries, and `<address>` is on its To or Cc line;
+- its subject is `FW:` or `Fwd:` followed by the original's subject, compared after removing any further `RE:`, `FW:` and `Fwd:` prefixes and ignoring case and spacing;
+- it was received after the original and no more than 90 days later;
+- when both messages carry attachments, they share at least one file name.
+
+A forward to an address you also receive exists twice in the mailbox, in Sent Items and as the copy that comes back. Both carry the same message id, so they count as one forward.
+
+There are three outcomes:
+
+- **One forward.** The predicate holds and the rule's actions run on the original. The forward copy is never touched; it follows whatever rule its own folder carries. The report item carries `forward` with the address, subject and received time of the forward, and the result counts these in `forwardMatched`.
+- **Two or more forwards.** The predicate does not hold, so nothing moves. The result lists the message in `forwardAmbiguous` with the address and the number of candidates, and the text summary names it for you to decide by hand.
+- **No forward.** The predicate does not hold and the run says nothing about it.
+
+As with thread-follow, the lookup is lazy. The mailbox is searched only for a message whose other conditions in the same rule already hold, once per address and subject per call, and attachment names are read only when both messages have attachments. A failed lookup is reported as a warning and leaves the message where it is. A rule file with no `forwarded-to:` rule makes no extra call, and its result has neither `forwardMatched` nor `forwardAmbiguous`.
+
+The original and its forward usually carry the same attachment, so put `save-attachments:` on one side of the pair only. Harvesting on both saves the document twice.
+
 ## Lint before you run
 
 ```text
 m365_email_routing_lint
 ```
 
-Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, `move:@thread` without `thread:filed`, and undeclared attachment destinations. `thread:` counts as a broad predicate, so a thread-follow line above specific rules is reported until you mark it `# lint:allow-collision`. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
+Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, `move:@thread` without `thread:filed`, a `forwarded-to:` value that is not a full address, and undeclared attachment destinations. `thread:` counts as a broad predicate, so a thread-follow line above specific rules is reported until you mark it `# lint:allow-collision`. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
 
 Lint first, every time you edit the file. An unreachable rule is invisible at runtime — the mail simply goes somewhere else — and a broad-rule collision is the failure that first-match-wins makes hardest to spot by reading.
 

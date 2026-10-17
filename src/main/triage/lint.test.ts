@@ -223,6 +223,17 @@ describe('lintRules — hygiene', () => {
     )
   })
 
+  it('flags a forwarded-to value with no @, and leaves a full address alone', () => {
+    expect(find(`forwarded-to:finance -> move:A\n${FALLBACK}`, 'malformed-address')?.message).toMatch(
+      /`forwarded-to:` expects a full address; "finance" has no `@`/
+    )
+    expect(codes(`forwarded-to:finance@example.com -> move:A\n${FALLBACK}`)).not.toContain('malformed-address')
+  })
+
+  it('does not treat other predicates as addresses', () => {
+    expect(codes(`subject:invoice -> move:A\n${FALLBACK}`)).not.toContain('malformed-address')
+  })
+
   it('checks move targets against a supplied folder list', () => {
     const findings = lint(`sender:*@x.com -> move:111 Partner\n${FALLBACK}`, {
       knownFolders: ['_TRIAGE/111 Partner']
