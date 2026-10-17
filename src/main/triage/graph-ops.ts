@@ -12,7 +12,7 @@
  *   threaded into any remaining actions for that message.
  */
 import { errMessage } from '../../utils/errors.js'
-import { escapeKqlValue } from '../../utils/odata-helpers.js'
+import { kqlPropertyClause, messageSearchQuery } from '../../utils/kql.js'
 import type { AttachmentSaver } from '../attachments/save.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import type { GraphContext } from '../graph-client/index.js'
@@ -203,7 +203,8 @@ const FORWARD_SELECT = 'id,subject,from,toRecipients,ccRecipients,receivedDateTi
  * Graph's `$search` matches words, not exact values, and cannot be combined
  * with `$filter` or `$orderby`, so it only narrows the field: the sender, the
  * exact recipient, the subject and the received window are decided by the pure
- * filter in `lookups.ts`.
+ * filter in `lookups.ts`. The query is `recipients:"<address>" AND
+ * subject:"<normalised subject>"`, quoted as `utils/kql.ts` sets out.
  */
 export const searchForwards = async (
   ctx: GraphContext,
@@ -211,11 +212,9 @@ export const searchForwards = async (
   address: string,
   subject: string
 ): Promise<any[]> => {
-  const terms = [`recipients:"${escapeKqlValue(address)}"`]
-  const words = escapeKqlValue(normaliseSubject(subject))
-  if (words) terms.push(`subject:"${words}"`)
+  const clauses = [kqlPropertyClause('recipients', address), kqlPropertyClause('subject', normaliseSubject(subject))]
   const response: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', 'me/messages', null, {
-    $search: `"${terms.join(' ')}"`,
+    $search: messageSearchQuery(clauses.filter((clause): clause is string => clause !== null)),
     $select: FORWARD_SELECT,
     $top: FORWARD_SEARCH_TOP
   })

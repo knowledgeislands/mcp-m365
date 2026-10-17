@@ -136,20 +136,28 @@ describe('mailboxOwner', () => {
 })
 
 describe('searchForwards', () => {
-  it('searches by recipient and the normalised subject, without quotes that would break the query', async () => {
+  it('searches by recipient and the normalised subject in the escaped form Graph accepts', async () => {
     mockCall.mockResolvedValue({ value: [graphMessage()] })
     expect(await searchForwards(ctx, TOKEN, 'finance@example.com', 'RE: Invoice "42"  due')).toEqual([graphMessage()])
     expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me/messages', null, {
-      $search: '"recipients:"finance@example.com" subject:"invoice 42 due""',
+      $search: String.raw`"recipients:\"finance@example.com\" AND subject:\"invoice 42 due\""`,
       $select: 'id,subject,from,toRecipients,ccRecipients,receivedDateTime,hasAttachments,internetMessageId',
       $top: 50
+    })
+  })
+
+  it('keeps colons, symbols and non-ASCII letters inside the subject phrase', async () => {
+    mockCall.mockResolvedValue({ value: [] })
+    await searchForwards(ctx, TOKEN, 'finance@example.com', 'FW: Facture n° 12: Café #3\\4')
+    expect(mockCall.mock.calls[0]?.[5]).toMatchObject({
+      $search: String.raw`"recipients:\"finance@example.com\" AND subject:\"facture n° 12: café #3 4\""`
     })
   })
 
   it('searches by recipient alone when the subject is only prefixes', async () => {
     mockCall.mockResolvedValue({})
     expect(await searchForwards(ctx, TOKEN, 'finance@example.com', 'FW:')).toEqual([])
-    expect(mockCall.mock.calls[0]?.[5]).toMatchObject({ $search: '"recipients:"finance@example.com""' })
+    expect(mockCall.mock.calls[0]?.[5]).toMatchObject({ $search: String.raw`"recipients:\"finance@example.com\""` })
   })
 })
 

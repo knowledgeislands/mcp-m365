@@ -956,7 +956,9 @@ describe('forwarded-to', () => {
     await handleAgedRun(ctx, { rules: FORWARD_RULES })
     expect(ownerReads()).toHaveLength(1)
     expect(searches()).toHaveLength(1)
-    expect(searches()[0]?.[5]).toMatchObject({ $search: '"recipients:"finance@example.com" subject:"invoice 42""' })
+    expect(searches()[0]?.[5]).toMatchObject({
+      $search: String.raw`"recipients:\"finance@example.com\" AND subject:\"invoice 42\""`
+    })
   })
 
   it('reports a failed lookup as a warning and leaves the message where it is', async () => {

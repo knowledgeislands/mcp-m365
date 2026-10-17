@@ -317,10 +317,16 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
   server.registerTool(
     'm365_email_messages_search',
     {
-      description: 'Search for emails using various criteria',
+      description:
+        'Search for emails. Every term given is applied together as one Microsoft Graph search; a term is never dropped or relaxed, and a query Graph rejects is returned as an error rather than as other mail. With only flags and dates, a Graph filter is used instead.',
       inputSchema: z
         .object({
-          query: z.string().optional().describe('Search query text to find in emails'),
+          query: z
+            .string()
+            .optional()
+            .describe(
+              'Free text or KQL (for example `invoice OR receipt`), applied as written alongside the other terms'
+            ),
           folder: z
             .string()
             .optional()
@@ -332,9 +338,9 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
             .describe(
               'Optional explicit Graph folder ID. If provided, this is used instead of folder path resolution.'
             ),
-          from: z.string().optional().describe('Filter by sender email address or name'),
-          to: z.string().optional().describe('Filter by recipient email address or name'),
-          subject: z.string().optional().describe('Filter by email subject'),
+          from: z.string().optional().describe('Sender address or name (matched as a phrase)'),
+          to: z.string().optional().describe('Address or name in the To field (matched as a phrase)'),
+          subject: z.string().optional().describe('Words in the subject (matched as a phrase)'),
           hasAttachments: z.boolean().optional().describe('Filter to only emails with attachments'),
           unreadOnly: z.boolean().optional().describe('Filter to only unread emails'),
           receivedAfter: z

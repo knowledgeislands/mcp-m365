@@ -77,16 +77,19 @@ export interface HnrMcpM365Tools {
   m365_email_messages_list(folder?: string, folderId?: string, count?: number, includeCount?: boolean): Promise<object>;
 
   /**
-   * Search for emails using various criteria
+   * Search for emails. Every term given is applied together as one Microsoft Graph search; a term is
+   * never dropped or relaxed, and a query Graph rejects is returned as an error rather than as other
+   * mail. With only flags and dates, a Graph filter is used instead.
    *
-   * @param query? Search query text to find in emails
+   * @param query? Free text or KQL (for example `invoice OR receipt`), applied as written alongside the
+   *               other terms
    * @param folder? Email folder to search in. Use well-known names like 'inbox' or a full custom path
    *                like 'Top/Sub' (default: 'inbox')
    * @param folderId? Optional explicit Graph folder ID. If provided, this is used instead of folder path
    *                  resolution.
-   * @param from? Filter by sender email address or name
-   * @param to? Filter by recipient email address or name
-   * @param subject? Filter by email subject
+   * @param from? Sender address or name (matched as a phrase)
+   * @param to? Address or name in the To field (matched as a phrase)
+   * @param subject? Words in the subject (matched as a phrase)
    * @param hasAttachments? Filter to only emails with attachments
    * @param unreadOnly? Filter to only unread emails
    * @param receivedAfter? Filter to emails received on or after this ISO 8601 timestamp

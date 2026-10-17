@@ -125,22 +125,23 @@ describe('handleSearchEmails', () => {
     )
   })
 
-  test('does not include date range terms in KQL when text search is used', async () => {
+  test('carries the date range into the KQL when text search is used, instead of dropping it', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
     await handleSearchEmails(ctx, {
       query: 'release',
-      receivedAfter: '2024-01-01T00:00:00Z',
-      receivedBefore: '2024-01-31T23:59:59Z',
+      receivedAfter: '2024-01-01T00:00:00.000Z',
+      receivedBefore: '2024-01-31T23:59:59+01:00',
       count: 10
     })
 
     const firstCallParams = mockCallGraphAPIPaginated.mock.calls[0][4]
-    expect(firstCallParams.$search).toContain('release')
-    expect(firstCallParams.$search).not.toContain('received>=')
-    expect(firstCallParams.$search).not.toContain('received<=')
+    expect(firstCallParams.$search).toBe(
+      '"(release) AND received>=2024-01-01T00:00:00Z AND received<=2024-01-31T22:59:59Z"'
+    )
+    expect(firstCallParams.$filter).toBeUndefined()
   })
 
   test('returns detailed error info including source and context', async () => {
@@ -173,8 +174,35 @@ describe('handleSearchEmails', () => {
     await handleSearchEmails(ctx, { subject: 'a" OR from:"evil', count: 10 })
 
     const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string }
-    expect(params.$search).not.toContain('a"')
-    expect(params.$search).toContain('subject:"a OR from:evil"')
+    expect(params.$search).toBe(String.raw`"subject:\"a OR from: evil\""`)
+  })
+
+  test('refuses, before calling Graph, a term with nothing searchable rather than dropping it', async () => {
+    const result = await handleSearchEmails(ctx, { to: '""', subject: 'invoice', count: 10 })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('The to term has nothing searchable')
+    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+    expect(mockCallGraphAPIPaginated).not.toHaveBeenCalled()
+  })
+
+  test('refuses a query made only of control characters', async () => {
+    const result = await handleSearchEmails(ctx, { query: '\u0001\u0002', count: 10 })
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('The query term has nothing searchable')
+  })
+
+  test('treats a whitespace-only term as not given', async () => {
+    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
+    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
+    mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
+
+    await handleSearchEmails(ctx, { query: '   ', from: ' ', count: 10 })
+
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string; $orderby?: string }
+    expect(params.$search).toBeUndefined()
+    expect(params.$orderby).toBe('receivedDateTime desc')
   })
 
   test('reports no matches when the search returns an empty result set', async () => {
@@ -188,97 +216,83 @@ describe('handleSearchEmails', () => {
     expect(result.isError).toBeUndefined()
   })
 
-  test('reports the combined-search strategy in the summary for a non-empty combined-search result', async () => {
+  test('names the exact Graph search in the summary for a non-empty result', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    // First (combined-search) call returns matches → early return path.
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
     const result = await handleSearchEmails(ctx, { query: 'release', count: 10 })
 
     expect(result.content[0].text).toContain('Found 1 emails matching your search criteria:')
-    expect(result.content[0].text).toContain('(Search used combined-search strategy)')
-    expect(result.structuredContent.attempts).toEqual(['combined-search'])
+    expect(result.content[0].text).toContain('(Graph search: "(release)")')
+    expect(result.structuredContent.attempts).toEqual(['search'])
+    expect(result.structuredContent.search).toBe('"(release)"')
     expect(result.structuredContent.items).toHaveLength(1)
     expect(result.isError).toBeUndefined()
   })
 
-  test('falls back to a single-term search when the combined search yields nothing', async () => {
+  test('makes one call and returns no mail when the search matches nothing, never relaxing a term', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated
-      .mockResolvedValueOnce({ value: [] }) // combined-search: empty
-      .mockResolvedValueOnce({ value: mockEmails }) // single-term-subject: hit
+    mockCallGraphAPIPaginated.mockResolvedValue({ value: [] })
 
-    const result = await handleSearchEmails(ctx, { subject: 'Flagged', count: 10 })
+    const result = await handleSearchEmails(ctx, { to: 'finance@example.com', subject: 'Flagged', count: 10 })
 
-    expect(result.content[0].text).toContain('(Search used single-term-subject strategy)')
-    expect(result.structuredContent.attempts).toEqual(['combined-search', 'single-term-subject'])
+    expect(mockCallGraphAPIPaginated).toHaveBeenCalledTimes(1)
+    expect(result.content[0].text).toBe('No emails found matching your search criteria.')
+    expect(result.structuredContent.items).toEqual([])
   })
 
-  test('recovers a single-term failure and continues to the next strategy', async () => {
+  test('returns an error, not other mail, when Graph rejects the search', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated
-      .mockResolvedValueOnce({ value: [] }) // combined-search: empty
-      .mockRejectedValueOnce(new Error('single subject boom')) // single-term-subject: error
-      .mockResolvedValueOnce({ value: mockEmails }) // single-term-from: hit
+    mockCallGraphAPIPaginated.mockRejectedValue(new Error('API call failed with status 400: Syntax error'))
 
-    const result = await handleSearchEmails(ctx, { subject: 'X', from: 'a@b.com', count: 10 })
+    const result = await handleSearchEmails(ctx, { to: 'finance@example.com', count: 10 })
 
-    expect(result.structuredContent.attempts).toContain('single-term-from')
-  })
-
-  test('falls back to a boolean-filters-only search when text strategies miss', async () => {
-    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
-    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated
-      .mockResolvedValueOnce({ value: [] }) // combined-search: empty
-      .mockResolvedValueOnce({ value: [] }) // single-term-query: empty
-      .mockResolvedValueOnce({ value: mockEmails }) // boolean-filters-only: hit
-
-    const result = await handleSearchEmails(ctx, { query: 'q', hasAttachments: true, count: 10 })
-
-    expect(result.structuredContent.attempts).toContain('boolean-filters-only')
-  })
-
-  test('recovers a boolean-filters-only failure and falls through to recent emails', async () => {
-    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
-    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated
-      .mockResolvedValueOnce({ value: [] }) // combined-search: empty
-      .mockResolvedValueOnce({ value: [] }) // single-term-query: empty
-      .mockRejectedValueOnce(new Error('filter boom')) // boolean-filters-only: error
-      .mockResolvedValueOnce({ value: mockEmails }) // recent-emails: hit
-
-    const result = await handleSearchEmails(ctx, { query: 'q', unreadOnly: true, count: 10 })
-
-    expect(result.structuredContent.attempts).toContain('recent-emails')
-  })
-
-  test('throws-then-reports when every strategy including the recent-emails fallback fails', async () => {
-    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
-    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
-    mockCallGraphAPIPaginated
-      .mockResolvedValueOnce({ value: [] }) // combined-search: empty
-      .mockResolvedValueOnce({ value: [] }) // single-term-query: empty
-      .mockRejectedValueOnce(new Error('recent boom')) // recent-emails: error
-
-    const result = await handleSearchEmails(ctx, { query: 'q', count: 10 })
-
+    expect(mockCallGraphAPIPaginated).toHaveBeenCalledTimes(1)
     expect(result.isError).toBe(true)
-    expect(result.content[0].text).toContain('All search strategies failed')
+    expect(result.content[0].text).toContain('Source: Microsoft Graph API (400).')
   })
 
-  test('builds a combined KQL search including the "to" term', async () => {
+  test('builds every text term and filter into one KQL search in the form Graph accepts', async () => {
     mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
     mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
     mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
 
-    await handleSearchEmails(ctx, { to: 'boss@x.com', count: 10 })
+    await handleSearchEmails(ctx, {
+      query: 'receipt',
+      subject: 'Facture n° 12: Café',
+      from: 'kris@kris.me.uk',
+      to: 'finance@example.com',
+      hasAttachments: true,
+      unreadOnly: true,
+      count: 10
+    })
 
     const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string }
-    expect(params.$search).toContain('to:"boss@x.com"')
+    expect(params.$search).toBe(
+      String.raw`"(receipt) AND subject:\"Facture n° 12: Café\" AND from:\"kris@kris.me.uk\" AND to:\"finance@example.com\" AND hasAttachments:true AND isRead:false"`
+    )
+  })
+
+  test('uses a Graph filter, not a search, when only flags and dates are given', async () => {
+    mockEnsureAuthenticated.mockResolvedValue(mockAccessToken)
+    mockResolveFolderPath.mockResolvedValue(WELL_KNOWN_FOLDERS.inbox)
+    mockCallGraphAPIPaginated.mockResolvedValue({ value: mockEmails })
+
+    await handleSearchEmails(ctx, {
+      hasAttachments: true,
+      unreadOnly: true,
+      receivedAfter: '2024-01-01T00:00:00Z',
+      count: 10
+    })
+
+    const params = mockCallGraphAPIPaginated.mock.calls[0]?.[4] as { $search?: string; $filter?: string }
+    expect(params.$search).toBeUndefined()
+    expect(params.$filter).toBe(
+      'hasAttachments eq true and isRead eq false and receivedDateTime ge 2024-01-01T00:00:00Z'
+    )
   })
 
   test('orders by date with no filter clause when neither text nor filters are given', async () => {

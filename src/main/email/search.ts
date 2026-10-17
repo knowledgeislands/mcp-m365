@@ -4,7 +4,7 @@
 import { z } from 'zod'
 import { DEFAULT_LIST_SIZE, DEFAULT_PAGE_SIZE, EMAIL_SELECT_FIELDS, MAX_RESULT_COUNT } from '../../config/index.js'
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
-import { escapeKqlValue } from '../../utils/odata-helpers.js'
+import { kqlFreeTextClause, kqlPropertyClause, messageSearchQuery } from '../../utils/kql.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPIPaginated, type GraphContext } from '../graph-client/index.js'
 import { resolveFolderPath } from './folder-utils.js'
@@ -22,6 +22,7 @@ export const emailSearchResultSchema = z
     returnedCount: z.number().optional(),
     attempts: z.array(z.string()).optional(),
     errors: z.array(z.string()).optional(),
+    search: z.string().optional(),
     originalTerms: z.record(z.string(), z.any()).optional(),
     filters: z.record(z.string(), z.any()).optional(),
     items: z.array(z.any()).optional()
@@ -61,33 +62,32 @@ export const handleSearchEmails = async (ctx: GraphContext, args: any): Promise<
     receivedAfter,
     receivedBefore
   }
+  const searchTerms = { query, from, to, subject }
+  const filterTerms = { hasAttachments, unreadOnly, receivedAfter, receivedBefore }
+  let params: Record<string, any>
+  try {
+    params = buildSearchParams(searchTerms, filterTerms, Math.min(DEFAULT_PAGE_SIZE, requestedCount))
+  } catch (error: any) {
+    return errorText(`Error searching emails: ${error.message}`)
+  }
 
   try {
     const accessToken = await ctx.ensureAuthenticated()
 
-    const effectiveFolderId = folderId
-
-    const endpoint = effectiveFolderId
-      ? `me/mailFolders/${effectiveFolderId}/messages`
+    const endpoint = folderId
+      ? `me/mailFolders/${folderId}/messages`
       : await resolveFolderPath(ctx.graphApiEndpoint, accessToken, folder)
 
-    const response = await progressiveSearch(
+    const response = await runSearch(
       ctx.graphApiEndpoint,
       endpoint,
       accessToken,
-      { query, from, to, subject },
-      { hasAttachments, unreadOnly, receivedAfter, receivedBefore },
+      params,
+      searchTerms,
+      filterTerms,
       requestedCount
     )
-
-    // progressiveSearch always resolves to a Graph response object (or throws),
-    // and always populates `_searchInfo.strategies` — so the formatter can read
-    // strategies without a guard. We only annotate the resolved folder here.
-    response._searchInfo = {
-      ...response._searchInfo,
-      folder,
-      folderId: effectiveFolderId || folderId
-    }
+    response._searchInfo = { ...response._searchInfo, folder, folderId }
 
     return formatSearchResults(response)
   } catch (error: any) {
@@ -154,174 +154,74 @@ const normalizeDateFilterValue = (value: any): string => {
   return value
 }
 
-const progressiveSearch = async (
+/**
+ * Run one search carrying every term the caller gave. Graph cannot combine
+ * `$search` with `$filter`, so when there is a text term the boolean and date
+ * filters join the KQL as clauses; with no text term they become a `$filter`
+ * ordered by date. Nothing relaxes the terms afterwards: a query Graph rejects
+ * is an error and no match is an empty result, so every message returned
+ * satisfies every term asked for.
+ */
+const runSearch = async (
   graphApiEndpoint: string,
   endpoint: string,
   accessToken: string,
+  params: Record<string, any>,
   searchTerms: any,
   filterTerms: any,
   maxCount: number
 ): Promise<any> => {
-  const searchAttempts: string[] = []
-  const searchErrors: string[] = []
-
-  try {
-    const params = buildSearchParams(searchTerms, filterTerms, Math.min(DEFAULT_PAGE_SIZE, maxCount))
-    searchAttempts.push('combined-search')
-
-    const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, params, maxCount)
-    if (response.value && response.value.length > 0) {
-      // Early-return path: populate _searchInfo.strategies so downstream
-      // formatting (which reads `strategies`) is robust for a non-empty
-      // combined-search result.
-      response._searchInfo = {
-        attemptsCount: searchAttempts.length,
-        strategies: [...searchAttempts],
-        errors: [...searchErrors],
-        originalTerms: searchTerms,
-        filterTerms
-      }
-      return response
-    }
-  } catch (error: any) {
-    searchErrors.push(`combined-search: ${error.message}`)
-  }
-
-  const searchPriority = ['subject', 'from', 'to', 'query']
-
-  for (const term of searchPriority) {
-    if (searchTerms[term]) {
-      try {
-        searchAttempts.push(`single-term-${term}`)
-
-        const simplifiedParams: Record<string, any> = {
-          $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
-          $select: EMAIL_SELECT_FIELDS
-        }
-
-        const kqlParts: string[] = []
-
-        if (term === 'query') {
-          kqlParts.push(escapeKqlValue(searchTerms[term]))
-        } else {
-          kqlParts.push(`${term}:"${escapeKqlValue(searchTerms[term])}"`)
-        }
-
-        addBooleanFiltersAsKQL(kqlParts, filterTerms)
-
-        simplifiedParams.$search = `"${kqlParts.join(' ')}"`
-
-        const response = await callGraphAPIPaginated(
-          graphApiEndpoint,
-          accessToken,
-          'GET',
-          endpoint,
-          simplifiedParams,
-          maxCount
-        )
-        if (response.value && response.value.length > 0) {
-          response._searchInfo = {
-            attemptsCount: searchAttempts.length,
-            strategies: [...searchAttempts],
-            errors: [...searchErrors],
-            originalTerms: searchTerms,
-            filterTerms
-          }
-          return response
-        }
-      } catch (error: any) {
-        searchErrors.push(`single-term-${term}: ${error.message}`)
-      }
-    }
-  }
-
-  if (hasStructuredFilters(filterTerms)) {
-    try {
-      searchAttempts.push('boolean-filters-only')
-
-      const filterOnlyParams: Record<string, any> = {
-        $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
-        $select: EMAIL_SELECT_FIELDS,
-        $orderby: 'receivedDateTime desc'
-      }
-
-      addBooleanFilters(filterOnlyParams, filterTerms)
-
-      const response = await callGraphAPIPaginated(
-        graphApiEndpoint,
-        accessToken,
-        'GET',
-        endpoint,
-        filterOnlyParams,
-        maxCount
-      )
-      response._searchInfo = {
-        attemptsCount: searchAttempts.length,
-        strategies: [...searchAttempts],
-        errors: [...searchErrors],
-        originalTerms: searchTerms,
-        filterTerms
-      }
-      return response
-    } catch (error: any) {
-      searchErrors.push(`boolean-filters-only: ${error.message}`)
-    }
-  }
-
-  searchAttempts.push('recent-emails')
-
-  const basicParams: Record<string, any> = {
-    $top: Math.min(DEFAULT_PAGE_SIZE, maxCount),
-    $select: EMAIL_SELECT_FIELDS,
-    $orderby: 'receivedDateTime desc'
-  }
-
-  let response: any
-  try {
-    response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, basicParams, maxCount)
-  } catch (error: any) {
-    searchErrors.push(`recent-emails: ${error.message}`)
-    throw new Error(`All search strategies failed. ${searchErrors.join(' | ')}`)
-  }
-
+  const response = await callGraphAPIPaginated(graphApiEndpoint, accessToken, 'GET', endpoint, params, maxCount)
   response._searchInfo = {
-    attemptsCount: searchAttempts.length,
-    strategies: searchAttempts,
-    errors: searchErrors,
+    attemptsCount: 1,
+    strategies: [params.$search ? 'search' : 'filter'],
+    errors: [],
     originalTerms: searchTerms,
-    filterTerms: filterTerms
+    filterTerms,
+    ...(params.$search ? { search: params.$search } : {})
   }
-
   return response
 }
 
-const buildSearchParams = (searchTerms: any, filterTerms: any, count: number): Record<string, any> => {
+/** Text terms and the KQL property each restricts. `query` is caller-written KQL. */
+const PROPERTY_TERMS = [
+  ['subject', 'subject'],
+  ['from', 'from'],
+  ['to', 'to']
+] as const
+
+/**
+ * The Graph parameters for a search. Throws when a supplied term has nothing
+ * left to search on once cleaned, rather than quietly searching without it.
+ */
+export const buildSearchParams = (searchTerms: any, filterTerms: any, count: number): Record<string, any> => {
   const params: Record<string, any> = {
     $top: count,
     $select: EMAIL_SELECT_FIELDS
   }
 
   const kqlTerms: string[] = []
+  const unsearchable = (term: string): Error =>
+    new Error(
+      `The ${term} term has nothing searchable once quotes and control characters are removed; refusing to search without it.`
+    )
 
-  if (searchTerms.query) {
-    kqlTerms.push(escapeKqlValue(searchTerms.query))
+  if (searchTerms.query?.trim()) {
+    const clause = kqlFreeTextClause(searchTerms.query)
+    if (!clause) throw unsearchable('query')
+    kqlTerms.push(clause)
   }
 
-  if (searchTerms.subject) {
-    kqlTerms.push(`subject:"${escapeKqlValue(searchTerms.subject)}"`)
-  }
-
-  if (searchTerms.from) {
-    kqlTerms.push(`from:"${escapeKqlValue(searchTerms.from)}"`)
-  }
-
-  if (searchTerms.to) {
-    kqlTerms.push(`to:"${escapeKqlValue(searchTerms.to)}"`)
+  for (const [term, property] of PROPERTY_TERMS) {
+    if (!searchTerms[term]?.trim()) continue
+    const clause = kqlPropertyClause(property, searchTerms[term])
+    if (!clause) throw unsearchable(term)
+    kqlTerms.push(clause)
   }
 
   if (kqlTerms.length > 0) {
-    addBooleanFiltersAsKQL(kqlTerms, filterTerms)
-    params.$search = `"${kqlTerms.join(' ')}"`
+    addFiltersAsKQL(kqlTerms, filterTerms)
+    params.$search = messageSearchQuery(kqlTerms)
   } else {
     params.$orderby = 'receivedDateTime desc'
     addBooleanFilters(params, filterTerms)
@@ -354,7 +254,8 @@ const addBooleanFilters = (params: Record<string, any>, filterTerms: any): void 
   }
 }
 
-const addBooleanFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
+/** The filters as KQL clauses; `received` takes a full ISO 8601 timestamp. */
+const addFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
   if (filterTerms.hasAttachments === true) {
     kqlTerms.push('hasAttachments:true')
   }
@@ -362,27 +263,25 @@ const addBooleanFiltersAsKQL = (kqlTerms: string[], filterTerms: any): void => {
   if (filterTerms.unreadOnly === true) {
     kqlTerms.push('isRead:false')
   }
+
+  if (filterTerms.receivedAfter) {
+    kqlTerms.push(`received>=${kqlTimestamp(filterTerms.receivedAfter)}`)
+  }
+
+  if (filterTerms.receivedBefore) {
+    kqlTerms.push(`received<=${kqlTimestamp(filterTerms.receivedBefore)}`)
+  }
 }
 
-const hasStructuredFilters = (filterTerms: any): boolean => {
-  return (
-    filterTerms.hasAttachments === true ||
-    filterTerms.unreadOnly === true ||
-    Boolean(filterTerms.receivedAfter) ||
-    Boolean(filterTerms.receivedBefore)
-  )
-}
+/** A validated date as a UTC timestamp without milliseconds, so it holds no space or comma KQL would split on. */
+const kqlTimestamp = (value: string): string => new Date(value).toISOString().replace(/\.\d{3}Z$/, 'Z')
 
 /**
- * Render a progressiveSearch response into the text + `structuredContent`
- * envelope. Exported for direct testing of the robustness guards (the
- * combined-search early-return path used to hand this a `_searchInfo` without a
- * `strategies` array and a non-empty result would then throw).
+ * Render a search response into the text + `structuredContent` envelope.
+ * Exported for direct testing of the robustness guards: an externally shaped
+ * response without `_searchInfo` or its `strategies` array must not throw.
  */
 export const formatSearchResults = (response: any): any => {
-  // progressiveSearch always attaches a fully-populated `_searchInfo`; default
-  // it here so the formatter is robust even if handed an externally-shaped
-  // response (the combined-search early-return regression that used to throw).
   const info = response._searchInfo ?? { strategies: [], errors: [], originalTerms: {}, filterTerms: {} }
   const strategies: string[] = Array.isArray(info.strategies) ? info.strategies : []
 
@@ -407,9 +306,8 @@ export const formatSearchResults = (response: any): any => {
     })
     .join('\n')
 
-  // Guard the summary line so a non-empty result never throws when `strategies`
-  // is absent — the latent bug on the combined-search early-return path.
-  const additionalInfo = strategies.length > 0 ? `\n(Search used ${strategies[strategies.length - 1]} strategy)` : ''
+  // Name the exact Graph search sent, so a caller can see every term it carried.
+  const additionalInfo = typeof info.search === 'string' ? `\n(Graph search: ${info.search})` : ''
 
   return createSearchResponse(
     `Found ${response.value.length} emails matching your search criteria:${additionalInfo}\n\n${emailList}`,
@@ -419,6 +317,7 @@ export const formatSearchResults = (response: any): any => {
       returnedCount: response.value.length,
       attempts: strategies,
       errors: info.errors,
+      ...(typeof info.search === 'string' ? { search: info.search } : {}),
       originalTerms: info.originalTerms,
       filters: info.filterTerms,
       items: response.value

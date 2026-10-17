@@ -77,7 +77,7 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_rule_create`       | Create inbox rule.                                                      |
 | `m365_email_rules_reorder`     | Change the execution order of an existing inbox rule.                   |
 
-† Searches by `query` and/or date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID.
+† Searches by `query`, `subject`, `from`, `to`, flags and date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. Every term given is applied together as one Graph search and none is dropped or relaxed: a search Graph rejects, or a term with nothing searchable left once quotes are removed, is returned as an error rather than as other mail. The result names the exact Graph search it ran.
 
 `m365_email_messages_list` and `m365_email_messages_search` accept either a `folder` — a well-known name such as `inbox`, or a full custom path such as `Projects/2026/Q2` — or an explicit `folderId` returned by `m365_email_folders_list`. When both are given, `folderId` wins and is used directly.
 
