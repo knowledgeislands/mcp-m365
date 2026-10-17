@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: d46bc502465be1f276795c5bedde4a51825d4d07
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T16:55:00Z
+updated_at: 2026-10-17T17:15:00Z
 ---
 
 ## Goal
@@ -104,7 +104,7 @@ The `forwarded-to:<address>` predicate as planned: parser and lint validation of
 - `parser.ts`, `lint.ts`: a value with a wildcard, space or quote is a parse error; `malformed-address` now also checks `forwarded-to:` values and asks for a full address. `forwarded-to` stays out of the address keys that drive subsumption, so collision and shadowing analysis is unchanged.
 - `matcher.ts`: the predicate holds when the record carries exactly one forward for the address. Pure, as before.
 - `lookups.ts`: `normaliseSubject()` strips repeated `RE:`, `FW:` and `Fwd:` prefixes, case and spacing; `forwardCandidates()` applies the owner, recipient, subject and 90-day conditions and counts copies with one `internetMessageId` (or, lacking one, one identity) once; `sharesAttachmentName()`, `forwardAddressesToResolve()` and `forwardFor()` support the run layer.
-- `graph-ops.ts`: `mailboxOwner()` reads `me` for `mail` and `userPrincipalName`; `searchForwards()` runs a KQL `$search` on `recipients:` and the normalised subject, top 50, quoting as `src/main/email/search.ts` does; `attachmentNames()` lists names only.
+- `graph-ops.ts`: `mailboxOwner()` reads `me` for `mail` and `userPrincipalName`; `searchForwards()` runs a KQL `$search` on `recipients:` and the normalised subject, top 50, built by the shared `src/utils/kql.ts` (see [Search fix](#search-fix)); `attachmentNames()` lists names only.
 - `run.ts`: after the thread step, the loop resolves only the addresses in groups whose other terms already hold, at or above the current match, then classifies again until stable, so a forward that unseats a match still reaches a thread rule below. The owner is read once per call, searches are cached by address and normalised subject, and names by message id. A failed lookup becomes a warning and reads as no forward. The new result fields appear only when the block tests `forwarded-to:`.
 - Documentation: a new section of the routing guide covering the four conditions, the three outcomes and the one-side `save-attachments:` convention; the aged, triage and lint tool descriptions; AGENTS.md's lazy-lookup invariant; CHANGELOG.
 
@@ -121,27 +121,27 @@ The `forwarded-to:<address>` predicate as planned: parser and lint validation of
 
 ### Outstanding concerns
 
-- **Live proof, 17 October 2026:** Graph rejects the forward search, so the predicate needs rework before acceptance. See [Live proof](#live-proof) under Discussion.
-- Graph's acceptance of the `$search` shape (`recipients:` with a quoted subject phrase) and of `me` with `$select` is proved by fixtures only; no live call was authorised. The owner's report-mode replay against the seven known forwards is the first live proof. A rejected query surfaces as a per-message warning, not a failed run.
+- **Resolved, 17 October 2026:** the first live proof found Graph rejecting the forward search. `1091f66` fixed the quoting, and the second proof passed. See [Live proof](#live-proof) and [Search fix](#search-fix) under Discussion. A rejected query still surfaces as a per-message warning, not a failed run.
+- No end-to-end positive match has run through the aged pass. Every original with a known forward had already been archived by hand, outside the `_TRIAGE` folders the pass reads, and moving mail back was outside the proof's authority. The positive cases were proved with the predicate's own lookup functions run read-only against the archived originals, so the first live match through the pass will be the first new forward of a held item.
 - The plan named sender, recipient and subject words for the search. The sender is not in the query: the owner's addresses are checked by the pure filter instead, which keeps the query to one form whatever addresses the account carries. `recipients:` covers To and Cc.
 - `$search` returns at most 50 candidates. A subject forwarded to the same address more than 50 times could miss the real forward; it then reads as no match, which leaves the item held rather than archiving it wrongly.
-- Deployment needs a rebuild and a restart of the live mcporter daemon by the owner; neither was done here.
+- Deployed to the live mcporter daemon on 17 October 2026 at the build of `889dc61`, with the build of `ff58e39` kept as a rollback point.
 
 No follow-on work needs its own identifier.
 
 ### Post-change review
 
-The goal is met within the boundary: a held item is archived once exactly one forward of it exists, and an ambiguous case moves nothing and is named for the owner. Regression risk is low: every new call is reachable only from a rule that tests `forwarded-to:`, and the parser accepts every file it accepted before. The record is ready for acceptance once the owner has reviewed the diff; live acceptance is the report-mode replay of the seven known forwards.
+The goal is met within the boundary: a held item is archived once exactly one forward of it exists, and an ambiguous case moves nothing and is named for the owner. Regression risk is low: every new call is reachable only from a rule that tests `forwarded-to:`, and the parser accepts every file it accepted before. The report-mode replay and the read-only check of the known forwards both passed, so the record is ready for acceptance by the owner.
 
 ### Mini recap
 
-Delivered the forwarded-to predicate tests first, with documentation and full gates green. The open concern is live confirmation of the search query shape. Learning route: the lazy-lookup loop in `run.ts` now serves two cross-message predicates, and AGENTS.md records how a third should join it.
+Delivered the forwarded-to predicate tests first, with documentation and full gates green. The search quoting failed its first live proof and was fixed in a shared query builder that also serves the general mail search; the second proof passed. Learning route: the lazy-lookup loop in `run.ts` now serves two cross-message predicates, and AGENTS.md records how a third should join it.
 
 ## Discussion
 
 ### Live proof
 
-Report-mode replay against the live mailbox on 17 October 2026 at 17:49 BST, on the build of `ff58e39` deployed to the live mcporter daemon at 17:46 BST. The live rule note was passed inline through the tool's `rules` argument, with its aged block replaced by one proof line, `folder:"<held folder>" forwarded-to:<finance mailbox> !status:flagged -> move:<archive>, mark:read`. The note on disk, the tracking cache and the mailbox were left unchanged, and no `rulesPath` or `trackingPath` was passed.
+First report-mode replay against the live mailbox on 17 October 2026 at 17:49 BST, on the build of `ff58e39` deployed to the live mcporter daemon at 17:46 BST. The live rule note was passed inline through the tool's `rules` argument, with its aged block replaced by one proof line, `folder:"<held folder>" forwarded-to:<finance mailbox> !status:flagged -> move:<archive>, mark:read`. The note on disk, the tracking cache and the mailbox were left unchanged, and no `rulesPath` or `trackingPath` was passed.
 
 - **The forward search fails live.** The held folder holds two messages. Graph rejected both searches with `400 BadRequest`: "Syntax error: character '@' is not valid at position 20". Each became a warning, both read as no forward, nothing would move, and `forwardAmbiguous` was empty, so the fail-safe held.
 - **Cause.** `searchForwards()` in `src/main/triage/graph-ops.ts` wraps the whole KQL string in double quotes and also quotes each property value, so Graph receives `"recipients:"<address>" subject:"<words>""`. The inner quotes end the outer string, and the bare `@` that follows is a syntax error. The fixtures asserted the string the code builds, not one Graph accepts.
@@ -150,8 +150,28 @@ Report-mode replay against the live mailbox on 17 October 2026 at 17:49 BST, on 
 
 This confirms the first Graph concern under Outstanding concerns. The predicate is not ready for acceptance: the `$search` quoting needs rework, with a test that pins a Graph-valid string, and this replay needs to run again.
 
-### Planning decisions
+### Search fix
 
+Fixed in `1091f66`, with `889dc61` as a follow-up, on 17 October 2026.
+
+- **Accepted form.** Graph reads `$search` as one double-quoted string, so every `"` or `\` inside it must be backslash-escaped. Probes against live Graph established the working form, `"recipients:\"finance@example.com\" AND subject:\"invoice 42\""`: each property value phrase-quoted and escaped, clauses joined by an uppercase `AND`. Leaving the inner quotes unescaped fails at the first `@`. Directory-style `"a" AND "b"` clauses are accepted but mis-parse on messages, so they are not used.
+- **Shared builder.** `src/utils/kql.ts` builds both searches. A property value loses its quotes, backslashes and control characters, since a KQL phrase has no escape and Graph matches words. Colons, symbols and non-ASCII letters are kept. Tests pin the exact string for addresses and for subjects with quotes, colons and non-ASCII.
+- **General search.** `m365_email_messages_search` had the same fault. It also hid the fault by falling back in turn to a single term, to flags alone and finally to recent mail. It now makes one call. A query Graph rejects, or a term left with nothing searchable, is returned as an error. Date bounds join the search instead of being dropped, and every result, empty or not, names the exact Graph search it ran.
+
+### Second live proof
+
+Report-mode replay on 17 October 2026 at 18:11 BST, on the build of `1091f66`, repeated at 18:15 BST on `889dc61` with the same result. The inputs were the same as the first proof: the live rule note passed inline with its aged block replaced by the one proof line, no `rulesPath` or `trackingPath`, and nothing on disk or in the mailbox changed.
+
+- **Held folder.** Both messages were searched without error: no warnings, no matches, no ambiguous matches, nothing moved. Neither message had been forwarded, which the next check confirms, so both results are correct.
+- **Known forwards.** The fixed general search, run read-only, found every message the owner sent to the finance mailbox. There were eleven copies of seven distinct messages: five forwards and two replies. Each forward to the shared address appears twice, as the sent copy and the returned copy. All were already in the finance archive, not Sent Items.
+- **Positive control.** The predicate's own `mailboxOwner()`, `searchForwards()`, `forwardCandidates()` and `attachmentNames()`, composed as the run layer composes them, were run read-only against fourteen archived originals from three suppliers' recurring receipts and one reply thread. The results:
+  - **Two matches.** Both are the forwards whose originals are still in the mailbox. In each, the two copies counted as one forward.
+  - **No ambiguous results.**
+  - **Twelve correct non-matches.**
+    - Ten originals were never forwarded.
+    - One forward was found but rejected because no attachment name was shared. It was the next month's receipt, with the same subject, whose original is no longer in the mailbox, so the attachment check prevented a false match.
+    - The reply thread was excluded because a reply is not a forward.
+- **Misses.** None. Three of the five forwards have no original left in the mailbox, so there was nothing for the predicate to match.
 - **Graph query shape.** `$search` supports `from:`, `to:` and `subject:` on messages but cannot be combined with `$filter` or `$orderby`, and it matches words rather than exact phrases. It is therefore used only to fetch candidates; the received window, the subject equality and the recipient test are applied by the pure filter. Up to 50 candidates are read. No live call was made during planning.
 - **Duplicate copies.** A forward to a shared address the owner also receives exists twice in the mailbox: in Sent Items and as the returned copy. Both share an `internetMessageId`, so candidates are counted by it. Without this every real forward would read as ambiguous.
 - **Outlook's forwarded marker.** `PidTagLastVerbExecuted` is readable through Graph as the extended property `Integer 0x1081`. It is not used: it can never establish or block a match, so reading it would add a call per message without changing an outcome. Enabling it in the shared select would also start populating `status:replied`, which today is never set, and so would change how existing rule files behave.
