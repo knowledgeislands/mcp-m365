@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-008
 area: TOOL
 title: Thread-follow routing
-status: triage
+kind: deliver
+horizon: next
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -34,7 +36,68 @@ thread:filed -> move:@thread
 
 Conversation lookup and the two rule-language elements only. Do not add a model call, change how existing predicates match, or move mail that a higher rule has already claimed: ordering stays first-match-wins, and the rule note decides where `thread:filed` sits. Do not route on the Graph message id, which is reissued on every move; conversation identity comes from `conversationId`, and message identity stays subject, sender and received time.
 
+## Current state
+
+At baseline `e401aa3` the engine classifies each message on its own fields only. `TRIAGE_SELECT_FIELDS` does not request `conversationId`, `EmailRecord` has no conversation field, the grammar has no `thread:` predicate, and `move:` accepts only a literal folder name. A reply whose sender and subject no rule recognises falls to the inbound fallback. Nothing in the engine reads another message's folder.
+
+## Steps
+
+- [ ] Add `conversationId` to `TRIAGE_SELECT_FIELDS` and carry it on `EmailRecord`, with a `thread` field the run layer fills before matching.
+- [ ] Parser: accept the predicate `thread:filed` (the only value) and the move target `move:@thread` (unquoted only; a quoted `"@thread"` stays a literal folder name).
+- [ ] Matcher: `thread:filed` holds when the record's resolved thread names a folder. Pure, no I/O.
+- [ ] Pure thread resolution in a new `src/main/triage/lookups.ts`: derive the filed folders from the rule file (every `move:` target in the inbound block except the fallback's, and every archive an aged-block rule feeds, mapped back to the `_TRIAGE` folder or folders that feed it) and choose the target from a list of siblings, most recent first, excluding the message itself by identity.
+- [ ] Graph: `listConversation()` in `graph-ops.ts`, one query per conversation, cached for the call.
+- [ ] Run layer: resolve threads lazily. Classify first without lookups; only when the winning rule sits at or below the first rule that tests `thread:` look the conversation up and classify again. Substitute the resolved folder for `@thread` before actions run, so tracking, the report and `applyActions` see a concrete path.
+- [ ] Report: each item routed through `@thread` carries `thread.folder` and `thread.alternatives` (other filed folders in the conversation), and the text summary names them.
+- [ ] Lint: `thread-target-without-thread` (blocking) when a rule uses `move:@thread` in a group that does not test `thread:filed`; `thread` counts as a broad key for `broad-rule-collision`; `unknown-folder` skips `@thread`.
+- [ ] Tests first for each unit: parser, matcher, lint, lookups, graph-ops and run, covering the five Verification cases and the backward-compatibility case.
+- [ ] Documentation: the routing guide's rule-file section, the `m365_email_routing_triage` and `m365_email_routing_aged` tool descriptions, the lint tool description, AGENTS.md's routing-engine section, and CHANGELOG.
+
+## Files touched
+
+- `src/main/triage/types.ts`, `message.ts`, `parser.ts`, `matcher.ts`, `lint.ts`, `graph-ops.ts`, `run.ts`, `index.ts`
+- `src/main/triage/lookups.ts` (new, pure) and `lookups.test.ts`
+- The matching `*.test.ts` files
+- `src/tools/triage/index.ts` (descriptions only)
+- `docs/guides/user/email-routing.md`, `AGENTS.md`, `CHANGELOG.md`
+
+## Verify
+
+- `bunx tsc --noEmit`, `bunx @biomejs/biome check .`, `bunx rumdl check .`, `bun run test`, `bun run test:coverage` at 100% on all four metrics, `bun run build`, `bun run ki:test:smoke`.
+- Fixture tests show: a single filed sibling routes the reply to its folder; a sibling in an archive routes to the feeding `_TRIAGE` folder; siblings in two folders choose the most recent and report the other; no siblings leaves `thread:filed` false and the message falls through; a sibling whose Graph id changed is still found, because lookup is by `conversationId` and self-exclusion is by subject, sender and received time.
+- An unchanged rule file with no `thread:` predicate makes no conversation query and produces the same result as before.
+
+## Dependencies / blocks
+
+None in build order. KI-MCP-M365-TOOL-010 will later carry a sibling's judgment category with the move; that is out of scope here. KI-MCP-M365-TOOL-009 shares the lazy-lookup step in the run layer and lands after this record.
+
+## Documentation impact
+
+### Decision Records
+
+None. The rule language is already governed by the routing design note and the guide; this extends it without changing an architectural boundary.
+
+### Specifications
+
+None. The repository holds no behaviour specification for the rule language; the guide and tool descriptions are its contract.
+
+### Guides
+
+`docs/guides/user/email-routing.md` gains thread-follow: the predicate, the target, where to place the line, how archives resolve, and how ambiguity is reported.
+
+### Roadmap
+
+None beyond this record. KI-MCP-M365-TOOL-010's category carry-over is already recorded there.
+
 ## Discussion
+
+### Planning decisions
+
+- **Ambiguity.** The most recent filed sibling wins, by received time; the other filed folders are reported as `alternatives` on the item so the owner can see the conversation is split. Leaving such mail unrouted would put it back in the fallback, which is the problem this record exists to solve.
+- **Archives.** An archive's feeding folder is read from the aged block: a rule testing `folder:X` that moves to an archive means the archive is fed from `_TRIAGE/X`. An archive fed from two or more folders cannot be resolved this way, so a sibling there is skipped and the next most recent sibling decides. The decision is reported, not guessed.
+- **Cost.** The lookup runs only for messages that reach the first `thread:` rule, so carve-outs and party rules above it cost nothing extra, and a file without `thread:` makes no new call at all.
+- **Graph query.** `me/messages` filtered by `conversationId`, with `receivedDateTime` placed first in the filter so it may also be the sort key, newest first, capped at 25. No live call was made during planning; the query shape is unit-tested against fixtures only.
+- **Approval.** Planned to Ready under the deploying owner's rollout approval and the coordinator's Decision 6, which authorises planning and implementing this record through Awaiting review.
 
 ### Where the lookup lives
 
@@ -54,4 +117,4 @@ Unit tests over fixture conversations: single sibling, archived sibling, sibling
 
 ### Intake authority
 
-Captured from an owner-approved rollout plan that names this change first. Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured from an owner-approved rollout plan that names this change first. Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.

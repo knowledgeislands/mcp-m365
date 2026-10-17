@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-009
 area: TOOL
 title: Forwarded-to predicate
-status: triage
+kind: deliver
+horizon: next
+status: ready
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -39,7 +41,66 @@ Outlook also records the last action taken on the original as the MAPI extended 
 
 The predicate and its match reporting only. Ambiguous matches are reported, never applied: with two or more candidate forwards nothing moves. Do not send, forward or modify the forward copy; it follows whatever rule its own folder carries. Do not add a timer-based fallback archive; listing an unmatched item after a period is the caller's reporting concern, not engine policy.
 
+## Current state
+
+At baseline `e401aa3` the engine has no way to relate one message to another. A held folder can only be aged out by an `age:` rule, which archives unresolved items blind; the deploying owner has removed that rule and archives forwarded items by hand. The thread-follow work in KI-MCP-M365-TOOL-008 adds the run layer's lazy lookup step, which this record reuses.
+
+## Steps
+
+- [ ] Parser: accept the negatable predicate `forwarded-to:<address>`, which must be a full address (no wildcard).
+- [ ] Matcher: `forwarded-to:<address>` holds only when the run layer resolved exactly one forward for that address. Pure, no I/O.
+- [ ] Pure matching in `src/main/triage/lookups.ts`: normalise subjects (strip repeated `RE:`, `FW:` and `Fwd:` prefixes, case and whitespace); accept a candidate only when it is from the mailbox owner, addressed (to or cc) to the address, its subject starts with `FW:` or `Fwd:` and normalises to the original's, it was received after the original and within 90 days, and, when both carry attachments, they share a file name. Candidates with the same `internetMessageId` count once, so the Sent Items copy and the copy that comes back through the shared address are one forward.
+- [ ] Graph: `mailboxOwner()` reads the signed-in user's addresses once per call; `searchForwards()` runs a `$search` on sender, recipient and subject words, and the pure filter above decides; `attachmentNames()` lists names only when both messages have attachments. All cached for the call.
+- [ ] Run layer: extend the lazy lookup so a message reaching the first rule that tests `forwarded-to:` has each address in the block resolved, then classify again.
+- [ ] Report: a matched item carries `forward` (address, subject and received time of the forward); the result gains `forwardMatched` (count) and `forwardAmbiguous` (each message with two or more candidates, its address and the candidate count), and the text summary lists the ambiguous ones for the owner.
+- [ ] Lint: `malformed-address` covers `forwarded-to:` values; a wildcard value is a parse error.
+- [ ] Tests first: parser, matcher, lookups, graph-ops and run, covering the six Verification cases, the de-duplicated Sent Items copy, and the backward-compatibility case.
+- [ ] Documentation: the routing guide (including that only one side of a pair needs `save-attachments:`), the aged and triage tool descriptions, AGENTS.md's routing-engine section, and CHANGELOG.
+
+## Files touched
+
+- `src/main/triage/types.ts`, `parser.ts`, `matcher.ts`, `lint.ts`, `lookups.ts`, `graph-ops.ts`, `run.ts`, `index.ts`
+- The matching `*.test.ts` files
+- `src/tools/triage/index.ts` (descriptions only)
+- `docs/guides/user/email-routing.md`, `AGENTS.md`, `CHANGELOG.md`
+
+## Verify
+
+- `bunx tsc --noEmit`, `bunx @biomejs/biome check .`, `bunx rumdl check .`, `bun run test`, `bun run test:coverage` at 100% on all four metrics, `bun run build`, `bun run ki:test:smoke`.
+- Fixture tests show: one forward matches and the rule's actions run; two distinct forwards leave the predicate false and list the message as ambiguous; a forward after 90 days, one with no shared attachment name, and one to a different address do not match; a subject differing only by prefix and case matches; a Sent Items copy and its returned copy count as one forward.
+- An unchanged rule file with no `forwarded-to:` predicate makes no new Graph call and produces the same result as before.
+
+## Dependencies / blocks
+
+Builds on the lazy lookup step from KI-MCP-M365-TOOL-008; both land in one sequence, thread-follow first. KI-MCP-M365-TOOL-015 owns content-level attachment de-duplication; this record documents the one-side harvesting convention instead.
+
+## Documentation impact
+
+### Decision Records
+
+None. The predicate extends the rule language within the existing engine boundaries.
+
+### Specifications
+
+None. The guide and tool descriptions are the rule language's contract.
+
+### Guides
+
+`docs/guides/user/email-routing.md` gains the predicate, its four match conditions, the three outcomes, and the one-side harvesting convention.
+
+### Roadmap
+
+None beyond this record. Listing an unmatched item after a period remains the caller's reporting concern, as the Boundary states.
+
 ## Discussion
+
+### Planning decisions
+
+- **Graph query shape.** `$search` supports `from:`, `to:` and `subject:` on messages but cannot be combined with `$filter` or `$orderby`, and it matches words rather than exact phrases. It is therefore used only to fetch candidates; the received window, the subject equality and the recipient test are applied by the pure filter. Up to 50 candidates are read. No live call was made during planning.
+- **Duplicate copies.** A forward to a shared address the owner also receives exists twice in the mailbox: in Sent Items and as the returned copy. Both share an `internetMessageId`, so candidates are counted by it. Without this every real forward would read as ambiguous.
+- **Outlook's forwarded marker.** `PidTagLastVerbExecuted` is readable through Graph as the extended property `Integer 0x1081`. It is not used: it can never establish or block a match, so reading it would add a call per message without changing an outcome. Enabling it in the shared select would also start populating `status:replied`, which today is never set, and so would change how existing rule files behave.
+- **Mailbox owner.** The owner's addresses come from the signed-in user (`mail` and `userPrincipalName`), not from configuration, so the predicate stays generic.
+- **Approval.** Planned to Ready under the deploying owner's rollout approval and the coordinator's Decision 6.
 
 ### Outcomes the result must report
 
@@ -63,4 +124,4 @@ Fixture tests for one match, two candidates, a forward outside the window, a for
 
 ### Intake authority
 
-Captured from an owner-approved rollout plan that names this change first. Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured from an owner-approved rollout plan that names this change first. Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.
