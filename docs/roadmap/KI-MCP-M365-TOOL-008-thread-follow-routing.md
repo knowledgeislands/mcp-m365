@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: 8907895d20ea986f4452d06b0a3e180c8f413285
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:22:00Z
+updated_at: 2026-10-17T16:55:00Z
 ---
 
 ## Goal
@@ -118,6 +118,7 @@ Thread-follow routing as planned: the `thread:filed` predicate, the `move:@threa
 
 ### Outstanding concerns
 
+- **Live proof, 17 October 2026:** the conversation query works against live Graph. See [Live proof](#live-proof) under Discussion.
 - Graph's acceptance of the combined `conversationId` filter and `receivedDateTime` order is proved by fixtures only; no live call was authorised. The owner's report-mode replay is the first live proof, and a rejected query surfaces as a per-message warning rather than a failed run.
 - A thread-follow line placed above specific rules is reported as a `broad-rule-collision` finding until it carries `# lint:allow-collision`, as designed.
 - An existing rule file with an unquoted `move:@thread` and no `thread:filed` is now refused by lint. No such file is known.
@@ -134,6 +135,16 @@ The goal is met within the boundary: a reply to a filed conversation can follow 
 Delivered thread-follow routing with tests first, documentation and full gates green. The open concern is live Graph confirmation of the conversation query. Learning route: the lazy-lookup pattern in `run.ts` is the template KI-MCP-M365-TOOL-009 reuses, and AGENTS.md now records it as an engine invariant.
 
 ## Discussion
+
+### Live proof
+
+Report-mode replay against the live mailbox on 17 October 2026 at 17:52 BST, on the build of `ff58e39` deployed to the live mcporter daemon at 17:46 BST. The live rule note was passed inline through the tool's `rules` argument with one proof line added. The note on disk, the tracking cache and the mailbox were left unchanged, and no `rulesPath` or `trackingPath` was passed.
+
+- Inbound pass, with `thread:filed -> move:@thread` placed just above `status:flagged`. Both messages in the Inbox are replies, and both resolved to the folder where the rest of their conversation is filed: one to a project folder and one to an events folder, each with no alternatives and nothing skipped. Graph accepted the `conversationId` filter and its order, with no lookup warning.
+- Aged pass, with `folder:"000 Unknown" thread:filed -> move:@thread` appended to the aged block. The fallback folder holds only two messages, both from August, and neither has a filed conversation, so neither would move. The pass considered 220 messages with no lookup warnings.
+- The unaltered rule note ran cleanly in report mode on the new build, for both passes.
+
+This resolves the first Graph concern under Outstanding concerns: the conversation query works against live Graph.
 
 ### Planning decisions
 

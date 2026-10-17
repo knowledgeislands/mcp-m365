@@ -9,7 +9,7 @@ blocks: []
 blocked_by: []
 baseline_ref: d46bc502465be1f276795c5bedde4a51825d4d07
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:32:32Z
+updated_at: 2026-10-17T16:55:00Z
 ---
 
 ## Goal
@@ -121,6 +121,7 @@ The `forwarded-to:<address>` predicate as planned: parser and lint validation of
 
 ### Outstanding concerns
 
+- **Live proof, 17 October 2026:** Graph rejects the forward search, so the predicate needs rework before acceptance. See [Live proof](#live-proof) under Discussion.
 - Graph's acceptance of the `$search` shape (`recipients:` with a quoted subject phrase) and of `me` with `$select` is proved by fixtures only; no live call was authorised. The owner's report-mode replay against the seven known forwards is the first live proof. A rejected query surfaces as a per-message warning, not a failed run.
 - The plan named sender, recipient and subject words for the search. The sender is not in the query: the owner's addresses are checked by the pure filter instead, which keeps the query to one form whatever addresses the account carries. `recipients:` covers To and Cc.
 - `$search` returns at most 50 candidates. A subject forwarded to the same address more than 50 times could miss the real forward; it then reads as no match, which leaves the item held rather than archiving it wrongly.
@@ -137,6 +138,17 @@ The goal is met within the boundary: a held item is archived once exactly one fo
 Delivered the forwarded-to predicate tests first, with documentation and full gates green. The open concern is live confirmation of the search query shape. Learning route: the lazy-lookup loop in `run.ts` now serves two cross-message predicates, and AGENTS.md records how a third should join it.
 
 ## Discussion
+
+### Live proof
+
+Report-mode replay against the live mailbox on 17 October 2026 at 17:49 BST, on the build of `ff58e39` deployed to the live mcporter daemon at 17:46 BST. The live rule note was passed inline through the tool's `rules` argument, with its aged block replaced by one proof line, `folder:"<held folder>" forwarded-to:<finance mailbox> !status:flagged -> move:<archive>, mark:read`. The note on disk, the tracking cache and the mailbox were left unchanged, and no `rulesPath` or `trackingPath` was passed.
+
+- **The forward search fails live.** The held folder holds two messages. Graph rejected both searches with `400 BadRequest`: "Syntax error: character '@' is not valid at position 20". Each became a warning, both read as no forward, nothing would move, and `forwardAmbiguous` was empty, so the fail-safe held.
+- **Cause.** `searchForwards()` in `src/main/triage/graph-ops.ts` wraps the whole KQL string in double quotes and also quotes each property value, so Graph receives `"recipients:"<address>" subject:"<words>""`. The inner quotes end the outer string, and the bare `@` that follows is a syntax error. The fixtures asserted the string the code builds, not one Graph accepts.
+- **The same fault is in `m365_email_messages_search`.** `buildSearchParams()` in `src/main/email/search.ts` builds `$search` the same way. A `to:` search fails with the same `400` in both its combined and single-term attempts, then falls back to boolean filters alone, so the results it returns ignore the address without saying so.
+- **The known forwards were not counted.** The server offers no other read-only route that reaches them: a plain-text query on Sent Items returned no hits and fell back to recent mail.
+
+This confirms the first Graph concern under Outstanding concerns. The predicate is not ready for acceptance: the `$search` quoting needs rework, with a test that pins a Graph-valid string, and this replay needs to run again.
 
 ### Planning decisions
 
