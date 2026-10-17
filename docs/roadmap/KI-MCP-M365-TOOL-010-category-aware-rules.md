@@ -3,13 +3,13 @@ id: KI-MCP-M365-TOOL-010
 area: TOOL
 title: Category-aware rules
 kind: deliver
-horizon: next
-status: ready
+horizon: now
+status: in-progress
 blocks: [KI-MCP-M365-TOOL-012]
 blocked_by: []
-baseline_ref: null
+baseline_ref: fbd2faacbbfd690a35cb2d99e1b46af4db70b929
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T21:52:11Z
+updated_at: 2026-10-17T21:52:51Z
 ---
 
 ## Goal
@@ -37,7 +37,7 @@ Rule-language support and lint only. Do not create Outlook master categories: th
 
 ## Current state
 
-At baseline `f366391` the engine writes a category with `tag:<name>` but cannot read one back: `categories` is not in `TRIAGE_SELECT_FIELDS`, `EmailRecord` has no category field, there is no `category:` predicate, and there is no way to remove a category or to match a message without acting on it. `tag:` de-duplicates by exact spelling, so `tag:beacon` on a message already carrying `BEACON` adds a second entry Outlook treats as the same category. The note may declare ` ```rules ` and ` ```destinations ` blocks only. The live HNR rule note already uses `tag:` in its aged block, with no category declaration.
+At baseline `fbd2faa` the engine writes a category with `tag:<name>` but cannot read one back: `categories` is not in `TRIAGE_SELECT_FIELDS`, `EmailRecord` has no category field, there is no `category:` predicate, and there is no way to remove a category or to match a message without acting on it. `tag:` de-duplicates by exact spelling, so `tag:beacon` on a message already carrying `BEACON` adds a second entry Outlook treats as the same category. The note may declare ` ```rules ` and ` ```destinations ` blocks only. The live HNR rule note already uses `tag:` in its aged block, with no category declaration.
 
 ## Steps
 
