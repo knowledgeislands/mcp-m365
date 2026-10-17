@@ -263,8 +263,8 @@ export interface AppliedAction {
   detail?: string
 }
 
-/** Actions with no mailbox effect — `suggest` only marks the message for the induction step. */
-const isExecutable = (action: Action): boolean => action.kind !== 'suggest'
+/** Actions with no mailbox effect — `suggest` only marks the message for the induction step, and `hold` deliberately leaves it alone. */
+const isExecutable = (action: Action): boolean => action.kind !== 'suggest' && action.kind !== 'hold'
 
 /** Does this rule ask for any mailbox mutation at all? */
 export const hasExecutableActions = (actions: readonly Action[]): boolean => actions.some(isExecutable)
@@ -331,7 +331,7 @@ const applyOne = async (
     return { result: { action: `mark:${action.value}`, ok: true }, nextId: messageId }
   }
 
-  if (action.kind === 'tag') {
+  if (action.kind === 'tag' || action.kind === 'untag') {
     const current: any = await callGraphAPI(
       ctx.graphApiEndpoint,
       accessToken,
@@ -342,9 +342,20 @@ const applyOne = async (
     )
     const existing: string[] = Array.isArray(current?.categories) ? current.categories : []
     const value = String(action.value)
-    const categories = existing.includes(value) ? existing : [...existing, value]
+    const label = `${action.kind}:${value}`
+    // Outlook compares category names case-insensitively, so a case variant
+    // is the same category: tag adds none, untag removes it.
+    const wanted = value.toLowerCase()
+    const present = existing.some((name) => name.toLowerCase() === wanted)
+    if (action.kind === 'tag' ? present : !present)
+      return {
+        result: { action: label, ok: true, detail: present ? 'already present' : 'not present' },
+        nextId: messageId
+      }
+    const categories =
+      action.kind === 'tag' ? [...existing, value] : existing.filter((name) => name.toLowerCase() !== wanted)
     await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', `me/messages/${messageId}`, { categories })
-    return { result: { action: `tag:${value}`, ok: true }, nextId: messageId }
+    return { result: { action: label, ok: true }, nextId: messageId }
   }
 
   await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'DELETE', `me/messages/${messageId}`)

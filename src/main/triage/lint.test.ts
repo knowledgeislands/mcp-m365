@@ -348,3 +348,72 @@ describe('lintRules — thread-follow', () => {
     ).toEqual([])
   })
 })
+
+describe('lintRules — categories', () => {
+  /** A note with an inbound block and, when `declared` is given, a categories block. */
+  const note = (body: string, declared?: string) =>
+    parseRules(
+      [
+        '## Inbound',
+        '',
+        '```rules v1',
+        body,
+        FALLBACK,
+        '```',
+        ...(declared === undefined ? [] : ['', '## Categories', '', '```categories v1', declared, '```']),
+        ''
+      ].join('\n')
+    )
+  const categoryFindings = (body: string, declared?: string) =>
+    lintRules(note(body, declared)).filter((finding) => finding.code.includes('categor'))
+
+  it('accepts names the block declares, in any position', () => {
+    expect(
+      categoryFindings(
+        'category:"Routed: judged" -> untag:"Routed: judged", tag:Partner\n!category:Partner -> hold',
+        'Routed: judged\nPartner'
+      )
+    ).toEqual([])
+  })
+
+  it('reports each undeclared name once per rule as an error', () => {
+    const found = categoryFindings('category:Typo -> untag:Typo, tag:Other', 'Partner')
+    expect(found.map((f) => [f.severity, f.code, f.message])).toEqual([
+      ['error', 'unknown-category', 'category "Typo" is not declared in the categories block (declared: Partner)'],
+      ['error', 'unknown-category', 'category "Other" is not declared in the categories block (declared: Partner)']
+    ])
+  })
+
+  it('names an empty block as declaring none', () => {
+    expect(categoryFindings('subject:x -> tag:A', '# nothing yet')[0]?.message).toBe(
+      'category "A" is not declared in the categories block (declared: none)'
+    )
+  })
+
+  it('warns on a case variant of a declared name', () => {
+    const found = categoryFindings('category:partner -> hold', 'Partner')
+    expect(found.map((f) => [f.severity, f.code, f.message])).toEqual([
+      [
+        'warning',
+        'category-case',
+        'category "partner" is declared as "Partner" — it still matches, but spell it one way'
+      ]
+    ])
+  })
+
+  it('warns once, at the first reader, when categories are tested or removed without a block', () => {
+    const found = categoryFindings('subject:a -> tag:A\nsubject:b -> untag:A\ncategory:A -> hold')
+    expect(found.map((f) => [f.severity, f.code, f.line])).toEqual([['warning', 'undeclared-categories', 5]])
+    expect(categoryFindings('category:A -> move:X')).toHaveLength(1)
+  })
+
+  it('stays quiet for tag: alone without a block, as the live note uses it', () => {
+    expect(categoryFindings('subject:a -> tag:5G-EMERGE, move:X')).toEqual([])
+  })
+
+  it('does not treat category: as a broad predicate', () => {
+    expect(codes(`category:A -> move:Y\nsender:a@example.com -> move:Z\n${FALLBACK}`)).not.toContain(
+      'broad-rule-collision'
+    )
+  })
+})

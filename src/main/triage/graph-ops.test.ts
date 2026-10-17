@@ -347,15 +347,65 @@ describe('applyActions', () => {
     })
   })
 
-  it('does not add a category twice', async () => {
+  it.each(['Partner', 'partner', 'PARTNER'])(
+    'does not add a category twice, nor a case variant of one (tag:%s)',
+    async (value) => {
+      mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce({ categories: ['Partner'] })
+      const { applied } = await applyActions(
+        ctx,
+        TOKEN,
+        record({ id: 'msg-1' }),
+        [{ kind: 'tag', value }],
+        await withMap()
+      )
+      expect(mockCall).toHaveBeenCalledTimes(2)
+      expect(applied).toEqual([{ action: `tag:${value}`, ok: true, detail: 'already present' }])
+    }
+  )
+
+  it('removes a category, matching its case loosely, and keeps the others', async () => {
     mockCall
       .mockResolvedValueOnce(graphMessage())
-      .mockResolvedValueOnce({ categories: ['Partner'] })
+      .mockResolvedValueOnce({ categories: ['Keep', 'Routed: Judged', 'Other'] })
       .mockResolvedValueOnce({})
-    await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'tag', value: 'Partner' }], await withMap())
-    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
-      categories: ['Partner']
+    const { applied } = await applyActions(
+      ctx,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [{ kind: 'untag', value: 'Routed: judged', quoted: true }],
+      await withMap()
+    )
+    expect(mockCall).toHaveBeenNthCalledWith(2, GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me/messages/msg-1', null, {
+      $select: 'categories'
     })
+    expect(mockCall).toHaveBeenNthCalledWith(3, GRAPH_API_ENDPOINT, TOKEN, 'PATCH', 'me/messages/msg-1', {
+      categories: ['Keep', 'Other']
+    })
+    expect(applied).toEqual([{ action: 'untag:Routed: judged', ok: true }])
+  })
+
+  it.each([[{ categories: ['Other'] }], [{}]])(
+    'makes no write when untag finds nothing to remove (%j)',
+    async (current) => {
+      mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce(current)
+      const { applied } = await applyActions(
+        ctx,
+        TOKEN,
+        record({ id: 'msg-1' }),
+        [{ kind: 'untag', value: 'Gone' }],
+        await withMap()
+      )
+      expect(mockCall).toHaveBeenCalledTimes(2)
+      expect(applied).toEqual([{ action: 'untag:Gone', ok: true, detail: 'not present' }])
+    }
+  )
+
+  it('treats hold as having no mailbox effect', async () => {
+    expect(hasExecutableActions([{ kind: 'hold' }])).toBe(false)
+    mockCall.mockResolvedValueOnce(graphMessage())
+    const { applied } = await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'hold' }], await withMap())
+    expect(applied).toEqual([])
+    expect(mockCall).toHaveBeenCalledTimes(1)
   })
 
   it('tolerates a message with no categories field', async () => {

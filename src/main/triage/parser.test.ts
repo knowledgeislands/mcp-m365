@@ -436,3 +436,73 @@ describe('parseRules — forwarded-to', () => {
     expect(errorsFor('forwarded-to:"finance @example.com" -> move:X')[0]).toMatch(/invalid forwarded-to/)
   })
 })
+
+describe('parseRules — categories', () => {
+  const withCategories = (names: string, rules = '* -> move:000 Unknown') =>
+    parseRules(
+      `## Inbound\n\n\`\`\`rules v1\n${rules}\n\`\`\`\n\n## Categories\n\n\`\`\`categories v1\n${names}\n\`\`\`\n`
+    )
+
+  it('parses category:, untag: and hold', () => {
+    const shield = firstRule('category:"Routed: judged" age:30d folder:"981 Delete" -> untag:"Routed: judged"')
+    expect(shield.groups[0]?.terms[0]).toEqual({
+      kind: 'predicate',
+      key: 'category',
+      value: 'Routed: judged',
+      quoted: true,
+      negated: false
+    })
+    expect(shield.actions).toEqual([{ kind: 'untag', value: 'Routed: judged', quoted: true }])
+    expect(firstRule('!category:Partner -> hold').actions).toEqual([{ kind: 'hold' }])
+    expect(renderAction({ kind: 'hold' })).toBe('hold')
+  })
+
+  it('refuses hold alongside another action', () => {
+    expect(errorsFor('category:X -> hold, mark:read')).toEqual(['`hold` must be the rule’s only action'])
+    expect(errorsFor('category:X -> move:Y, hold')).toEqual(['`hold` must be the rule’s only action'])
+  })
+
+  it('refuses a category name carrying a comma or a quote', () => {
+    expect(errorsFor('category:a"b" -> move:X')[0]).toMatch(/invalid category name "a"b""/)
+    expect(errorsFor('category:"a, b" -> move:X')[0]).toMatch(/invalid category name "a, b"/)
+    expect(errorsFor('subject:x -> tag:"a, b"')[0]).toMatch(/invalid category name "a, b"/)
+    expect(errorsFor('subject:x -> untag:"a, b"')[0]).toMatch(/invalid category name/)
+  })
+
+  it('reads the categories block, ignoring blanks and comments', () => {
+    const parsed = withCategories('# the vocabulary\nRouted: judged   # kept a month\n\nPartner')
+    expect(parsed.errors).toEqual([])
+    expect(parsed.categories?.map((decl) => [decl.name, decl.line])).toEqual([
+      ['Routed: judged', 11],
+      ['Partner', 13]
+    ])
+  })
+
+  it('leaves categories absent when the note declares no block', () => {
+    expect(parseRules(block('* -> move:X')).categories).toBeUndefined()
+  })
+
+  it('merges two categories blocks and catches a duplicate across them', () => {
+    const parsed = parseRules(
+      '```categories v1\nA\n```\n\n```categories v1\nB\na\n```\n\n## Inbound\n\n```rules v1\n* -> move:X\n```\n'
+    )
+    expect(parsed.categories?.map((decl) => decl.name)).toEqual(['A', 'B'])
+    expect(parsed.errors.map((e) => e.message)).toEqual(['category "a" is already declared on line 2'])
+  })
+
+  it('refuses a case-insensitive duplicate, a reserved setting and a bad name', () => {
+    const parsed = withCategories('Partner\npartner\nprefix = Routed/\nsay "hi"')
+    expect(parsed.categories?.map((decl) => decl.name)).toEqual(['Partner'])
+    expect(parsed.errors.map((e) => e.message)).toEqual([
+      'category "partner" is already declared on line 10',
+      '`key = value` lines are reserved in the categories block — list one name per line',
+      'invalid category name "say "hi"" — a name may not contain `,` or `"`'
+    ])
+  })
+
+  it('rejects an unsupported categories version', () => {
+    expect(parseRules('```categories v2\nA\n```\n\n```rules v1\n* -> move:X\n```\n').errors[0]?.message).toBe(
+      'unsupported categories version "v2" — this engine understands v1 only'
+    )
+  })
+})

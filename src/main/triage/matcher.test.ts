@@ -258,3 +258,42 @@ describe('classify', () => {
     expect(classify(rulesOf('sender:*@junk.com -> move:991 Junk'), record(), ctx)).toEqual({ ruleIndex: -1 })
   })
 })
+
+describe('evaluateTerm — category', () => {
+  it('matches a category in any case, and its negation', () => {
+    const tagged = record({ categories: ['Routed: Judged', 'Other'] })
+    expect(evaluateTerm(term('category:"routed: judged"'), tagged, ctx)).toBe(true)
+    expect(evaluateTerm(term('category:OTHER'), tagged, ctx)).toBe(true)
+    expect(evaluateTerm(term('category:Missing'), tagged, ctx)).toBe(false)
+    expect(evaluateTerm(term('!category:Other'), tagged, ctx)).toBe(false)
+    expect(evaluateTerm(term('!category:Missing'), tagged, ctx)).toBe(true)
+  })
+
+  it('treats a message with no categories as carrying none', () => {
+    expect(evaluateTerm(term('category:X'), record(), ctx)).toBe(false)
+  })
+})
+
+describe('classify — the judged shield and its lapse', () => {
+  const rules = rulesOf(
+    [
+      'category:"Routed: judged" age:30d folder:"981 Delete" -> untag:"Routed: judged"',
+      'category:"Routed: judged" -> hold',
+      'age:7d folder:"981 Delete" -> delete'
+    ].join('\n')
+  )
+  const at = (days: number, over: Partial<EmailRecord> = {}) =>
+    record({ folder: '981 Delete', received: new Date(NOW.getTime() - days * 86_400_000).toISOString(), ...over })
+
+  it('holds a judged message younger than the lapse', () => {
+    expect(classify(rules, at(10, { categories: ['routed: judged'] }), ctx).ruleIndex).toBe(1)
+  })
+
+  it('lapses a judged message past the window', () => {
+    expect(classify(rules, at(31, { categories: ['Routed: judged'] }), ctx).ruleIndex).toBe(0)
+  })
+
+  it('lets an unjudged message reach the disposal rule', () => {
+    expect(classify(rules, at(10), ctx).ruleIndex).toBe(2)
+  })
+})

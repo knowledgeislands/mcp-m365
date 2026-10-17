@@ -1252,3 +1252,111 @@ describe('handleRulesLint', () => {
     )
   })
 })
+
+describe('category-aware rules — the judged shield', () => {
+  const RULES_WITH_HOLD = [
+    '## Aged',
+    '',
+    '```rules v1',
+    'category:"Routed: judged" age:30d folder:"991 Junk" -> untag:"Routed: judged"',
+    'category:"Routed: judged" -> hold',
+    'folder:"991 Junk" age:7d -> delete',
+    '```',
+    '',
+    '## Categories',
+    '',
+    '```categories v1',
+    'Routed: judged',
+    '```'
+  ].join('\n')
+
+  const daysAgo = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString().replace(/\.\d{3}Z$/, 'Z')
+  const junk = {
+    held: message({ id: 'held', subject: 'Kept', receivedDateTime: daysAgo(10), categories: ['routed: judged'] }),
+    lapsed: message({
+      id: 'lapsed',
+      subject: 'Lapsed',
+      receivedDateTime: daysAgo(40),
+      categories: ['Other', 'Routed: judged']
+    }),
+    plain: message({ id: 'plain', subject: 'Plain', receivedDateTime: daysAgo(10) })
+  }
+
+  /** The junk folder lists `listed`; a fetch by id returns that message, categories included. */
+  const stubJunk = (listed: (typeof junk)[keyof typeof junk][]) => {
+    mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {
+      if (method === 'GET' && apiPath === 'me/mailFolders/junk-id/messages') return { value: listed }
+      if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
+      if (method === 'GET') return Object.values(junk).find((m) => apiPath === `me/messages/${m.id}`)
+      return {}
+    })
+  }
+
+  it('holds a judged message, lapses an old one and disposes of the rest', async () => {
+    stubJunk([junk.held, junk.lapsed, junk.plain])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD })
+    expect(result.structuredContent).toMatchObject({ considered: 3, acted: 2, remaining: false, unmatched: 0 })
+    expect(result.structuredContent.items.map((item: { subject: string }) => item.subject)).toEqual(['Lapsed', 'Plain'])
+    expect(result.structuredContent.held).toEqual([
+      {
+        subject: 'Kept',
+        from: 'sales@junk.example',
+        received: junk.held.receivedDateTime,
+        ruleLine: 5,
+        ruleset: 'category:"Routed: judged"'
+      }
+    ])
+    expect(result.content[0].text).toContain('1 message(s) held by a `hold` rule and left alone.')
+  })
+
+  it('makes no Graph call for a held message and spends none of maxActions on it', async () => {
+    stubJunk([junk.held, junk.plain])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD, mode: 'live', maxActions: 2 })
+    expect(result.structuredContent).toMatchObject({ considered: 2, acted: 1, remaining: false })
+    expect(result.structuredContent.items[0].applied).toEqual([{ action: 'delete', ok: true }])
+    const touched = mockCall.mock.calls.filter(
+      ([, , method, apiPath]) => method !== 'GET' || apiPath === 'me/messages/held'
+    )
+    expect(touched.map(([, , method, apiPath]) => `${method} ${apiPath}`)).toEqual(['DELETE me/messages/plain'])
+    const entries = (await readTracking(ctx.trackingPath))?.entries ?? []
+    expect(entries.map((entry) => entry.subject)).toEqual(['Plain'])
+  })
+
+  it('still reads held messages inside the listing window, which is sized from maxActions', async () => {
+    // Known limit: the window is one more than maxActions, so held mail at the
+    // old end of a folder can fill it. The pass then reports work outstanding
+    // with nothing acted on, which ends the documented `remaining && acted > 0` loop.
+    stubJunk([junk.held, junk.plain])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD, maxActions: 1 })
+    expect(result.structuredContent).toMatchObject({ considered: 1, acted: 0, remaining: true })
+  })
+
+  it('removes only the lapsed category in live mode', async () => {
+    stubJunk([junk.lapsed])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD, mode: 'live' })
+    expect(result.structuredContent.items[0].applied).toEqual([{ action: 'untag:Routed: judged', ok: true }])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'PATCH', 'me/messages/lapsed', {
+      categories: ['Other']
+    })
+  })
+
+  it('reports an empty held list when nothing was held', async () => {
+    stubJunk([junk.plain])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD })
+    expect(result.structuredContent.held).toEqual([])
+    expect(result.content[0].text).not.toContain('held by')
+  })
+
+  it('omits the held list for a block with no hold rule', async () => {
+    stubJunk([junk.plain])
+    expect((await handleAgedRun(ctx, { rules: RULES })).structuredContent.held).toBeUndefined()
+  })
+
+  it('refuses to run when a rule names an undeclared category', async () => {
+    stubJunk([junk.plain])
+    const result = await handleAgedRun(ctx, { rules: RULES_WITH_HOLD.replace('-> hold', '-> untag:Routed: jugded') })
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('unknown-category')
+    expect(mockCall).not.toHaveBeenCalled()
+  })
+})

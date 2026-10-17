@@ -36,8 +36,8 @@ predicates -> actions [# comment]
 
 Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything — valid only as the mandatory final fallback.
 
-- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`, `thread:`, `forwarded-to:`.
-- **Actions:** `move:`, `tag:`, `mark:`, `save-attachments:`, `delete`, `suggest`.
+- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`, `thread:`, `forwarded-to:`, `category:`.
+- **Actions:** `move:`, `tag:`, `untag:`, `mark:`, `save-attachments:`, `delete`, `suggest`, `hold`.
 
 ```text
 sender:*@vendor.example.com !subject:sign  -> move:981 Delete   # keep signature requests visible
@@ -100,13 +100,48 @@ As with thread-follow, the lookup is lazy. The mailbox is searched only for a me
 
 The original and its forward usually carry the same attachment, so put `save-attachments:` on one side of the pair only. Harvesting on both saves the document twice.
 
+## Route on categories
+
+`tag:` adds a category to a message, and three more terms let a rule read and act on what it finds there:
+
+- `category:<name>` holds when the message carries that category, compared without regard to case, as Outlook compares them. It can be negated.
+- `untag:<name>` removes the category and leaves the others in place. A message without it is left alone, with no write.
+- `hold` claims the message and does nothing to it. It must be the rule's only action.
+
+Quote a name that has a space in it, as in `category:"Routed: judged"`. A name may not contain `,` or `"`. `tag:` adds no second copy of a category the message already carries in another case.
+
+A category can shield mail from the disposal rules below it for a while. In the `aged` block:
+
+```text
+category:"Routed: judged" age:30d folder:"981 Delete" -> untag:"Routed: judged"
+category:"Routed: judged" -> hold
+folder:"981 Delete" age:7d -> delete
+```
+
+The first line lets the shield lapse after thirty days. The second keeps every other judged message where it is, ahead of the disposal rule. A held message makes no Graph call and is not tracked. It does not count towards `maxActions` or keep `remaining` set. The result lists each one in `held`, with its rule line and ruleset, and the text summary gives the count. `held` is present only when the block has a `hold` rule.
+
+Held messages are still read, though. Each folder is listed oldest first in a window one larger than `maxActions`, so a run of held mail at the old end of a folder can fill it. The pass then reports `remaining` with nothing acted on, which ends the batch loop below. Raise `maxActions` if that happens.
+
+### Declare your categories
+
+A ` ```categories v1 ` block lists the categories your rules use, one name per line. `#` comments and blank lines are ignored.
+
+```text
+Routed: judged
+Routed: unsure   # set by the review step
+```
+
+Once the block exists, every `tag:`, `untag:` and `category:` name must be declared in it, and a run refuses a rule file that uses an undeclared name. That way a typo cannot leave a category on your mail for good, or make a shield rule silently do nothing. A name that differs from its declaration only in case still matches, but lint warns so that you spell each one a single way. A duplicate declaration is a parse error, as is a `key = value` line, which is reserved for a future provider setting.
+
+The block is optional. Without it, names go unchecked. Lint gives one warning when a rule tests or removes a category, but says nothing about `tag:` used alone.
+
 ## Lint before you run
 
 ```text
 m365_email_routing_lint
 ```
 
-Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, `move:@thread` without `thread:filed`, a `forwarded-to:` value that is not a full address, and undeclared attachment destinations. `thread:` counts as a broad predicate, so a thread-follow line above specific rules is reported until you mark it `# lint:allow-collision`. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
+Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, `move:@thread` without `thread:filed`, a `forwarded-to:` value that is not a full address, undeclared attachment destinations, and undeclared or inconsistently cased category names. `thread:` counts as a broad predicate, so a thread-follow line above specific rules is reported until you mark it `# lint:allow-collision`. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
 
 Lint first, every time you edit the file. An unreachable rule is invisible at runtime — the mail simply goes somewhere else — and a broad-rule collision is the failure that first-match-wins makes hardest to spot by reading.
 

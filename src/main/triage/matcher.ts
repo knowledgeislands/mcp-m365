@@ -136,6 +136,10 @@ export const evaluatePredicate = (term: PredicateTerm, record: EmailRecord, ctx:
       return record.hasAttachments === true
     case 'thread':
       return Boolean(record.thread?.folder)
+    case 'category': {
+      const wanted = term.value.toLowerCase()
+      return (record.categories ?? []).some((name) => name.toLowerCase() === wanted)
+    }
     case 'forwarded-to':
       return record.forwards?.[term.value.toLowerCase()]?.length === 1
     case 'age': {

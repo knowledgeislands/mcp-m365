@@ -33,6 +33,7 @@ import { expandHome } from '../../utils/paths.js'
 import {
   type Action,
   type AndGroup,
+  type CategoryDecl,
   type DestinationDecl,
   HAS_VALUES,
   IMPORTANCE_VALUES,
@@ -52,7 +53,7 @@ import {
 /** The only grammar version this engine understands. Anything else is rejected rather than guessed at. */
 export const SUPPORTED_VERSION = 'v1'
 
-const FENCE_RE = /^```(rules|destinations)\s+(\S+)\s*$/
+const FENCE_RE = /^```(rules|destinations|categories)\s+(\S+)\s*$/
 const HEADING_RE = /^#{1,6}\s+(.+?)\s*$/
 const BARE_HEADER_RE = /^rules\s+(\S+)$/
 const AGE_RE = /^(\d+)d$/
@@ -127,6 +128,14 @@ const unquote = (raw: string): { value: string; quoted: boolean } => {
   return { value: raw, quoted: false }
 }
 
+/**
+ * A category name is free text, but `,` separates actions and `"` delimits a
+ * quoted value, so a name carrying either could never be written back as a
+ * rule. Refused wherever a name is read, so the block and the rules agree.
+ */
+const categoryNameError = (name: string): string | null =>
+  /[,"]/.test(name) ? `invalid category name "${name}" — a name may not contain \`,\` or \`"\`` : null
+
 const isPredicateKey = (key: string): key is PredicateKey => (PREDICATE_KEYS as readonly string[]).includes(key)
 
 /** Enumerated-value validation. Returns an error message, or null when the value is acceptable for that key. */
@@ -146,6 +155,7 @@ const validateValue = (key: PredicateKey, value: string): string | null => {
   // would make "exactly one forward" depend on which addresses happen to exist.
   if (key === 'forwarded-to' && /[*\s"]/.test(value))
     return `invalid forwarded-to: "${value}" (expected a full address, not a pattern)`
+  if (key === 'category') return categoryNameError(value)
   return null
 }
 
@@ -217,7 +227,7 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     const chunk = raw.trim()
     if (!chunk) return { error: 'empty action — check for a stray `,`' }
 
-    if (chunk === 'delete' || chunk === 'suggest') {
+    if (chunk === 'delete' || chunk === 'suggest' || chunk === 'hold') {
       actions.push({ kind: chunk })
       continue
     }
@@ -225,7 +235,7 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     const colon = chunk.indexOf(':')
     if (colon <= 0)
       return {
-        error: `expected an action of the form move:/tag:/mark:/save-attachments:/delete/suggest, got "${chunk}"`
+        error: `expected an action of the form move:/tag:/untag:/mark:/save-attachments:/delete/suggest/hold, got "${chunk}"`
       }
 
     const kind = chunk.slice(0, colon)
@@ -238,7 +248,13 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
       actions.push({ kind: 'mark', value })
       continue
     }
-    if (kind === 'move' || kind === 'tag') {
+    if (kind === 'tag' || kind === 'untag') {
+      const invalid = categoryNameError(value)
+      if (invalid) return { error: invalid }
+      actions.push({ kind, value, quoted })
+      continue
+    }
+    if (kind === 'move') {
       actions.push({ kind, value, quoted })
       continue
     }
@@ -252,6 +268,10 @@ const parseActions = (text: string): { actions: Action[] } | { error: string } =
     }
     return { error: `unknown action "${kind}"` }
   }
+  // `hold` means "this rule claims the message and nothing happens to it", so
+  // pairing it with an action that does something would contradict itself.
+  if (actions.length > 1 && actions.some((action) => action.kind === 'hold'))
+    return { error: '`hold` must be the rule’s only action' }
   return { actions }
 }
 
@@ -320,8 +340,8 @@ export const parseRule = (logical: LogicalLine): { rule: Rule } | { error: Parse
 
 /** A fenced block located in the source, before its contents are parsed. */
 interface RawBlock {
-  /** Which fence opened it: a rule list, or a destination declaration list. */
-  kind: 'rules' | 'destinations'
+  /** Which fence opened it: a rule list, a destination declaration list, or the category vocabulary. */
+  kind: 'rules' | 'destinations' | 'categories'
   label: string
   version: string
   startLine: number
@@ -365,7 +385,7 @@ const findFencedBlocks = (lines: string[]): RawBlock[] => {
     const closed = index < lines.length
     index++
     blocks.push({
-      kind: fence[1] as 'rules' | 'destinations',
+      kind: fence[1] as RawBlock['kind'],
       label: heading || `block${blocks.length + 1}`,
       version: fence[2] as string,
       startLine,
@@ -441,6 +461,51 @@ const parseDestinationBlock = (
 }
 
 /**
+ * Parse a ```categories block: one name per line, `#` comments and blanks
+ * ignored, a trailing comment stripped. Names are compared case-insensitively
+ * because Outlook does, so `Routed` and `routed` are one category declared
+ * twice. A line containing `=` is reserved for a future provider setting (the
+ * Gmail tag prefix) and refused now, so adding one later changes no meaning.
+ */
+const parseCategoryBlock = (
+  block: RawBlock,
+  taken: Map<string, CategoryDecl>,
+  errors: ParseError[]
+): CategoryDecl[] => {
+  const declared: CategoryDecl[] = []
+  block.lines.forEach((raw, index) => {
+    const line = block.startLine + index + 1
+    const source = raw.trim()
+    const name = stripComment(source).body.trim()
+    if (!name) return
+
+    if (name.includes('=')) {
+      errors.push({
+        line,
+        message: '`key = value` lines are reserved in the categories block — list one name per line',
+        source
+      })
+      return
+    }
+    const invalid = categoryNameError(name)
+    if (invalid) {
+      errors.push({ line, message: invalid, source })
+      return
+    }
+    const clash = taken.get(name.toLowerCase())
+    if (clash) {
+      errors.push({ line, message: `category "${name}" is already declared on line ${clash.line}`, source })
+      return
+    }
+
+    const decl: CategoryDecl = { name, line, source }
+    taken.set(name.toLowerCase(), decl)
+    declared.push(decl)
+  })
+  return declared
+}
+
+/**
  * Parse a rule source. Accepts either the whole knowledge-base note (rules are
  * read from its ```rules fences) or a bare rule list introduced by a `rules v1`
  * header line.
@@ -475,6 +540,8 @@ export const parseRules = (source: string): ParseResult => {
   const blocks: RuleBlock[] = []
   const destinations: DestinationDecl[] = []
   const declaredNames = new Map<string, DestinationDecl>()
+  let categories: CategoryDecl[] | undefined
+  const declaredCategories = new Map<string, CategoryDecl>()
   for (const block of raw) {
     // A block with no closing fence may have been truncated mid-list, so the
     // rules that ARE present cannot be trusted to be the whole ordered list —
@@ -499,6 +566,10 @@ export const parseRules = (source: string): ParseResult => {
       destinations.push(...parseDestinationBlock(block, declaredNames, errors))
       continue
     }
+    if (block.kind === 'categories') {
+      categories = [...(categories ?? []), ...parseCategoryBlock(block, declaredCategories, errors)]
+      continue
+    }
 
     const { logical, errors: assemblyErrors } = assembleLines(block.lines, block.startLine)
     errors.push(...assemblyErrors)
@@ -513,7 +584,9 @@ export const parseRules = (source: string): ParseResult => {
     blocks.push({ label: block.label, version: block.version, rules, startLine: block.startLine })
   }
 
-  return { blocks, destinations, errors }
+  const result: ParseResult = { blocks, destinations, errors }
+  if (categories) result.categories = categories
+  return result
 }
 
 /**

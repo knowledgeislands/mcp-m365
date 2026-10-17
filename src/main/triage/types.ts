@@ -22,7 +22,8 @@ export const PREDICATE_KEYS = [
   'folder',
   'has',
   'thread',
-  'forwarded-to'
+  'forwarded-to',
+  'category'
 ] as const
 export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 
@@ -68,11 +69,11 @@ export interface AndGroup {
   terms: Term[]
 }
 
-export type ActionKind = 'move' | 'tag' | 'mark' | 'delete' | 'suggest' | 'save-attachments'
+export type ActionKind = 'move' | 'tag' | 'untag' | 'mark' | 'delete' | 'suggest' | 'hold' | 'save-attachments'
 
 export interface Action {
   kind: ActionKind
-  /** Absent for `delete` / `suggest`. For `save-attachments`, the configured destination name. */
+  /** Absent for `delete` / `suggest` / `hold`. For `save-attachments`, the configured destination name. */
   value?: string
   /** Whether the value was double-quoted — a quoted `move:` target is an absolute folder name, not `_TRIAGE`-relative. */
   quoted?: boolean
@@ -126,10 +127,28 @@ export interface DestinationDecl {
   source: string
 }
 
+/**
+ * One name from a ```categories block.
+ *
+ * The block is the note's vocabulary of categories: once it exists, every
+ * `tag:`, `untag:` and `category:` name must appear in it, so a typo cannot
+ * silently create a category nobody routes on. The names are provider-free —
+ * a Gmail adapter maps them to labels under a prefix — so the block holds
+ * names only, and a `key = value` line is reserved for that provider setting.
+ */
+export interface CategoryDecl {
+  name: string
+  /** 1-based line number in the source. */
+  line: number
+  source: string
+}
+
 export interface ParseResult {
   blocks: RuleBlock[]
   /** Attachment destinations declared in the note, in the order written. */
   destinations: DestinationDecl[]
+  /** Category vocabulary, in the order written. Absent when the note has no ```categories block, which leaves names unchecked. */
+  categories?: CategoryDecl[]
   errors: ParseError[]
 }
 
@@ -166,6 +185,8 @@ export interface EmailRecord {
   folder?: string
   /** Graph `hasAttachments`. Tested by `has:attachment`; true for inline images too, so pair it with a subject or filename test. */
   hasAttachments?: boolean
+  /** Category names on the message (Graph `categories`). Tested by `category:`, case-insensitively. */
+  categories?: string[]
   /** Graph `conversationId`. The key thread-follow looks siblings up by; never part of identity. */
   conversationId?: string
   /**

@@ -16,6 +16,7 @@ import { renderAction, renderGroup, renderPredicates } from './parser.js'
 import {
   type AndGroup,
   BROAD_KEYS,
+  type CategoryDecl,
   type DestinationDecl,
   type ParseResult,
   type PredicateKey,
@@ -411,6 +412,77 @@ const checkDeclaredDestinations = (
 }
 
 /** Run every static check over a parsed rule source. Findings are ordered by line. */
+/** Every category name a rule spells — its `tag:`/`untag:` values and `category:` tests — in rule order. */
+const categoryNamesIn = (rule: Rule): string[] => [
+  ...rule.groups.flatMap((group) =>
+    group.terms
+      .filter((term) => isPredicate(term) && term.key === 'category')
+      .map((term) => (term as PredicateTerm).value)
+  ),
+  ...rule.actions
+    .filter((action) => action.kind === 'tag' || action.kind === 'untag')
+    .map((action) => String(action.value))
+]
+
+/**
+ * Once the note declares a ```categories block, every name a rule spells must
+ * be in it. A typo in `untag:` would otherwise leave the category on every
+ * message forever, and one in `category:` would make a shield rule silently
+ * never fire. A name that differs only in case still matches — Outlook
+ * compares categories that way — but is reported, so the note spells each
+ * category one way.
+ */
+const checkCategories = (rules: readonly Rule[], declared: readonly CategoryDecl[], findings: LintFinding[]): void => {
+  const byLower = new Map(declared.map((decl) => [decl.name.toLowerCase(), decl.name]))
+  for (const rule of rules) {
+    for (const name of new Set(categoryNamesIn(rule))) {
+      const spelled = byLower.get(name.toLowerCase())
+      if (spelled === undefined)
+        findings.push({
+          severity: 'error',
+          code: 'unknown-category',
+          line: rule.line,
+          message: `category "${name}" is not declared in the categories block (declared: ${declared.map((decl) => decl.name).join(', ') || 'none'})`,
+          source: rule.source
+        })
+      else if (spelled !== name)
+        findings.push({
+          severity: 'warning',
+          code: 'category-case',
+          line: rule.line,
+          message: `category "${name}" is declared as "${spelled}" — it still matches, but spell it one way`,
+          source: rule.source
+        })
+    }
+  }
+}
+
+/**
+ * Without a ```categories block names go unchecked, which is safe for `tag:`
+ * alone — a misspelt tag is visible on the message. A rule that reads or
+ * removes a category is not: a typo makes it silently do nothing. So the first
+ * such rule earns one warning recommending the block, and `tag:`-only notes
+ * stay quiet.
+ */
+const checkUndeclaredCategories = (blocks: readonly RuleBlock[], findings: LintFinding[]): void => {
+  const reader = blocks
+    .flatMap((block) => block.rules)
+    .find(
+      (rule) =>
+        rule.actions.some((action) => action.kind === 'untag') ||
+        rule.groups.some((group) => group.terms.some((term) => isPredicate(term) && term.key === 'category'))
+    )
+  if (!reader) return
+  findings.push({
+    severity: 'warning',
+    code: 'undeclared-categories',
+    line: reader.line,
+    message:
+      'rules test or remove categories but the note declares no categories block — add one so a misspelt name is caught',
+    source: reader.source
+  })
+}
+
 export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintFinding[] => {
   const findings: LintFinding[] = parsed.errors.map((error) => ({
     severity: 'error' as const,
@@ -432,7 +504,9 @@ export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintF
     checkThreadTargets(block.rules, findings)
     if (options.knownFolders) checkFolders(block.rules, options.knownFolders, findings)
     checkDestinations(block.rules, parsed.destinations, findings)
+    if (parsed.categories) checkCategories(block.rules, parsed.categories, findings)
   }
+  if (!parsed.categories) checkUndeclaredCategories(parsed.blocks, findings)
 
   if (options.attachmentRoots) checkDeclaredDestinations(parsed.destinations, options.attachmentRoots, findings)
 

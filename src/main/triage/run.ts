@@ -66,7 +66,8 @@ const BLOCKING_CODES = new Set([
   'misplaced-fallback',
   'unknown-destination',
   'destination-outside-roots',
-  'thread-target-without-thread'
+  'thread-target-without-thread',
+  'unknown-category'
 ])
 
 /** Largest rule document read from disk. The compiled rule file is ~35 KB; this is a sanity bound, not a target. */
@@ -158,6 +159,15 @@ const forwardAmbiguitySchema = z.object({
   candidates: z.number()
 })
 
+/** A message a `hold` rule claimed: reported so the owner can see what is being kept, never acted on. */
+const heldItemSchema = z.object({
+  subject: z.string(),
+  from: z.string(),
+  received: z.string(),
+  ruleLine: z.number(),
+  ruleset: z.string()
+})
+
 export const triageRunResultSchema = z
   .object({
     mode: z.enum(['live', 'report']),
@@ -174,7 +184,9 @@ export const triageRunResultSchema = z
     /** Items in this batch matched by a forward rather than by age or content. Present only when the block tests `forwarded-to:`. */
     forwardMatched: z.number().optional(),
     /** Messages a `forwarded-to:` test found two or more forwards for. Present only when the block tests `forwarded-to:`. */
-    forwardAmbiguous: z.array(forwardAmbiguitySchema).optional()
+    forwardAmbiguous: z.array(forwardAmbiguitySchema).optional(),
+    /** Messages a `hold` rule claimed and left alone. Present only when the block has a `hold` rule. */
+    held: z.array(heldItemSchema).optional()
   })
   .loose()
 
@@ -342,6 +354,7 @@ const summarise = (result: TriageRunResult): string => {
     )
   }
   if (result.forwardMatched) lines.push(`${result.forwardMatched} message(s) matched by a forward.`)
+  if (result.held?.length) lines.push(`${result.held.length} message(s) held by a \`hold\` rule and left alone.`)
   if (result.forwardAmbiguous?.length) {
     lines.push(
       '',
@@ -416,6 +429,8 @@ const runPass = async (
   // Forward lookups are lazier still: only for a group whose other terms hold.
   const forwardOf = testsForwards(rules) ? makeForwardResolver(ctx, accessToken, lookupWarnings) : null
   const forwardAmbiguous: z.infer<typeof forwardAmbiguitySchema>[] = []
+  const holds = rules.some((rule) => rule.actions.some((action) => action.kind === 'hold'))
+  const held: z.infer<typeof heldItemSchema>[] = []
   let unmatched = 0
   for (const listed of records) {
     let record = listed
@@ -459,6 +474,18 @@ const runPass = async (
     }
     if (!('rule' in match)) {
       unmatched++
+      continue
+    }
+    // A held message is claimed and deliberately untouched: it is reported, but
+    // it is not work, so it neither spends maxActions nor keeps `remaining` set.
+    if (match.rule.actions.some((action) => action.kind === 'hold')) {
+      held.push({
+        subject: record.subject,
+        from: record.from,
+        received: record.received,
+        ruleLine: match.rule.line,
+        ruleset: match.ruleset
+      })
       continue
     }
     if (!hasExecutableActions(match.rule.actions)) continue
@@ -542,7 +569,8 @@ const runPass = async (
       ...findings.filter((finding) => !BLOCKING_CODES.has(finding.code)).map(formatFinding),
       ...lookupWarnings
     ],
-    ...(forwardOf ? { forwardMatched: items.filter((item) => item.forward).length, forwardAmbiguous } : {})
+    ...(forwardOf ? { forwardMatched: items.filter((item) => item.forward).length, forwardAmbiguous } : {}),
+    ...(holds ? { held } : {})
   })
 }
 

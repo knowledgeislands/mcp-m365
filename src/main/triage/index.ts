@@ -91,6 +91,7 @@ export type {
   Action,
   ActionKind,
   AndGroup,
+  CategoryDecl,
   EmailRecord,
   ForwardMatch,
   Matched,

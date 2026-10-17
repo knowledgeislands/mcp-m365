@@ -39,6 +39,16 @@ describe('toEmailRecord', () => {
     expect(toEmailRecord(graphMessage).conversationId).toBeUndefined()
   })
 
+  it('carries the categories so category: can test them', () => {
+    expect(toEmailRecord({ ...graphMessage, categories: ['Routed: judged', 'Partner'] }).categories).toEqual([
+      'Routed: judged',
+      'Partner'
+    ])
+    expect(toEmailRecord({ ...graphMessage, categories: [] }).categories).toEqual([])
+    expect(toEmailRecord({ ...graphMessage, categories: 'Partner' }).categories).toBeUndefined()
+    expect(toEmailRecord(graphMessage).categories).toBeUndefined()
+  })
+
   it('records the folder for the aged pass', () => {
     expect(toEmailRecord(graphMessage, '111 Partner').folder).toBe('111 Partner')
   })
