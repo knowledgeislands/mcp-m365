@@ -239,7 +239,12 @@ describe('handleSearchEmails', () => {
     const result = await handleSearchEmails(ctx, { to: 'finance@example.com', subject: 'Flagged', count: 10 })
 
     expect(mockCallGraphAPIPaginated).toHaveBeenCalledTimes(1)
-    expect(result.content[0].text).toBe('No emails found matching your search criteria.')
+    expect(result.content[0].text).toBe(
+      'No emails found matching your search criteria.\n(Graph search: ' +
+        String.raw`"subject:\"Flagged\" AND to:\"finance@example.com\""` +
+        ')'
+    )
+    expect(result.structuredContent.search).toBe(String.raw`"subject:\"Flagged\" AND to:\"finance@example.com\""`)
     expect(result.structuredContent.items).toEqual([])
   })
 

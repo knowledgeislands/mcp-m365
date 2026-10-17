@@ -285,13 +285,18 @@ export const formatSearchResults = (response: any): any => {
   const info = response._searchInfo ?? { strategies: [], errors: [], originalTerms: {}, filterTerms: {} }
   const strategies: string[] = Array.isArray(info.strategies) ? info.strategies : []
 
+  // Name the exact Graph search sent, so a caller can see every term it carried.
+  const searched = typeof info.search === 'string' ? { search: info.search } : {}
+  const additionalInfo = searched.search ? `\n(Graph search: ${searched.search})` : ''
+
   if (!response.value || response.value.length === 0) {
-    return createSearchResponse('No emails found matching your search criteria.', {
+    return createSearchResponse(`No emails found matching your search criteria.${additionalInfo}`, {
       type: 'email-search',
       success: true,
       returnedCount: 0,
       attempts: strategies,
       errors: info.errors,
+      ...searched,
       items: []
     })
   }
@@ -306,9 +311,6 @@ export const formatSearchResults = (response: any): any => {
     })
     .join('\n')
 
-  // Name the exact Graph search sent, so a caller can see every term it carried.
-  const additionalInfo = typeof info.search === 'string' ? `\n(Graph search: ${info.search})` : ''
-
   return createSearchResponse(
     `Found ${response.value.length} emails matching your search criteria:${additionalInfo}\n\n${emailList}`,
     {
@@ -317,7 +319,7 @@ export const formatSearchResults = (response: any): any => {
       returnedCount: response.value.length,
       attempts: strategies,
       errors: info.errors,
-      ...(typeof info.search === 'string' ? { search: info.search } : {}),
+      ...searched,
       originalTerms: info.originalTerms,
       filters: info.filterTerms,
       items: response.value
