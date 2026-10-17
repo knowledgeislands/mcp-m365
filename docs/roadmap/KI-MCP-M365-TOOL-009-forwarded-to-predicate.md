@@ -3,13 +3,12 @@ id: KI-MCP-M365-TOOL-009
 area: TOOL
 title: Forwarded-to predicate
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: d46bc502465be1f276795c5bedde4a51825d4d07
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T17:15:00Z
+updated_at: 2026-10-17T17:46:22Z
 ---
 
 ## Goal
@@ -136,6 +135,10 @@ The goal is met within the boundary: a held item is archived once exactly one fo
 ### Mini recap
 
 Delivered the forwarded-to predicate tests first, with documentation and full gates green. The search quoting failed its first live proof and was fixed in a shared query builder that also serves the general mail search; the second proof passed. Learning route: the lazy-lookup loop in `run.ts` now serves two cross-message predicates, and AGENTS.md records how a third should join it.
+
+## Done
+
+Accepted by Kris Brown on 17 October 2026, in his words: "ACCEPT-FORWARD a) Accept KI-MCP-M365-TOOL-009 now, on this live proof." The acceptance rests on the six-part Review above, the [Search fix](#search-fix) in `1091f66` and `889dc61`, and the [Second live proof](#second-live-proof) recorded in `41198bb`: the corrected search ran without error on the held folder, and the predicate's own lookups, run read-only against archived originals, found the known forwards. Every Step is complete. No end-to-end positive match has yet run through the aged pass; the first new forward of a held item will be that proof, as Outstanding concerns states, and it stands as an accepted limit rather than a record of its own.
 
 ## Discussion
 

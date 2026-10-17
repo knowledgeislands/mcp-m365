@@ -3,13 +3,12 @@ id: KI-MCP-M365-TOOL-008
 area: TOOL
 title: Thread-follow routing
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: []
 blocked_by: []
 baseline_ref: 8907895d20ea986f4452d06b0a3e180c8f413285
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T16:55:00Z
+updated_at: 2026-10-17T17:46:22Z
 ---
 
 ## Goal
@@ -133,6 +132,10 @@ The goal is met within the boundary: a reply to a filed conversation can follow 
 ### Mini recap
 
 Delivered thread-follow routing with tests first, documentation and full gates green. The open concern is live Graph confirmation of the conversation query. Learning route: the lazy-lookup pattern in `run.ts` is the template KI-MCP-M365-TOOL-009 reuses, and AGENTS.md now records it as an engine invariant.
+
+## Done
+
+Accepted by Kris Brown on 17 October 2026, in his words: "ACCEPT-THREAD a) Accept KI-MCP-M365-TOOL-008 now, on the live proof." The acceptance rests on the six-part Review above and the report-mode [Live proof](#live-proof) recorded in `e316d83`: on the live mailbox, Graph accepted the `conversationId` query, both Inbox replies resolved to the folder holding the rest of their conversation, and the unaltered rule note ran cleanly on the new build. Every Step is complete. The remaining concerns under Outstanding concerns stand as accepted limits, and none needs its own record.
 
 ## Discussion
 
