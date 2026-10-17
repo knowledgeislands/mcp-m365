@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-010
 area: TOOL
 title: Category-aware rules
-status: triage
+kind: deliver
+horizon: soon
+status: draft
 blocks: [KI-MCP-M365-TOOL-012]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -33,6 +35,13 @@ category:"Routed: judged" -> hold
 
 Rule-language support and lint only. Do not create Outlook master categories: that needs `MailboxSettings.ReadWrite`, which is not in `M365_DEFAULT_SCOPES`, and creating them once by hand is cheaper than widening consent. Do not add an importance or subject-edit action. The judgment tools themselves belong to KI-MCP-M365-TOOL-011 and the re-check to KI-MCP-M365-TOOL-012.
 
+## Shaping
+
+- **Approach.** Add `categories` to the triage select list and `EmailRecord`; a pure, negatable `category:` predicate in `matcher.ts`; `untag:` beside `tag:` in `graph-ops.ts`; `hold` in the run layer; a ` ```categories v1 ` block parsed beside the destinations block and checked by lint.
+- **Dependencies.** None in build order. KI-MCP-M365-TOOL-008 also extends the select list, so whichever lands second rebases onto it.
+- **Decisions still needed.** Whether `category:` compares case-insensitively; whether `hold` counts towards `remaining`.
+- **Promotion.** Moves to Next once KI-MCP-M365-TOOL-008 and KI-MCP-M365-TOOL-009 are delivered and the judgment tier's shadow phase is under way.
+
 ## Discussion
 
 ### Purity
@@ -49,4 +58,4 @@ Parser, matcher and lint unit tests for each new element, including negation, an
 
 ### Intake authority
 
-Captured from an owner-approved rollout plan (phase 2, after KI-MCP-M365-TOOL-008 and KI-MCP-M365-TOOL-009). Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured from an owner-approved rollout plan (phase 2, after KI-MCP-M365-TOOL-008 and KI-MCP-M365-TOOL-009). Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.

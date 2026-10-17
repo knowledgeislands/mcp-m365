@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-015
 area: TOOL
 title: Deduplicate saved attachments
-status: triage
+kind: deliver
+horizon: soon
+status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -21,6 +23,13 @@ In one deployment the same receipt was saved three times, as the original file a
 ## Boundary
 
 Duplicate detection in the saver only. Do not change naming, the destinations model, the roots boundary or the per-attachment size limit. Do not delete existing duplicates on disk; cleaning those up is a one-off owner task. Two genuinely different documents that compose the same name must still both be saved, under `deconflict()`'s numbered names.
+
+## Shaping
+
+- **Approach.** Hash each fetched attachment before naming it and skip the write when the destination already holds identical bytes, reporting the skip on `SavedFile`.
+- **Dependencies.** None in build order. It matters most once KI-MCP-M365-TOOL-009 archives matched pairs, since both sides of a pair may pass through harvesting folders.
+- **Decisions still needed.** Hash the stem-sharing files only, or keep a hash index beside the destination.
+- **Promotion.** Moves to Next when selected after KI-MCP-M365-TOOL-008 and KI-MCP-M365-TOOL-009, or sooner if duplicate receipts recur.
 
 ## Discussion
 
@@ -38,4 +47,4 @@ Tests for the same bytes arriving on two messages (one file written), the same b
 
 ### Intake authority
 
-Captured on the deploying owner's decision to record a receipt deduplication fix as mcp-m365 work. Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured on the deploying owner's decision to record a receipt deduplication fix as mcp-m365 work. Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.

@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-011
 area: TOOL
 title: Judgment verdict hook
-status: triage
+kind: deliver
+horizon: soon
+status: draft
 blocks: [KI-MCP-M365-TOOL-012]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -29,6 +31,13 @@ The tracking schema gains `route_kind` (`rule`, `thread` or `judged`), `confiden
 
 Candidate listing, verdict application and the tracking fields. No model call, prompt or folder description lives in this server. Verdicts naming an undeclared destination are rejected, as rule destinations are. The re-check of judged mail belongs to KI-MCP-M365-TOOL-012. Rule state stays with the caller: the server stores no verdicts beyond the tracking file the caller names.
 
+## Shaping
+
+- **Approach.** Two thin tool registrations under `src/tools/triage/`, with candidate listing and verdict application in `src/main/triage/`, reusing `findMessage` identity re-resolution, the destinations allowlist, `assertWithinRoots()` and the existing batch bound.
+- **Dependencies.** Builds on `category:` and `tag:` support from KI-MCP-M365-TOOL-010, and on conversation lookup from KI-MCP-M365-TOOL-008 for the siblings field.
+- **Decisions still needed.** The apply tool's annotation preset, and whether a verdict may name a disposal folder.
+- **Promotion.** Moves to Next once KI-MCP-M365-TOOL-010 is delivered and shadow judgment has met its agreement target.
+
 ## Discussion
 
 ### Annotations and access
@@ -49,4 +58,4 @@ Fixture tests for candidate listing with siblings, a verdict whose message has m
 
 ### Intake authority
 
-Captured from an owner-approved rollout plan (phase 2). Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured from an owner-approved rollout plan (phase 2). Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.

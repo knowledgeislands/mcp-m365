@@ -2,12 +2,14 @@
 id: KI-MCP-M365-TOOL-014
 area: TOOL
 title: Routing run ledger
-status: triage
+kind: deliver
+horizon: future
+status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T14:02:35Z
 ---
 
 ## Goal
@@ -42,4 +44,4 @@ Tests for a valid append, rejection of an invalid record with nothing written, a
 
 ### Intake authority
 
-Captured from an owner-approved rollout plan (phase 4). Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
+Captured from an owner-approved rollout plan (phase 4). Capture grants no priority, Ready transition, implementation, acceptance or publication authority. Adopted on 17 October 2026 under the deploying owner's approved rollout, which sets the horizons and names this record's place in the sequence; adoption grants no Ready transition, acceptance or publication authority.
