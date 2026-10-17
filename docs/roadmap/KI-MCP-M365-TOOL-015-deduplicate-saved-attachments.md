@@ -1,0 +1,41 @@
+---
+id: KI-MCP-M365-TOOL-015
+area: TOOL
+title: Deduplicate saved attachments
+status: triage
+blocks: []
+blocked_by: []
+baseline_ref: null
+created_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T13:59:45Z
+---
+
+## Goal
+
+The `save-attachments:` action saves each distinct document once, so the same receipt arriving on several messages does not pile up as numbered copies in the destination folder.
+
+## Context
+
+In one deployment the same receipt was saved three times, as the original file and `-2` and `-3` copies. The saver in `src/main/attachments/save.ts` names each file from the message date, vendor, amount and document kind, then calls `deconflict()` in `naming.ts`, which appends `-2`, `-3` and so on whenever the name is already taken. Its rollback prevents duplicates from a partly failed message, but nothing recognises that a file with the same content already exists. The same document therefore lands again whenever it reaches a harvesting rule on another message: a forwarded copy, a reply quoting it, a re-send, or the original and its forward both passing through harvesting folders (see KI-MCP-M365-TOOL-009).
+
+## Boundary
+
+Duplicate detection in the saver only. Do not change naming, the destinations model, the roots boundary or the per-attachment size limit. Do not delete existing duplicates on disk; cleaning those up is a one-off owner task. Two genuinely different documents that compose the same name must still both be saved, under `deconflict()`'s numbered names.
+
+## Discussion
+
+### Detection
+
+Hash each fetched attachment (SHA-256) before naming it, and skip the write when a file in the destination already has the same hash. Hashing every file in a large destination on every call is wasteful; options are hashing only files whose name shares the composed stem, or keeping a small hash index beside the destination within the same roots. Decide during planning.
+
+### Reporting
+
+A skipped duplicate is a success, not a failure, so the rule's `move:` still runs. `SavedFile` should report it, for example `written: false` with a `duplicate_of` filename, so the run result shows why nothing was written.
+
+### Verification
+
+Tests for the same bytes arriving on two messages (one file written), the same bytes in one message twice, different bytes with the same composed name (both saved, numbered), and an existing on-disk duplicate from an earlier run.
+
+### Intake authority
+
+Captured on the deploying owner's decision to record a receipt deduplication fix as mcp-m365 work. Capture grants no priority, Ready transition, implementation, acceptance or publication authority.

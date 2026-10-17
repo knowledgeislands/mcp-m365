@@ -1,0 +1,45 @@
+---
+id: KI-MCP-M365-TOOL-014
+area: TOOL
+title: Routing run ledger
+status: triage
+blocks: []
+blocked_by: []
+baseline_ref: null
+created_at: 2026-10-17T13:59:45Z
+updated_at: 2026-10-17T13:59:45Z
+---
+
+## Goal
+
+Each routing run leaves one validated summary record in an append-only ledger, so a dashboard or the owner can see what every run did and notice when runs stop.
+
+## Context
+
+A scheduled routing task calls several passes in turn and writes a summary for the owner. Today that summary has no fixed schema and no durable home, so a stalled schedule goes unnoticed until someone looks: in one deployment, runs stopped for several days before anyone saw it.
+
+The proposal is a tool, `m365_email_routing_summary_append`, that validates a record against an `email-routing.run/v1` schema and appends it to `runs.jsonl` beside the caller's tracking file. Each pass result also carries a `runId`, so the summary can cite the passes it covers.
+
+The schema the deploying owner has approved includes, among its fields, a `needs_you` list (items for the owner to decide, such as an ambiguous forward match from KI-MCP-M365-TOOL-009), routing counts including `forward_matched`, aged counts that report matched pairs apart from age-based archives, and `hours_since_last_run`.
+
+## Boundary
+
+Validation and append only. The ledger path goes through `assertWithinRoots()`; the tool never rewrites or truncates earlier lines. Rendering, notification and dashboards are the caller's concern.
+
+## Discussion
+
+### Schema ownership
+
+The schema should live in `src/main/triage/` as a Zod schema, `.strict()` with bounded numerics, so the tool's `inputSchema` and the validator are the same object. Version it in the record (`schema: "email-routing.run/v1"`) so later fields do not break earlier readers.
+
+### Concurrency
+
+Two runs appending at once must not interleave partial lines. Use a single `appendFile` of one complete line, or the shared lock the tracking writer uses.
+
+### Verification
+
+Tests for a valid append, rejection of an invalid record with nothing written, a path outside the roots, and two concurrent appends producing two whole lines. Add the tool to `EXPECTED_TOOLS` in `scripts/smoke.ts`.
+
+### Intake authority
+
+Captured from an owner-approved rollout plan (phase 4). Capture grants no priority, Ready transition, implementation, acceptance or publication authority.
