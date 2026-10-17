@@ -8,6 +8,7 @@ import {
   childPaths,
   findMessage,
   hasExecutableActions,
+  listConversation,
   listFolderMessages,
   resolveMessageId
 } from './graph-ops.js'
@@ -93,6 +94,24 @@ describe('listFolderMessages', () => {
   it('returns an empty list when Graph sends no value array', async () => {
     mockCall.mockResolvedValue({})
     expect(await listFolderMessages(ctx, TOKEN, 'inbox-id', 10)).toEqual([])
+  })
+})
+
+describe('listConversation', () => {
+  it('reads one conversation newest first, with the sort key leading the filter', async () => {
+    mockCall.mockResolvedValue({ value: [graphMessage()] })
+    expect(await listConversation(ctx, TOKEN, "conv-'1")).toEqual([graphMessage()])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, TOKEN, 'GET', 'me/messages', null, {
+      $filter: "receivedDateTime ge 1970-01-01T00:00:00Z and conversationId eq 'conv-''1'",
+      $orderby: 'receivedDateTime desc',
+      $select: 'id,subject,from,receivedDateTime,parentFolderId',
+      $top: 25
+    })
+  })
+
+  it('returns an empty list when Graph sends no value array', async () => {
+    mockCall.mockResolvedValue({})
+    expect(await listConversation(ctx, TOKEN, 'conv-1')).toEqual([])
   })
 })
 

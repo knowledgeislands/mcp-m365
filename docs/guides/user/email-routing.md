@@ -36,7 +36,7 @@ predicates -> actions [# comment]
 
 Juxtaposition is AND, `|` is OR across whole AND-groups, `!` negates a single predicate, and `*` matches everything — valid only as the mandatory final fallback.
 
-- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`.
+- **Predicates:** `type:`, `party:`, `sender:`, `to:`, `cc:`, `subject:`, `body:`, `importance:`, `status:`, `age:`, `folder:`, `has:`, `thread:`.
 - **Actions:** `move:`, `tag:`, `mark:`, `save-attachments:`, `delete`, `suggest`.
 
 ```text
@@ -54,13 +54,32 @@ Address patterns match an exact address (`noreply@code.example.net`), any local 
 
 Two blocks are recognised beyond `rules`: an `inbound` block, which `m365_email_routing_triage` applies to Inbox mail, and an `aged` block, which `m365_email_routing_aged` applies across the `_TRIAGE` subfolders as a retention pass.
 
+## Follow a conversation to its folder
+
+A reply often comes from someone no rule knows, with a subject no rule matches, so it falls to the fallback even though the rest of its conversation is already filed. Thread-follow files it with the rest:
+
+```text
+thread:filed -> move:@thread   # lint:allow-collision — a filed thread beats topic routing
+```
+
+`thread:filed` holds when another message in the same conversation sits in a filed folder, and `move:@thread` moves the message there. "Filed" is read from your rule file, so it changes when the rules do:
+
+- Every `move:` target in the `inbound` block counts, except the fallback's. A sibling in `000 Unknown` says nothing about where the thread belongs.
+- An archive that an `aged` rule fills from `folder:X` stands for `_TRIAGE/X`, so a reply to long-archived mail returns to the live folder, not the archive. An archive filled from two or more filed folders cannot say which, so a sibling there is skipped.
+
+Place the line where it should take precedence. Rules above it decide first and cost no lookup; the conversation is read only for a message that reaches the line, once per conversation per call. A rule file with no `thread:` rule never reads a conversation, and behaves exactly as it did before thread-follow existed.
+
+When the conversation is filed in more than one folder, the most recent filed sibling decides. The report item carries `thread.folder`, `thread.alternatives` for the other folders, and `thread.skipped` for any archive it could not resolve, and the text summary names them. If the lookup fails, the run reports it as a warning and the message falls through to the rules below.
+
+`move:@thread` is defined only when `thread:filed` holds, so lint refuses a rule that uses it in any OR-arm without an un-negated `thread:filed`. A quoted `move:"@thread"` is an ordinary folder name. `thread:filed` also works in the `aged` block, for example `folder:"000 Unknown" thread:filed -> move:@thread` to re-file unknown mail once its thread has been filed.
+
 ## Lint before you run
 
 ```text
 m365_email_routing_lint
 ```
 
-Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, and undeclared attachment destinations. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
+Static checks over the rule file, with no mailbox access at all: parse errors, unreachable rules, duplicates, broad-rule collisions, unknown move targets, `move:@thread` without `thread:filed`, and undeclared attachment destinations. `thread:` counts as a broad predicate, so a thread-follow line above specific rules is reported until you mark it `# lint:allow-collision`. It is available at every access level, so you can iterate on a rule file on a server configured `read`.
 
 Lint first, every time you edit the file. An unreachable rule is invisible at runtime — the mail simply goes somewhere else — and a broad-rule collision is the failure that first-match-wins makes hardest to spot by reading.
 

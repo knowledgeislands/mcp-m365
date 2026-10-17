@@ -18,7 +18,7 @@ import { errMessage } from '../../utils/errors.js'
 import { assertWithinRoots } from '../../utils/paths.js'
 import { errorResult, errorText } from '../../utils/results.js'
 import type { TriageContext } from './context.js'
-import { resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
+import { isThreadTarget, resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
 import {
   type ActionContext,
   applyActions,
@@ -26,14 +26,23 @@ import {
   childPaths,
   type FolderMap,
   hasExecutableActions,
+  listConversation,
   listFolderMessages
 } from './graph-ops.js'
 import { type LintFinding, lintRules } from './lint.js'
+import {
+  bindThreadTarget,
+  type FiledFolders,
+  filedFolders,
+  firstThreadRule,
+  resolveThread,
+  type ThreadSibling
+} from './lookups.js'
 import { classify } from './matcher.js'
 import { toEmailRecord } from './message.js'
 import { destinationPaths, parseRules, selectBlock } from './parser.js'
 import { readTracking, type TrackingEntry, upsertEntries, writeTracking } from './tracking.js'
-import type { Action, EmailRecord, Rule } from './types.js'
+import type { Action, EmailRecord, Rule, ThreadFiling } from './types.js'
 
 /**
  * Findings that make a run unsafe rather than merely untidy. A rule file can
@@ -46,7 +55,8 @@ const BLOCKING_CODES = new Set([
   'missing-fallback',
   'misplaced-fallback',
   'unknown-destination',
-  'destination-outside-roots'
+  'destination-outside-roots',
+  'thread-target-without-thread'
 ])
 
 /** Largest rule document read from disk. The compiled rule file is ~35 KB; this is a sanity bound, not a target. */
@@ -122,7 +132,9 @@ const triageItemSchema = z.object({
   ruleLine: z.number(),
   ruleset: z.string(),
   destination: z.string(),
-  applied: z.array(appliedActionSchema)
+  applied: z.array(appliedActionSchema),
+  /** Present when the item was routed by `move:@thread`: the folder it followed, and any others its thread is filed in. */
+  thread: z.object({ folder: z.string(), alternatives: z.array(z.string()), skipped: z.array(z.string()) }).optional()
 })
 
 export const triageRunResultSchema = z
@@ -162,8 +174,59 @@ const formatFinding = (finding: LintFinding): string =>
 interface Candidate {
   record: EmailRecord
   rule: Rule
+  /** The rule's actions with `@thread` bound to a concrete folder. */
+  actions: readonly Action[]
   ruleset: string
   destination: string
+  thread?: ThreadFiling
+}
+
+/** How a thread-follow item was placed, including a split thread's other folders. */
+const viaThread = (item: TriageRunResult['items'][number]): string => {
+  if (!item.thread) return ''
+  const { alternatives, skipped } = item.thread
+  return (
+    ' — via thread' +
+    (alternatives.length > 0 ? `; also filed in ${alternatives.join(', ')}` : '') +
+    (skipped.length > 0 ? `; skipped ${skipped.join(', ')}` : '')
+  )
+}
+
+/**
+ * Where a message's conversation is filed, looked up at most once per
+ * conversation per call. A failed lookup is reported and treated as "not
+ * filed", so the message falls through to the rules below rather than failing
+ * the pass.
+ */
+const makeThreadResolver = (
+  ctx: TriageContext,
+  accessToken: string,
+  map: FolderMap,
+  filed: FiledFolders,
+  warnings: string[]
+) => {
+  const conversations = new Map<string, Promise<any[]>>()
+  return async (record: EmailRecord): Promise<ThreadFiling | null> => {
+    const id = record.conversationId as string
+    let members = conversations.get(id)
+    if (!members) {
+      members = listConversation(ctx, accessToken, id)
+      conversations.set(id, members)
+    }
+    try {
+      const siblings: ThreadSibling[] = []
+      for (const member of await members) {
+        const folder = map.pathById.get(String(member?.parentFolderId))
+        if (!folder) continue
+        const { subject, from, received } = toEmailRecord(member)
+        siblings.push({ subject, from, received, folder })
+      }
+      return resolveThread(record, siblings, filed)
+    } catch (error) {
+      warnings.push(`thread lookup failed for "${record.subject}": ${errMessage(error)}`)
+      return null
+    }
+  }
 }
 
 const summarise = (result: TriageRunResult): string => {
@@ -178,7 +241,9 @@ const summarise = (result: TriageRunResult): string => {
       item.applied.length === 0
         ? 'pending'
         : item.applied.map((a) => `${a.action}${a.ok ? '' : ` FAILED (${a.detail})`}`).join(', ')
-    lines.push(`- "${item.subject}" <${item.from}> → ${item.destination} [${item.ruleset}] ${outcome}`)
+    lines.push(
+      `- "${item.subject}" <${item.from}> → ${item.destination} [${item.ruleset}] ${outcome}${viaThread(item)}`
+    )
   }
   if (result.warnings.length > 0) {
     lines.push('', 'Rule warnings (not blocking):', ...result.warnings.map((w) => `- ${w}`))
@@ -234,20 +299,38 @@ const runPass = async (
   const { records, truncated } = await collect(accessToken, map, maxActions + 1, selected.block.rules)
 
   const now = new Date()
+  const rules = selected.block.rules
   const candidates: Candidate[] = []
+  const lookupWarnings: string[] = []
+  // Thread-follow is lazy: a rule file with no `thread:` rule makes no lookup,
+  // and a message claimed by a rule above the first one makes none either.
+  const threadFrom = firstThreadRule(rules)
+  const threadOf =
+    threadFrom === -1 ? null : makeThreadResolver(ctx, accessToken, map, filedFolders(parsed.blocks), lookupWarnings)
   let unmatched = 0
-  for (const record of records) {
-    const match = classify(selected.block.rules, record, { now })
+  for (const listed of records) {
+    let record = listed
+    let match = classify(rules, record, { now })
+    if (threadOf && record.conversationId && (match.ruleIndex === -1 || match.ruleIndex >= threadFrom)) {
+      const thread = await threadOf(record)
+      if (thread) {
+        record = { ...record, thread }
+        match = classify(rules, record, { now })
+      }
+    }
     if (!('rule' in match)) {
       unmatched++
       continue
     }
     if (!hasExecutableActions(match.rule.actions)) continue
+    const actions = bindThreadTarget(match.rule.actions, record.thread?.folder)
     candidates.push({
       record,
       rule: match.rule,
+      actions,
       ruleset: match.ruleset,
-      destination: describeDestination(match.rule.actions)
+      destination: describeDestination(actions),
+      ...(match.rule.actions.some(isThreadTarget) ? { thread: record.thread } : {})
     })
   }
 
@@ -263,7 +346,7 @@ const runPass = async (
   for (const candidate of batch) {
     const applied =
       mode === 'live'
-        ? (await applyActions(actionCtx, accessToken, candidate.record, candidate.rule.actions, map)).applied
+        ? (await applyActions(actionCtx, accessToken, candidate.record, candidate.actions, map)).applied
         : []
     items.push({
       subject: candidate.record.subject,
@@ -272,7 +355,8 @@ const runPass = async (
       ruleLine: candidate.rule.line,
       ruleset: candidate.ruleset,
       destination: candidate.destination,
-      applied
+      applied,
+      ...(candidate.thread ? { thread: candidate.thread } : {})
     })
 
     if (mode !== 'live' || applied.some((a) => !a.ok)) continue
@@ -312,7 +396,7 @@ const runPass = async (
     remaining: truncated || candidates.length > batch.length,
     unmatched,
     items,
-    warnings: findings.filter((finding) => !BLOCKING_CODES.has(finding.code)).map(formatFinding)
+    warnings: [...findings.filter((finding) => !BLOCKING_CODES.has(finding.code)).map(formatFinding), ...lookupWarnings]
   })
 }
 

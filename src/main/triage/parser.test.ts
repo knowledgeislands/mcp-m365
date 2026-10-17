@@ -386,3 +386,30 @@ describe('rendering', () => {
     expect(rule.actions.map(renderAction)).toEqual(['move:"Junk Email"', 'suggest'])
   })
 })
+
+describe('parseRules — thread-follow', () => {
+  it('parses the thread predicate and the @thread move target', () => {
+    const rule = firstRule('thread:filed -> move:@thread')
+    expect(rule.groups[0]?.terms[0]).toMatchObject({ key: 'thread', value: 'filed', negated: false })
+    expect(rule.actions).toEqual([{ kind: 'move', value: '@thread', quoted: false }])
+  })
+
+  it('accepts a negated thread predicate', () => {
+    expect(firstRule('!thread:filed sender:a@b.com -> move:X').groups[0]?.terms[0]).toMatchObject({
+      key: 'thread',
+      negated: true
+    })
+  })
+
+  it('rejects any thread value but filed', () => {
+    expect(errorsFor('thread:open -> move:@thread')[0]).toMatch(/invalid thread: "open" \(expected filed\)/)
+  })
+
+  it('keeps a quoted "@thread" as a literal folder name', () => {
+    expect(firstRule('sender:a@b.com -> move:"@thread"').actions[0]).toEqual({
+      kind: 'move',
+      value: '@thread',
+      quoted: true
+    })
+  })
+})

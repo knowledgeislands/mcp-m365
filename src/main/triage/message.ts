@@ -9,7 +9,7 @@ import type { EmailRecord } from './types.js'
 
 /** `$select` for triage: everything a predicate can test, and nothing else. */
 export const TRIAGE_SELECT_FIELDS =
-  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,bodyPreview,importance,isRead,flag,hasAttachments'
+  'id,subject,from,toRecipients,ccRecipients,receivedDateTime,body,bodyPreview,importance,isRead,flag,hasAttachments,conversationId'
 
 /**
  * `PR_MESSAGE_CLASS`. Graph does not surface it as a first-class property, so it
@@ -63,6 +63,7 @@ export const toEmailRecord = (message: any, folder?: string): EmailRecord => {
   if (messageClass) record.messageClass = messageClass
   if (message?.['@odata.type']) record.odataType = String(message['@odata.type'])
   if (typeof message?.hasAttachments === 'boolean') record.hasAttachments = message.hasAttachments
+  if (message?.conversationId) record.conversationId = String(message.conversationId)
   if (folder) record.folder = folder
 
   return record

@@ -3,13 +3,13 @@ id: KI-MCP-M365-TOOL-008
 area: TOOL
 title: Thread-follow routing
 kind: deliver
-horizon: next
-status: ready
+horizon: now
+status: awaiting-review
 blocks: []
 blocked_by: []
-baseline_ref: null
+baseline_ref: 8907895d20ea986f4452d06b0a3e180c8f413285
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-17T14:22:00Z
 ---
 
 ## Goal
@@ -42,16 +42,16 @@ At baseline `e401aa3` the engine classifies each message on its own fields only.
 
 ## Steps
 
-- [ ] Add `conversationId` to `TRIAGE_SELECT_FIELDS` and carry it on `EmailRecord`, with a `thread` field the run layer fills before matching.
-- [ ] Parser: accept the predicate `thread:filed` (the only value) and the move target `move:@thread` (unquoted only; a quoted `"@thread"` stays a literal folder name).
-- [ ] Matcher: `thread:filed` holds when the record's resolved thread names a folder. Pure, no I/O.
-- [ ] Pure thread resolution in a new `src/main/triage/lookups.ts`: derive the filed folders from the rule file (every `move:` target in the inbound block except the fallback's, and every archive an aged-block rule feeds, mapped back to the `_TRIAGE` folder or folders that feed it) and choose the target from a list of siblings, most recent first, excluding the message itself by identity.
-- [ ] Graph: `listConversation()` in `graph-ops.ts`, one query per conversation, cached for the call.
-- [ ] Run layer: resolve threads lazily. Classify first without lookups; only when the winning rule sits at or below the first rule that tests `thread:` look the conversation up and classify again. Substitute the resolved folder for `@thread` before actions run, so tracking, the report and `applyActions` see a concrete path.
-- [ ] Report: each item routed through `@thread` carries `thread.folder` and `thread.alternatives` (other filed folders in the conversation), and the text summary names them.
-- [ ] Lint: `thread-target-without-thread` (blocking) when a rule uses `move:@thread` in a group that does not test `thread:filed`; `thread` counts as a broad key for `broad-rule-collision`; `unknown-folder` skips `@thread`.
-- [ ] Tests first for each unit: parser, matcher, lint, lookups, graph-ops and run, covering the five Verification cases and the backward-compatibility case.
-- [ ] Documentation: the routing guide's rule-file section, the `m365_email_routing_triage` and `m365_email_routing_aged` tool descriptions, the lint tool description, AGENTS.md's routing-engine section, and CHANGELOG.
+- [x] Add `conversationId` to `TRIAGE_SELECT_FIELDS` and carry it on `EmailRecord`, with a `thread` field the run layer fills before matching.
+- [x] Parser: accept the predicate `thread:filed` (the only value) and the move target `move:@thread` (unquoted only; a quoted `"@thread"` stays a literal folder name).
+- [x] Matcher: `thread:filed` holds when the record's resolved thread names a folder. Pure, no I/O.
+- [x] Pure thread resolution in a new `src/main/triage/lookups.ts`: derive the filed folders from the rule file (every `move:` target in the inbound block except the fallback's, and every archive an aged-block rule feeds, mapped back to the `_TRIAGE` folder or folders that feed it) and choose the target from a list of siblings, most recent first, excluding the message itself by identity.
+- [x] Graph: `listConversation()` in `graph-ops.ts`, one query per conversation, cached for the call.
+- [x] Run layer: resolve threads lazily. Classify first without lookups; only when the winning rule sits at or below the first rule that tests `thread:` look the conversation up and classify again. Substitute the resolved folder for `@thread` before actions run, so tracking, the report and `applyActions` see a concrete path.
+- [x] Report: each item routed through `@thread` carries `thread.folder` and `thread.alternatives` (other filed folders in the conversation), and the text summary names them.
+- [x] Lint: `thread-target-without-thread` (blocking) when a rule uses `move:@thread` in a group that does not test `thread:filed`; `thread` counts as a broad key for `broad-rule-collision`; `unknown-folder` skips `@thread`.
+- [x] Tests first for each unit: parser, matcher, lint, lookups, graph-ops and run, covering the five Verification cases and the backward-compatibility case.
+- [x] Documentation: the routing guide's rule-file section, the `m365_email_routing_triage` and `m365_email_routing_aged` tool descriptions, the lint tool description, AGENTS.md's routing-engine section, and CHANGELOG.
 
 ## Files touched
 
@@ -88,6 +88,50 @@ None. The repository holds no behaviour specification for the rule language; the
 ### Roadmap
 
 None beyond this record. KI-MCP-M365-TOOL-010's category carry-over is already recorded there.
+
+## Review
+
+### Delivered
+
+Thread-follow routing as planned: the `thread:filed` predicate, the `move:@thread` target, a pure resolver in `src/main/triage/lookups.ts`, one Graph conversation query per conversation per call, the item report's `thread` field, and the blocking `thread-target-without-thread` lint check. Excluded as planned: a model call, any change to how existing predicates match, routing by Graph message id, and KI-MCP-M365-TOOL-010's category carry-over. The baseline is `8907895`; the evidence is the uncommitted working tree at review, committed with this record.
+
+### Change Summary
+
+- `types.ts`, `message.ts`: `thread` joins the predicate and broad keys; `conversationId` is selected and carried on `EmailRecord`, with a `thread` field holding `folder`, `alternatives` and `skipped`.
+- `parser.ts`, `matcher.ts`, `folders.ts`: `thread:` accepts only `filed`; the matcher holds it when a folder was resolved; `isThreadTarget()` recognises an unquoted `@thread` move only. Other unquoted `@` targets remain literal folder names, as before.
+- `lookups.ts` (new, pure): filed folders are derived from the rule file (inbound move targets except the fallback's, and archives mapped back to their single feeding folder, or marked ambiguous when fed from several). The most recent filed sibling decides, excluding the message itself by identity.
+- `graph-ops.ts`: `listConversation()` filters `me/messages` by `conversationId`, newest first, capped at 25.
+- `run.ts`: classify first; look the conversation up only when the winning rule sits at or below the first `thread:` rule, then classify again and bind `@thread` to a concrete path before tracking, the report and the move. Lookups are cached per conversation; a failed lookup becomes a non-blocking warning and the message is classified without its thread.
+- `lint.ts`: `thread-target-without-thread` is blocking; `unknown-folder` skips `@thread`; `thread` counts as content-agnostic for `broad-rule-collision`.
+- Documentation: the routing guide's new "Follow a conversation to its folder" section, the triage, aged and lint tool descriptions, AGENTS.md's routing-engine invariants (lazy cross-message lookups), and CHANGELOG.
+
+### Verification
+
+- `bunx tsc --noEmit`: passed.
+- `bunx @biomejs/biome check .`: passed, with one pre-existing warning in `src/main/calendar/availability.test.ts` unrelated to this change.
+- `bunx rumdl check .`: no issues.
+- `bun run test`: 1262 tests passed.
+- `bun run test:coverage`: 100% statements, branches, functions and lines.
+- `bun run build`: passed.
+- `bun run ki:test:smoke`: passed, 45 tools.
+- Fixture tests cover the five planned cases (single sibling, archived sibling, split thread, no siblings, reissued Graph id) and the backward-compatibility case: a rule file with no `thread:` predicate makes no conversation query and returns the same result.
+
+### Outstanding concerns
+
+- Graph's acceptance of the combined `conversationId` filter and `receivedDateTime` order is proved by fixtures only; no live call was authorised. The owner's report-mode replay is the first live proof, and a rejected query surfaces as a per-message warning rather than a failed run.
+- A thread-follow line placed above specific rules is reported as a `broad-rule-collision` finding until it carries `# lint:allow-collision`, as designed.
+- An existing rule file with an unquoted `move:@thread` and no `thread:filed` is now refused by lint. No such file is known.
+- Deployment needs a rebuild and a restart of the live mcporter daemon by the owner; neither was done here.
+
+No follow-on work needs its own identifier.
+
+### Post-change review
+
+The goal is met within the boundary: a reply to a filed conversation can follow it without a rule naming its sender or subject. Regression risk is low: the new lookup is reachable only from a rule that tests `thread:`, the parser accepts every file it accepted before, and the only new refusal is the lint check above. The record is ready for acceptance once the owner has reviewed the diff; live acceptance is the report-mode replay of one day's fallback folder.
+
+### Mini recap
+
+Delivered thread-follow routing with tests first, documentation and full gates green. The open concern is live Graph confirmation of the conversation query. Learning route: the lazy-lookup pattern in `run.ts` is the template KI-MCP-M365-TOOL-009 reuses, and AGENTS.md now records it as an engine invariant.
 
 ## Discussion
 

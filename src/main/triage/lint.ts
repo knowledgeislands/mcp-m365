@@ -11,7 +11,7 @@
  */
 
 import { withinRootsLexically } from '../../utils/paths.js'
-import { resolveMoveTarget } from './folders.js'
+import { isThreadTarget, resolveMoveTarget } from './folders.js'
 import { renderAction, renderGroup, renderPredicates } from './parser.js'
 import {
   type AndGroup,
@@ -22,7 +22,8 @@ import {
   type PredicateTerm,
   type Rule,
   type RuleBlock,
-  type Term
+  type Term,
+  THREAD_TARGET
 } from './types.js'
 
 export type LintSeverity = 'error' | 'warning' | 'info'
@@ -131,7 +132,8 @@ const isFallback = (rule: Rule): boolean =>
 
 const destinationOf = (rule: Rule): string | null => {
   const move = rule.actions.find((action) => action.kind === 'move')
-  return move ? resolveMoveTarget(move) : null
+  if (!move) return null
+  return isThreadTarget(move) ? THREAD_TARGET : resolveMoveTarget(move)
 }
 
 /** Canonical text for a rule, used to spot exact duplicates regardless of spacing or comments. */
@@ -297,7 +299,7 @@ const checkFolders = (rules: readonly Rule[], known: readonly string[], findings
   const normalised = new Set(known.map((f) => f.toLowerCase()))
   for (const rule of rules) {
     for (const action of rule.actions) {
-      if (action.kind !== 'move') continue
+      if (action.kind !== 'move' || isThreadTarget(action)) continue
       const target = resolveMoveTarget(action)
       if (normalised.has(target.toLowerCase())) continue
       findings.push({
@@ -305,6 +307,28 @@ const checkFolders = (rules: readonly Rule[], known: readonly string[], findings
         code: 'unknown-folder',
         line: rule.line,
         message: `move target "${target}" is not among the ${known.length} known folders`,
+        source: rule.source
+      })
+    }
+  }
+}
+
+/**
+ * `move:@thread` names the folder a filed sibling sits in, so it is defined
+ * only when `thread:filed` holds. Every OR-arm that can fire the rule must test
+ * it — un-negated — or a message could reach the action with nowhere to go.
+ */
+const checkThreadTargets = (rules: readonly Rule[], findings: LintFinding[]): void => {
+  for (const rule of rules) {
+    if (!rule.actions.some(isThreadTarget)) continue
+    for (const group of rule.groups) {
+      const tested = group.terms.some((term) => isPredicate(term) && term.key === 'thread' && !term.negated)
+      if (tested) continue
+      findings.push({
+        severity: 'error',
+        code: 'thread-target-without-thread',
+        line: rule.line,
+        message: `\`${renderGroup(group)}\` — \`move:${THREAD_TARGET}\` needs \`thread:filed\` in the same group, or the target is undefined`,
         source: rule.source
       })
     }
@@ -397,6 +421,7 @@ export const lintRules = (parsed: ParseResult, options: LintOptions = {}): LintF
     checkBroadCollisions(block.rules, findings)
     checkPartyConsolidation(block.rules, findings)
     checkAddressPatterns(block.rules, findings)
+    checkThreadTargets(block.rules, findings)
     if (options.knownFolders) checkFolders(block.rules, options.knownFolders, findings)
     checkDestinations(block.rules, parsed.destinations, findings)
   }

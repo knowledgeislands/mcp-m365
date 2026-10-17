@@ -153,6 +153,31 @@ export const findMessage = async (ctx: GraphContext, accessToken: string, record
   }
 }
 
+/** Most conversation members read for one thread-follow lookup. A longer thread is decided by its newest messages. */
+const CONVERSATION_TOP = 25
+
+/**
+ * Every message in a conversation, newest first, across all folders.
+ *
+ * Graph requires the `$orderby` property to lead the `$filter` when the two
+ * are combined, so the filter opens with an always-true `receivedDateTime`
+ * bound. Ids in the result are only hints, as everywhere in this engine: the
+ * caller excludes the message itself by identity.
+ */
+export const listConversation = async (
+  ctx: GraphContext,
+  accessToken: string,
+  conversationId: string
+): Promise<any[]> => {
+  const response: any = await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'GET', 'me/messages', null, {
+    $filter: `receivedDateTime ge 1970-01-01T00:00:00Z and conversationId eq '${conversationId.replaceAll("'", "''")}'`,
+    $orderby: 'receivedDateTime desc',
+    $select: IDENTITY_SELECT,
+    $top: CONVERSATION_TOP
+  })
+  return Array.isArray(response?.value) ? response.value : []
+}
+
 /** Identity-resolved Graph id, or null when the message is gone. */
 export const resolveMessageId = async (
   ctx: GraphContext,

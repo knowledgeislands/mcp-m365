@@ -7,7 +7,7 @@
  */
 export type { TriageContext } from './context.js'
 export { type DriftScanResult, driftScanResultSchema, handleDriftScan, RETENTION_DAYS } from './drift.js'
-export { resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
+export { isThreadTarget, resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
 export {
   type AppliedAction,
   applyActions,
@@ -16,6 +16,7 @@ export {
   type FolderMap,
   findMessage,
   hasExecutableActions,
+  listConversation,
   listFolderMessages,
   resolveMessageId
 } from './graph-ops.js'
@@ -28,6 +29,14 @@ export {
   lintRules,
   ruleShadows
 } from './lint.js'
+export {
+  bindThreadTarget,
+  type FiledFolders,
+  filedFolders,
+  firstThreadRule,
+  resolveThread,
+  type ThreadSibling
+} from './lookups.js'
 export {
   classify,
   detectType,
@@ -81,6 +90,16 @@ export type {
   PredicateTerm,
   Rule,
   RuleBlock,
-  Term
+  Term,
+  ThreadFiling
 } from './types.js'
-export { BROAD_KEYS, IMPORTANCE_VALUES, MARK_VALUES, PREDICATE_KEYS, STATUS_VALUES, TYPE_VALUES } from './types.js'
+export {
+  BROAD_KEYS,
+  IMPORTANCE_VALUES,
+  MARK_VALUES,
+  PREDICATE_KEYS,
+  STATUS_VALUES,
+  THREAD_TARGET,
+  THREAD_VALUES,
+  TYPE_VALUES
+} from './types.js'

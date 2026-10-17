@@ -77,7 +77,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     'm365_email_routing_aged',
     {
       description:
-        'Applies the `aged` retention block across the _TRIAGE subfolders — archiving, marking read, deleting, or returning mail for re-evaluation. Same batch-bounded, resumable contract as m365_email_routing_triage. Defaults to report mode.',
+        'Applies the `aged` retention block across the _TRIAGE subfolders — archiving, marking read, deleting, or returning mail for re-evaluation; `thread:filed` and `move:@thread` work here too. Same batch-bounded, resumable contract as m365_email_routing_triage. Defaults to report mode.',
       inputSchema: z
         .object({
           rules: rulesSchema,
@@ -125,7 +125,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     'm365_email_routing_lint',
     {
       description:
-        'Parses a rule file and reports parse errors, unreachable (shadowed) rules, duplicates, broad-rule collisions, party-consolidation opportunities, malformed address patterns, unknown move targets, undeclared attachment destinations, and declared destinations this server would refuse. No mailbox access — safe to run against a proposed edit before saving it.',
+        'Parses a rule file and reports parse errors, unreachable (shadowed) rules, duplicates, broad-rule collisions, party-consolidation opportunities, malformed address patterns, unknown move targets, `move:@thread` without `thread:filed`, undeclared attachment destinations, and declared destinations this server would refuse. No mailbox access — safe to run against a proposed edit before saving it.',
       inputSchema: z
         .object({
           rules: rulesSchema,
@@ -148,7 +148,7 @@ export const registerTriageTools = (server: McpServer, ctx: TriageContext): void
     'm365_email_routing_triage',
     {
       description:
-        'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
+        'Classifies Inbox mail against the `inbound` rule block and applies the first matching rule’s actions. A `thread:filed -> move:@thread` rule files a message where its conversation is already filed, reading the conversation only for messages that reach that rule. Batch-bounded and resumable: call repeatedly while the result reports `remaining: true` and a non-zero `acted`. Defaults to report mode.',
       inputSchema: z
         .object({
           rules: rulesSchema,

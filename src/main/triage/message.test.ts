@@ -1,4 +1,4 @@
-import { resolveMoveTarget } from './folders.js'
+import { isThreadTarget, resolveMoveTarget } from './folders.js'
 import { MESSAGE_CLASS_PROPERTY, toEmailRecord } from './message.js'
 
 describe('toEmailRecord', () => {
@@ -32,6 +32,11 @@ describe('toEmailRecord', () => {
       messageClass: 'IPM.Schedule.Meeting.Request',
       odataType: '#microsoft.graph.eventMessageRequest'
     })
+  })
+
+  it('carries the conversation id so thread-follow can find siblings', () => {
+    expect(toEmailRecord({ ...graphMessage, conversationId: 'conv-1' }).conversationId).toBe('conv-1')
+    expect(toEmailRecord(graphMessage).conversationId).toBeUndefined()
   })
 
   it('records the folder for the aged pass', () => {
@@ -116,5 +121,15 @@ describe('resolveMoveTarget', () => {
 
   it('tolerates a move action with no value', () => {
     expect(resolveMoveTarget({ kind: 'move' })).toBe('_TRIAGE/')
+  })
+})
+
+describe('isThreadTarget', () => {
+  it('recognises the unquoted @thread move target only', () => {
+    expect(isThreadTarget({ kind: 'move', value: '@thread', quoted: false })).toBe(true)
+    expect(isThreadTarget({ kind: 'move', value: '@thread', quoted: true })).toBe(false)
+    expect(isThreadTarget({ kind: 'move', value: '111 Partner', quoted: false })).toBe(false)
+    expect(isThreadTarget({ kind: 'tag', value: '@thread' })).toBe(false)
+    expect(isThreadTarget({ kind: 'move' })).toBe(false)
   })
 })

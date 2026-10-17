@@ -305,3 +305,35 @@ describe('lintRules — hygiene', () => {
     expect(lines).toEqual([...lines].sort((a, b) => a - b))
   })
 })
+
+describe('lintRules — thread-follow', () => {
+  it('blocks @thread on a group that does not test thread:filed', () => {
+    const finding = find(`sender:*@x.com -> move:@thread\n${FALLBACK}`, 'thread-target-without-thread')
+    expect(finding?.severity).toBe('error')
+    expect(finding?.message).toMatch(/`sender:\*@x\.com` — `move:@thread` needs `thread:filed`/)
+  })
+
+  it('checks every OR-arm, and a negated test does not count', () => {
+    expect(codes(`thread:filed | sender:*@x.com -> move:@thread\n${FALLBACK}`)).toContain(
+      'thread-target-without-thread'
+    )
+    expect(codes(`!thread:filed -> move:@thread\n${FALLBACK}`)).toContain('thread-target-without-thread')
+  })
+
+  it('accepts the thread-follow line', () => {
+    expect(codes(`thread:filed -> move:@thread  # lint:allow-collision\n${FALLBACK}`)).toEqual([])
+  })
+
+  it('counts thread:filed as broad and names @thread as its destination', () => {
+    const finding = find(`thread:filed -> move:@thread\nsubject:x -> move:A\n${FALLBACK}`, 'broad-rule-collision')
+    expect(finding?.message).toMatch(/goes to "@thread"/)
+  })
+
+  it('does not check @thread against the known folders', () => {
+    expect(
+      codes(`thread:filed -> move:@thread  # lint:allow-collision\n${FALLBACK}`, {
+        knownFolders: ['_TRIAGE/000 Unknown']
+      })
+    ).toEqual([])
+  })
+})

@@ -7,7 +7,7 @@
  * explicit path such as `_ARCHIVE/Success/Partner`) or by being quoted (a
  * well-known mailbox folder such as `"Junk Email"`).
  */
-import type { Action } from './types.js'
+import { type Action, THREAD_TARGET } from './types.js'
 
 export const TRIAGE_ROOT = '_TRIAGE'
 
@@ -17,3 +17,7 @@ export const resolveMoveTarget = (action: Action): string => {
   if (action.quoted || value.includes('/')) return value
   return `${TRIAGE_ROOT}/${value}`
 }
+
+/** Is this the `move:@thread` target? Quoting opts out, so a folder literally named `@thread` stays reachable. */
+export const isThreadTarget = (action: Action): boolean =>
+  action.kind === 'move' && !action.quoted && (action.value ?? '').trim() === THREAD_TARGET

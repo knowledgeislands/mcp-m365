@@ -20,7 +20,8 @@ export const PREDICATE_KEYS = [
   'status',
   'age',
   'folder',
-  'has'
+  'has',
+  'thread'
 ] as const
 export type PredicateKey = (typeof PREDICATE_KEYS)[number]
 
@@ -30,13 +31,17 @@ export type PredicateKey = (typeof PREDICATE_KEYS)[number]
  * claim mail that a later, topically-specific rule was written for — the
  * calendar-invite/project-route collision class the lint must catch.
  */
-export const BROAD_KEYS: readonly PredicateKey[] = ['type', 'status', 'importance', 'age'] as const
+export const BROAD_KEYS: readonly PredicateKey[] = ['type', 'status', 'importance', 'age', 'thread'] as const
 
 export const TYPE_VALUES = ['calendar-invite', 'calendar-response', 'calendar-update'] as const
 export const HAS_VALUES = ['attachment'] as const
 export const IMPORTANCE_VALUES = ['high', 'low'] as const
 export const STATUS_VALUES = ['flagged', 'unflagged', 'complete', 'unread', 'replied'] as const
 export const MARK_VALUES = ['read', 'unread', 'flagged', 'unflagged'] as const
+export const THREAD_VALUES = ['filed'] as const
+
+/** The `move:` target that names the folder the message's conversation is already filed in. Unquoted only. */
+export const THREAD_TARGET = '@thread'
 
 export type TypeValue = (typeof TYPE_VALUES)[number]
 
@@ -160,6 +165,24 @@ export interface EmailRecord {
   folder?: string
   /** Graph `hasAttachments`. Tested by `has:attachment`; true for inline images too, so pair it with a subject or filename test. */
   hasAttachments?: boolean
+  /** Graph `conversationId`. The key thread-follow looks siblings up by; never part of identity. */
+  conversationId?: string
+  /**
+   * Where the message's conversation is already filed. Filled by the run layer
+   * from a Graph lookup before matching, only when a `thread:` rule is reached,
+   * so the matcher itself stays pure. Absent means no filed sibling was found.
+   */
+  thread?: ThreadFiling
+}
+
+/** The resolved answer to "where is this conversation filed?". */
+export interface ThreadFiling {
+  /** Full folder path the most recent filed sibling resolves to — the `@thread` target. */
+  folder: string
+  /** Other filed folders the conversation's siblings sit in, most recent first. Non-empty means the thread is split. */
+  alternatives: string[]
+  /** Folders that held a sibling but could not be resolved — an archive fed from more than one folder. */
+  skipped: string[]
 }
 
 /** Nothing matched. Only reachable in a block with no fallback rule. */

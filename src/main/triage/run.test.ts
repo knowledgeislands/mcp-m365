@@ -515,6 +515,262 @@ describe('handleTriageRun — reporting', () => {
   })
 })
 
+describe('handleTriageRun — thread-follow', () => {
+  const THREAD_FOLDERS = [
+    ...FOLDERS,
+    { id: 'other-id', displayName: '112 Other', parentFolderId: 'triage-id' },
+    { id: 'archive-id', displayName: '_ARCHIVE', parentFolderId: 'root' },
+    { id: 'archive-partner-id', displayName: 'Partner', parentFolderId: 'archive-id' },
+    { id: 'sent-id', displayName: 'Sent Items', parentFolderId: 'root' }
+  ]
+
+  const THREAD_RULES = [
+    '## Inbound',
+    '',
+    '```rules v1',
+    'sender:*@junk.example -> move:991 Junk',
+    'thread:filed -> move:@thread   # lint:allow-collision',
+    'party:*@partner.example.com -> move:111 Partner',
+    'party:*@other.example.com -> move:112 Other',
+    '* -> move:000 Unknown, suggest',
+    '```',
+    '',
+    '## Aged',
+    '',
+    '```rules v1',
+    'folder:"111 Partner" age:30d -> move:_ARCHIVE/Partner',
+    '```'
+  ].join('\n')
+
+  /** The reply waiting in the Inbox: a sender no rule knows, in a filed conversation. */
+  const reply = (over: Record<string, unknown> = {}) =>
+    message({
+      id: 'reply-1',
+      subject: 'Re: Partner sync',
+      from: { emailAddress: { address: 'someone@stranger.example' } },
+      receivedDateTime: '2026-08-05T09:00:00Z',
+      conversationId: 'conv-1',
+      ...over
+    })
+
+  /** An earlier message in the same conversation, sitting in `folderId`. */
+  const sibling = (folderId: string, receivedDateTime: string, id = `sib-${folderId}`) => ({
+    id,
+    subject: 'Partner sync',
+    from: { emailAddress: { address: 'contact@partner.example.com' } },
+    receivedDateTime,
+    parentFolderId: folderId
+  })
+
+  const isConversationQuery = (query: any): boolean => String(query?.$filter ?? '').includes('conversationId eq')
+
+  /** Inbox holds `inbox`; each conversation id resolves to its listed messages. */
+  const stubThread = (inbox: unknown[], conversations: Record<string, unknown[] | Error>) => {
+    mockGetAllFolders.mockResolvedValue(THREAD_FOLDERS)
+    mockCall.mockImplementation(
+      async (_endpoint: string, _token: string, method: string, apiPath: string, _body: unknown, query: any) => {
+        if (method === 'GET' && apiPath === 'me/messages' && isConversationQuery(query)) {
+          const id = /conversationId eq '(.*)'$/.exec(query.$filter)?.[1] as string
+          const listed = conversations[id] ?? []
+          if (listed instanceof Error) throw listed
+          return { value: listed }
+        }
+        if (method === 'GET' && apiPath.endsWith('/messages')) return { value: inbox }
+        if (method === 'GET' && apiPath.startsWith('me/messages/')) return reply()
+        if (method === 'POST') return { id: 'msg-moved' }
+        return {}
+      }
+    )
+  }
+
+  const conversationQueries = () =>
+    mockCall.mock.calls.filter(
+      ([, , method, apiPath, , query]) => method === 'GET' && apiPath === 'me/messages' && isConversationQuery(query)
+    )
+
+  it('routes a reply to the folder its single filed sibling sits in', async () => {
+    stubThread([reply()], {
+      'conv-1': [reply({ parentFolderId: 'inbox-id' }), sibling('emerge-id', '2026-08-01T09:00:00Z')]
+    })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: '_TRIAGE/111 Partner',
+      ruleset: 'thread:filed',
+      thread: { folder: '_TRIAGE/111 Partner', alternatives: [], skipped: [] }
+    })
+    expect(result.content[0].text).toContain('→ _TRIAGE/111 Partner [thread:filed] pending — via thread')
+  })
+
+  it('moves the reply and records the concrete folder in live mode', async () => {
+    stubThread([reply()], { 'conv-1': [sibling('emerge-id', '2026-08-01T09:00:00Z')] })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES, mode: 'live' })
+
+    expect(result.structuredContent.items[0].applied).toEqual([{ action: 'move:_TRIAGE/111 Partner', ok: true }])
+    expect(mockCall).toHaveBeenCalledWith(GRAPH_API_ENDPOINT, 'token', 'POST', 'me/messages/reply-1/move', {
+      destinationId: 'emerge-id'
+    })
+    const entries = (await readTracking(ctx.trackingPath))?.entries ?? []
+    expect(entries[0]).toMatchObject({
+      destination: '_TRIAGE/111 Partner',
+      routed_to: '111 Partner',
+      ruleset: 'thread:filed'
+    })
+  })
+
+  it('routes a sibling in an archive to the triage folder that feeds it', async () => {
+    stubThread([reply()], { 'conv-1': [sibling('archive-partner-id', '2026-06-01T09:00:00Z')] })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/111 Partner')
+  })
+
+  it('chooses the most recent sibling when the thread is split, and reports the other folder', async () => {
+    stubThread([reply()], {
+      'conv-1': [sibling('other-id', '2026-08-03T09:00:00Z'), sibling('emerge-id', '2026-08-01T09:00:00Z')]
+    })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+
+    expect(result.structuredContent.items[0].thread).toEqual({
+      folder: '_TRIAGE/112 Other',
+      alternatives: ['_TRIAGE/111 Partner'],
+      skipped: []
+    })
+    expect(result.content[0].text).toContain('via thread; also filed in _TRIAGE/111 Partner')
+  })
+
+  it('names a folder it skipped as unresolvable', async () => {
+    const rules = THREAD_RULES.replace(
+      'folder:"111 Partner" age:30d -> move:_ARCHIVE/Partner',
+      'folder:"111 Partner" age:30d | folder:"112 Other" age:30d -> move:_ARCHIVE/Partner'
+    )
+    stubThread([reply()], {
+      'conv-1': [sibling('archive-partner-id', '2026-08-03T09:00:00Z'), sibling('other-id', '2026-08-01T09:00:00Z')]
+    })
+    const result = await handleTriageRun(ctx, { rules })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/112 Other')
+    expect(result.content[0].text).toContain('via thread; skipped _ARCHIVE/Partner')
+  })
+
+  it('falls through when no sibling is filed', async () => {
+    stubThread([reply()], {
+      'conv-1': [
+        reply({ parentFolderId: 'inbox-id' }),
+        sibling('sent-id', '2026-08-02T09:00:00Z'),
+        sibling('unknown-id', '2026-08-01T09:00:00Z')
+      ]
+    })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/000 Unknown')
+    expect(result.structuredContent.items[0].thread).toBeUndefined()
+  })
+
+  it('does not mistake the reply itself for a sibling when Graph has reissued its id', async () => {
+    stubThread([reply()], {
+      'conv-1': [
+        reply({ id: 'reply-1-reissued', parentFolderId: 'emerge-id' }),
+        sibling('other-id', '2026-08-01T09:00:00Z', 'sib-reissued')
+      ]
+    })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/112 Other')
+  })
+
+  it('keeps a rule above the thread line ahead of it, with no lookup', async () => {
+    stubThread([message({ conversationId: 'conv-1' })], { 'conv-1': [sibling('emerge-id', '2026-08-01T09:00:00Z')] })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/991 Junk')
+    expect(conversationQueries()).toHaveLength(0)
+  })
+
+  it('lets a rule below the thread line decide when the thread is not filed', async () => {
+    stubThread([reply({ from: { emailAddress: { address: 'a@partner.example.com' } } })], { 'conv-1': [] })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/111 Partner')
+    expect(result.structuredContent.items[0].thread).toBeUndefined()
+    expect(conversationQueries()).toHaveLength(1)
+  })
+
+  it('looks each conversation up once per call', async () => {
+    stubThread([reply(), reply({ id: 'reply-2', receivedDateTime: '2026-08-06T09:00:00Z' })], {
+      'conv-1': [sibling('emerge-id', '2026-08-01T09:00:00Z')]
+    })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items).toHaveLength(2)
+    expect(conversationQueries()).toHaveLength(1)
+  })
+
+  it('skips the lookup for a message Graph gave no conversation id', async () => {
+    stubThread([reply({ conversationId: undefined })], {})
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/000 Unknown')
+    expect(conversationQueries()).toHaveLength(0)
+  })
+
+  it('reports a failed lookup and lets the message fall through', async () => {
+    stubThread([reply()], { 'conv-1': new Error('Graph said no') })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/000 Unknown')
+    expect(result.structuredContent.warnings).toContain('thread lookup failed for "Re: Partner sync": Graph said no')
+  })
+
+  it('ignores a sibling in a folder the folder map does not know', async () => {
+    stubThread([reply()], { 'conv-1': [sibling('vanished-id', '2026-08-01T09:00:00Z')] })
+    const result = await handleTriageRun(ctx, { rules: THREAD_RULES })
+    expect(result.structuredContent.items[0].destination).toBe('_TRIAGE/000 Unknown')
+  })
+
+  it('refuses a rule file that uses @thread without testing thread:filed', async () => {
+    const rules = THREAD_RULES.replace('thread:filed -> move:@thread', 'sender:*@stranger.example -> move:@thread')
+    stubThread([reply()], {})
+    const result = await handleTriageRun(ctx, { rules })
+    expect(result.isError).toBe(true)
+    expect(result.content[0].text).toContain('thread-target-without-thread')
+  })
+
+  it('re-files an unknown item in the aged pass once its thread has been filed', async () => {
+    const rules = THREAD_RULES.replace(
+      'folder:"111 Partner" age:30d -> move:_ARCHIVE/Partner',
+      'folder:"111 Partner" age:30d -> move:_ARCHIVE/Partner\nfolder:"000 Unknown" thread:filed -> move:@thread'
+    )
+    mockGetAllFolders.mockResolvedValue(THREAD_FOLDERS)
+    mockCall.mockImplementation(
+      async (_endpoint: string, _token: string, method: string, apiPath: string, _body: unknown, query: any) => {
+        if (method === 'GET' && apiPath === 'me/messages' && isConversationQuery(query))
+          return { value: query.$filter.endsWith("'conv-1'") ? [sibling('emerge-id', '2026-08-01T09:00:00Z')] : [] }
+        if (method === 'GET' && apiPath === 'me/mailFolders/unknown-id/messages')
+          return {
+            value: [
+              reply({ parentFolderId: 'unknown-id' }),
+              reply({ id: 'lone', conversationId: 'conv-2', subject: 'Alone' })
+            ]
+          }
+        if (method === 'GET' && apiPath.endsWith('/messages')) return { value: [] }
+        return {}
+      }
+    )
+    const result = await handleAgedRun(ctx, { rules })
+    expect(result.structuredContent.items[0]).toMatchObject({
+      destination: '_TRIAGE/111 Partner',
+      ruleset: 'folder:"000 Unknown" thread:filed'
+    })
+    expect(result.structuredContent.unmatched).toBe(1)
+  })
+
+  it('leaves a rule file without thread: exactly as it was — no conversation query', async () => {
+    stubThread([message({ conversationId: 'conv-1' }), reply()], {
+      'conv-1': [sibling('emerge-id', '2026-08-01T09:00:00Z')]
+    })
+    const result = await handleTriageRun(ctx, { rules: RULES })
+    expect(result.structuredContent.items.map((item: any) => item.destination)).toEqual([
+      '_TRIAGE/991 Junk',
+      '_TRIAGE/000 Unknown'
+    ])
+    expect(result.structuredContent.items.every((item: any) => item.thread === undefined)).toBe(true)
+    expect(conversationQueries()).toHaveLength(0)
+  })
+})
+
 describe('handleAgedRun', () => {
   it('walks the _TRIAGE subfolders and classifies against the aged block', async () => {
     mockCall.mockImplementation(async (_e: string, _t: string, method: string, apiPath: string) => {

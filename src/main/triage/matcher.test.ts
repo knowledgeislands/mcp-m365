@@ -185,6 +185,15 @@ describe('evaluatePredicate', () => {
     expect(evaluatePredicate(term('folder:"111 Partner"'), record({ folder: '111 partner' }), ctx)).toBe(true)
     expect(evaluatePredicate(term('folder:"111 Partner"'), record(), ctx)).toBe(false)
   })
+
+  it('holds thread:filed only once the run layer has resolved a filed folder', () => {
+    const t = term('thread:filed')
+    expect(
+      evaluatePredicate(t, record({ thread: { folder: '_TRIAGE/111 Partner', alternatives: [], skipped: [] } }), ctx)
+    ).toBe(true)
+    expect(evaluatePredicate(t, record({ conversationId: 'conv-1' }), ctx)).toBe(false)
+    expect(evaluatePredicate(t, record(), ctx)).toBe(false)
+  })
 })
 
 describe('evaluateTerm and evaluateGroup', () => {

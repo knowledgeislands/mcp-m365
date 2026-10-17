@@ -45,6 +45,7 @@ import {
   type RuleBlock,
   STATUS_VALUES,
   type Term,
+  THREAD_VALUES,
   TYPE_VALUES
 } from './types.js'
 
@@ -139,6 +140,8 @@ const validateValue = (key: PredicateKey, value: string): string | null => {
   if (key === 'age' && !AGE_RE.test(value)) return `invalid age: "${value}" (expected Nd, e.g. 7d)`
   if (key === 'has' && !(HAS_VALUES as readonly string[]).includes(value))
     return `invalid has: "${value}" (expected ${HAS_VALUES.join(', ')})`
+  if (key === 'thread' && !(THREAD_VALUES as readonly string[]).includes(value))
+    return `invalid thread: "${value}" (expected ${THREAD_VALUES.join(', ')})`
   return null
 }
 

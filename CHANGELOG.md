@@ -8,3 +8,4 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 - Mail: list, search, read, send, draft, move, delete, mark read, and folder management.
 - Calendar: list, create, cancel, and delete events, and accept or decline invitations.
 - Aged-message routing reports.
+- Thread-follow routing: the `thread:filed` predicate and the `move:@thread` target file a message with the rest of its conversation. Rule files without `thread:` are unaffected.
