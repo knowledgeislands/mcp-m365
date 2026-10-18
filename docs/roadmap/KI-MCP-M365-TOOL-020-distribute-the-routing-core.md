@@ -9,7 +9,7 @@ blocks: []
 blocked_by: [KI-MCP-M365-TOOL-018]
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:19:30Z
+updated_at: 2026-10-18T00:53:18Z
 ---
 
 ## Goal
@@ -22,26 +22,30 @@ The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-pri
 
 ## Boundary
 
-How the core is distributed is still open (the ENGINE-HOME question): the design recommends a canonical copy here vendored with a manifest and drift check, against a separate repository consumed by a pinned Git reference, or a published package, which needs the owner's approval. This record does not presume the answer. Its deliverable is whatever the owner's answer requires on this side: a manifest in the shared-code format for vendoring, a tagged revision for a pinned reference, or nothing here if the core moves out. Plan it only after that answer.
+The core is distributed by vendoring (ENGINE-HOME, answered 18 October 2026): the canonical copy stays in this repository's provider-free core directory, and `mcp-gsuite` takes a byte-identical copy. This record's deliverable is the source side: a manifest of the core's source revision and per-file SHA-256 digests in the `ki-repo-mcp` shared-code format, and a check here that fails when the manifest is stale against the core directory. The consumer side, the vendored copy and its drift check, is [KI-MCP-GSUITE-TOOL-008](/Users/krisbrown/workspaces/knowledge-islands/mcp-gsuite/docs/roadmap/KI-MCP-GSUITE-TOOL-008-consume-the-routing-core.md). No separate repository or pinned Git reference is created; that waits until a third provider appears.
 
 Publishing to any package registry needs the owner's explicit approval and is outside this record.
 
 ## Shaping
 
-- **Approach:** decided by the ENGINE-HOME answer; see Boundary.
+- **Approach:** generate the manifest from the core directory in the shared-code format, add a stale-manifest check to the gates, and name the revision consumers vendor from.
 - **Dependencies:** [KI-MCP-M365-TOOL-018](KI-MCP-M365-TOOL-018-extract-the-routing-core.md), so there is a core directory to distribute.
-- **Open decisions:** ENGINE-HOME.
-- **Promotion to Next:** ENGINE-HOME answered and TOOL-018 delivered.
+- **Open decisions:** none.
+- **Promotion to Next:** TOOL-018 delivered.
 
 ## Discussion
 
-### If vendored
+### Vendoring
 
 Reuse the shared-code manifest format rather than a second one, and add the check that fails when the manifest is stale against the core directory.
 
 ### Verification
 
 A consumer-side check reproduces the digests from a clean checkout of the named revision.
+
+### Engine home
+
+The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/decisions.md)): canonical engine in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. The alternatives, a separate repository consumed by a pinned Git reference and a published package, were not chosen.
 
 ### Intake authority
 

@@ -9,7 +9,7 @@ blocks: [KI-MCP-M365-TOOL-020]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:19:30Z
+updated_at: 2026-10-18T00:53:18Z
 ---
 
 ## Goal
@@ -26,13 +26,13 @@ The port the design proposes: list messages in a location, look up a message, li
 
 A refactor with no behaviour change: every existing test and the replay fixture pass unchanged, and scheduled routing runs as before. Land it between scheduled runs, and only once the deploying owner's first-phase shadow runs are under way.
 
-Where the canonical core finally lives, and how another server consumes it, is still open (the ENGINE-HOME question). This record does not presume the answer: it gathers the core into one provider-free directory behind the port, which every option needs, and leaves its final location and distribution to [KI-MCP-M365-TOOL-020](KI-MCP-M365-TOOL-020-distribute-the-routing-core.md).
+The canonical core stays in this repository (ENGINE-HOME, answered 18 October 2026): this record gathers it into one provider-free directory behind the port, and that directory is the canonical copy other servers vendor. Its manifest and drift check belong to [KI-MCP-M365-TOOL-020](KI-MCP-M365-TOOL-020-distribute-the-routing-core.md). Keep the directory self-contained, with no import out of it except through the port, so it can be vendored as a unit.
 
 ## Shaping
 
 - **Approach:** gather the pure modules and the provider-free parts of the run, tracking and drift layers into one provider-free directory; define the port; add `calendarMethod` and the configurable triage root; keep the Graph adapter thin.
 - **Dependencies:** the deploying owner's first-phase shadow runs under way; [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) accepted, so its changes are not rebased across the move.
-- **Open decisions:** ENGINE-HOME, for the core's final location only.
+- **Open decisions:** none.
 - **Promotion to Next:** the dependencies above hold, and a quiet window between scheduled runs is chosen.
 
 ## Discussion
@@ -44,6 +44,10 @@ Keep the port to the seven calls above and let each adapter own its provider's i
 ### Verification
 
 Full gates; replay against the example rule fixture; an import check that nothing in the core directory reaches Graph, the network or the clock.
+
+### Engine home
+
+The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/decisions.md)): the canonical engine stays in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. A separate repository waits until a third provider appears.
 
 ### Intake authority
 
