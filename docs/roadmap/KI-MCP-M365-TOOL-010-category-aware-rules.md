@@ -3,13 +3,12 @@ id: KI-MCP-M365-TOOL-010
 area: TOOL
 title: Category-aware rules
 kind: deliver
-horizon: now
-status: awaiting-review
+status: done
 blocks: [KI-MCP-M365-TOOL-012]
 blocked_by: []
 baseline_ref: fbd2faacbbfd690a35cb2d99e1b46af4db70b929
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T22:04:31Z
+updated_at: 2026-10-18T00:35:39Z
 ---
 
 ## Goal
@@ -137,6 +136,10 @@ The diff stays inside Files touched. The pure modules have no I/O, and Graph wri
 ### Mini recap
 
 Category-aware rules are delivered tests first, with full gates green and no deployment. The one design finding is that `hold` keeps held mail out of the batch budget but not out of the listing window. Learning route: the windowing in `runPass` now carries non-work as well as work, so any later claim-without-action term should join `held` rather than the candidates.
+
+## Done
+
+Accepted by Kris Brown on 18 October 2026, in Kris's words: "ACCEPT-010 \"After the report check\" - accept KI-MCP-M365-TOOL-010 once that check shows no change." The acceptance rests on the six-part Review above and on the deploy010 report check. The build of `1b597b4`, whose code is that of `8057d19`, was deployed to the mcporter daemon on 18 October 2026, and the daemon was restarted at 01:34 BST. The old daemon was confirmed retired and the new one up. A lint of a test note with a categories block returned `unknown-category` for an undeclared name, which only this build can give. Against the live HNR note, the aged and inbound passes in report mode gave the same result before and after the deploy: aged considered 177 and acted on none, inbound considered none. Lint gave zero findings on 380 inbound and 19 aged rules both times. Because no mail was due for action, the check proves the live note parses and selects identically, not that each action routes identically. Every Step is complete. The new terms get their first live use through KI-MCP-M365-TOOL-012, and the held-mail listing window stays an accepted limit, as Outstanding concerns states.
 
 ## Discussion
 
