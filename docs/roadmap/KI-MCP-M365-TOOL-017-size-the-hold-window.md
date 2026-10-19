@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-017
 area: TOOL
 title: Size the hold window
 kind: investigate
-horizon: future
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:19:30Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -25,6 +28,10 @@ The deploying owner chose on 18 October 2026 to accept the limit and size the wi
 ## Boundary
 
 Measure first: per-folder held counts against the window over live aged runs. Change the listing contract only if the evidence shows the window fills. Leave `hold` semantics and the `maxActions` batch budget as they are.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: future` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

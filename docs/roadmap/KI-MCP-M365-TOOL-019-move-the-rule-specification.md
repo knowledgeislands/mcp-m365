@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-019
 area: TOOL
 title: Move the rule specification
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:19:30Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -36,6 +39,10 @@ Where the canonical engine finally lives is still open (the ENGINE-HOME question
 - **Dependencies:** none in this repository; the source note's change to a pointer is separate work in its own repository.
 - **Open decisions:** the exact path; ENGINE-HOME only if the engine leaves this repository.
 - **Promotion to Next:** the owner chooses to start phase 0.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

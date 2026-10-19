@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-015
 area: TOOL
 title: Deduplicate saved attachments
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -30,6 +33,10 @@ Duplicate detection in the saver only. Do not change naming, the destinations mo
 - **Dependencies.** None in build order. It matters most once KI-MCP-M365-TOOL-009 archives matched pairs, since both sides of a pair may pass through harvesting folders.
 - **Decisions still needed.** Hash the stem-sharing files only, or keep a hash index beside the destination.
 - **Promotion.** Moves to Next when selected after KI-MCP-M365-TOOL-008 and KI-MCP-M365-TOOL-009, or sooner if duplicate receipts recur.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

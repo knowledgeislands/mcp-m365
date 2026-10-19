@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-016
 area: TOOL
 title: Thread-follow skips disposal folders
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:19:30Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -32,6 +35,10 @@ Change which folders count as filed for thread-follow; nothing else in matching 
 - **Dependencies:** none in code. If the disposal marker becomes a grammar change, it lands in the rule-language specification ([KI-MCP-M365-TOOL-019](KI-MCP-M365-TOOL-019-move-the-rule-specification.md)) as well.
 - **Open decisions:** how disposal is derived (see Discussion).
 - **Promotion to Next:** the derivation is chosen, and live reports have shown whether threads reach disposal folders in practice.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

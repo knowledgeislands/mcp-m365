@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-012
 area: TOOL
 title: Judged mail re-check
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: [KI-MCP-M365-TOOL-010, KI-MCP-M365-TOOL-011]
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -39,6 +42,10 @@ State derivation, settlement and drift separation. Do not re-judge here: a messa
 - **Dependencies.** Builds on KI-MCP-M365-TOOL-010 (`category:`, `untag:`) and KI-MCP-M365-TOOL-011 (tracking fields, `route_kind`).
 - **Decisions still needed.** The annotation preset, and whether drift separation ships here or waits for the pruning phase.
 - **Promotion.** Moves to Next once KI-MCP-M365-TOOL-011 is delivered.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

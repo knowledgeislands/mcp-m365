@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-013
 area: TOOL
 title: Per-rule hit counts
 kind: deliver
-horizon: future
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -25,6 +28,10 @@ The proposal records, per rule source line, `last_hit` and `hits_90d` in the tra
 ## Boundary
 
 Counting and reporting only. Lint never deletes or rewrites a rule; pruning stays the owner's edit to their own rule note. The server keeps no rule state beyond hit evidence in the caller-named tracking file.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: future` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

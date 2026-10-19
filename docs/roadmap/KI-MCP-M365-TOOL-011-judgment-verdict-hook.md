@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-011
 area: TOOL
 title: Judgment verdict hook
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: [KI-MCP-M365-TOOL-012]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-17T14:02:35Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -37,6 +40,10 @@ Candidate listing, verdict application and the tracking fields. No model call, p
 - **Dependencies.** Builds on `category:` and `tag:` support from KI-MCP-M365-TOOL-010, and on conversation lookup from KI-MCP-M365-TOOL-008 for the siblings field.
 - **Decisions still needed.** The apply tool's annotation preset, and whether a verdict may name a disposal folder.
 - **Promotion.** Moves to Next once KI-MCP-M365-TOOL-010 is delivered and shadow judgment has met its agreement target.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 

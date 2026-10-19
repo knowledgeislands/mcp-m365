@@ -3,13 +3,16 @@ id: KI-MCP-M365-TOOL-018
 area: TOOL
 title: Extract the routing core
 kind: deliver
-horizon: soon
+horizon: hold
+hold:
+  reason: waiting-for
+  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
 status: draft
 blocks: [KI-MCP-M365-TOOL-020]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-18T00:53:18Z
+updated_at: 2026-10-19T22:46:57Z
 ---
 
 ## Goal
@@ -34,6 +37,10 @@ The canonical core stays in this repository (ENGINE-HOME, answered 18 October 20
 - **Dependencies:** the deploying owner's first-phase shadow runs under way; [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) accepted, so its changes are not rebased across the move.
 - **Open decisions:** none.
 - **Promotion to Next:** the dependencies above hold, and a quiet window between scheduled runs is chosen.
+
+## Hold
+
+Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 ## Discussion
 
