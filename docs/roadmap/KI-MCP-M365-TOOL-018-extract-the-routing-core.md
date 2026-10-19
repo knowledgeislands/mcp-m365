@@ -6,13 +6,13 @@ kind: deliver
 horizon: hold
 hold:
   reason: waiting-for
-  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
+  condition: until Kris resumes Humans not Robots work, when hnr.email-routing chooses a horizon afresh (EMAIL-OWNER, Kris, 20 October)
 status: draft
 blocks: [KI-MCP-M365-TOOL-020]
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-19T22:46:57Z
+updated_at: 2026-10-19T23:24:19Z
 ---
 
 ## Goal
@@ -34,13 +34,15 @@ The canonical core stays in this repository (ENGINE-HOME, answered 18 October 20
 ## Shaping
 
 - **Approach:** gather the pure modules and the provider-free parts of the run, tracking and drift layers into one provider-free directory; define the port; add `calendarMethod` and the configurable triage root; keep the Graph adapter thin.
-- **Dependencies:** the deploying owner's first-phase shadow runs under way; [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) accepted, so its changes are not rebased across the move.
+- **Dependencies:** the deploying owner's first-phase shadow runs under way; KI-MCP-M365-TOOL-010 accepted, so its changes are not rebased across the move.
 - **Open decisions:** none.
 - **Promotion to Next:** the dependencies above hold, and a quiet window between scheduled runs is chosen.
 
 ## Hold
 
 Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
+
+Re-validated on 20 October 2026 under TO-DONE: the hold stays. Kris answered EMAIL-OWNER on 20 October ("if that's all to do with H and R, it can go to the H and R area"), so the Project the condition waited for exists, [hnr.email-routing](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/work.md), and owns these records; that Project is itself paused until Kris resumes Humans not Robots work, which is now the release condition.
 
 ## Discussion
 

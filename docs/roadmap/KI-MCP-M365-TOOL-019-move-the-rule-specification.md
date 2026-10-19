@@ -6,13 +6,13 @@ kind: deliver
 horizon: hold
 hold:
   reason: waiting-for
-  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
+  condition: until Kris resumes Humans not Robots work, when hnr.email-routing chooses a horizon afresh (EMAIL-OWNER, Kris, 20 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-19T22:46:57Z
+updated_at: 2026-10-19T23:24:19Z
 ---
 
 ## Goal
@@ -21,7 +21,7 @@ The routing rule language has one normative specification beside the engine that
 
 ## Context
 
-The grammar is written today in a deploying knowledge base's `Email Routing Engine Design` note, in its Engineering pillar. A specification shared with a personal mailbox should not depend on that knowledge base. The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/design/2026-10-17-gmail-routing-design.md) proposes moving its normative part, the Rule DSL, Grammar, Predicates, Actions, Semantics, Lint checks and Destinations, and since [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) the categories block, into this repository's `docs/`. This is the design's task 2.
+The grammar is written today in a deploying knowledge base's `Email Routing Engine Design` note, in its Engineering pillar. A specification shared with a personal mailbox should not depend on that knowledge base. The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/design/2026-10-17-gmail-routing-design.md) proposes moving its normative part, the Rule DSL, Grammar, Predicates, Actions, Semantics, Lint checks and Destinations, and since KI-MCP-M365-TOOL-010 the categories block, into this repository's `docs/`. This is the design's task 2.
 
 The deploying owner decided on 18 October 2026 (SPEC-HOME) that the specification lives here for now, while the work proceeds, and that its durable home is the Knowledge Islands principal knowledge base, `ki-principal`, because how Knowledge Islands handles email is a Knowledge Islands concern.
 
@@ -43,6 +43,8 @@ Where the canonical engine finally lives is still open (the ENGINE-HOME question
 ## Hold
 
 Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
+
+Re-validated on 20 October 2026 under TO-DONE: the hold stays. Kris answered EMAIL-OWNER on 20 October ("if that's all to do with H and R, it can go to the H and R area"), so the Project the condition waited for exists, [hnr.email-routing](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/work.md), and owns these records; that Project is itself paused until Kris resumes Humans not Robots work, which is now the release condition.
 
 ## Discussion
 

@@ -6,13 +6,13 @@ kind: deliver
 horizon: hold
 hold:
   reason: waiting-for
-  condition: until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October)
+  condition: until Kris resumes Humans not Robots work, when hnr.email-routing chooses a horizon afresh (EMAIL-OWNER, Kris, 20 October)
 status: draft
 blocks: []
 blocked_by: []
 baseline_ref: null
 created_at: 2026-10-17T13:59:45Z
-updated_at: 2026-10-19T22:46:57Z
+updated_at: 2026-10-19T23:24:19Z
 ---
 
 ## Goal
@@ -34,6 +34,8 @@ Validation and append only. The ledger path goes through `assertWithinRoots()`; 
 ## Hold
 
 Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: future` before the hold; release chooses a horizon afresh once that Project exists.
+
+Re-validated on 20 October 2026 under TO-DONE: the hold stays. Kris answered EMAIL-OWNER on 20 October ("if that's all to do with H and R, it can go to the H and R area"), so the Project the condition waited for exists, [hnr.email-routing](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/work.md), and owns these records; that Project is itself paused until Kris resumes Humans not Robots work, which is now the release condition.
 
 ## Discussion
 
