@@ -18,7 +18,7 @@ Another mail server can take an exact, verifiable revision of the routing core a
 
 ## Context
 
-The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/2026-10-17-gmail-routing-design.md) task 3 proposes publishing a manifest of the core's source revision and SHA-256 digests for vendored consumers, following the `ki-repo-mcp` shared-code precedent that `mcp-m365` and `mcp-gsuite` already use for their access-gate code. Neither server is published to a package registry; both are Git source built locally.
+The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/design/2026-10-17-gmail-routing-design.md) task 3 proposes publishing a manifest of the core's source revision and SHA-256 digests for vendored consumers, following the `ki-repo-mcp` shared-code precedent that `mcp-m365` and `mcp-gsuite` already use for their access-gate code. Neither server is published to a package registry; both are Git source built locally.
 
 ## Boundary
 
@@ -45,7 +45,7 @@ A consumer-side check reproduces the digests from a clean checkout of the named 
 
 ### Engine home
 
-The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/decisions.md)): canonical engine in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. The alternatives, a separate repository consumed by a pinned Git reference and a published package, were not chosen.
+The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/decisions.md)): canonical engine in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. The alternatives, a separate repository consumed by a pinned Git reference and a published package, were not chosen.
 
 ### Intake authority
 

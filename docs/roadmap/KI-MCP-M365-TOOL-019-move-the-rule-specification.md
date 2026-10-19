@@ -18,7 +18,7 @@ The routing rule language has one normative specification beside the engine that
 
 ## Context
 
-The grammar is written today in a deploying knowledge base's `Email Routing Engine Design` note, in its Engineering pillar. A specification shared with a personal mailbox should not depend on that knowledge base. The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/2026-10-17-gmail-routing-design.md) proposes moving its normative part, the Rule DSL, Grammar, Predicates, Actions, Semantics, Lint checks and Destinations, and since [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) the categories block, into this repository's `docs/`. This is the design's task 2.
+The grammar is written today in a deploying knowledge base's `Email Routing Engine Design` note, in its Engineering pillar. A specification shared with a personal mailbox should not depend on that knowledge base. The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/design/2026-10-17-gmail-routing-design.md) proposes moving its normative part, the Rule DSL, Grammar, Predicates, Actions, Semantics, Lint checks and Destinations, and since [KI-MCP-M365-TOOL-010](KI-MCP-M365-TOOL-010-category-aware-rules.md) the categories block, into this repository's `docs/`. This is the design's task 2.
 
 The deploying owner decided on 18 October 2026 (SPEC-HOME) that the specification lives here for now, while the work proceeds, and that its durable home is the Knowledge Islands principal knowledge base, `ki-principal`, because how Knowledge Islands handles email is a Knowledge Islands concern.
 

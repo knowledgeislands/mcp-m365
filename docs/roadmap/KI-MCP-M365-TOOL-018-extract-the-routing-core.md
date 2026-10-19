@@ -18,7 +18,7 @@ The routing engine's provider-free parts sit together behind a small provider po
 
 ## Context
 
-The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/2026-10-17-gmail-routing-design.md) finds the engine about 80% mailbox-neutral already: `parser.ts`, `matcher.ts`, `lint.ts`, `folders.ts` and `lookups.ts` are pure, and the provider-free parts of `run.ts`, `tracking.ts` and `drift.ts` can join them. The Graph-specific layer is thin: `graph-ops.ts`, `message.ts` and `utils/kql.ts`. This is the design's phase 0 work in this repository, its task 1.
+The [Gmail routing design](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/design/2026-10-17-gmail-routing-design.md) finds the engine about 80% mailbox-neutral already: `parser.ts`, `matcher.ts`, `lint.ts`, `folders.ts` and `lookups.ts` are pure, and the provider-free parts of `run.ts`, `tracking.ts` and `drift.ts` can join them. The Graph-specific layer is thin: `graph-ops.ts`, `message.ts` and `utils/kql.ts`. This is the design's phase 0 work in this repository, its task 1.
 
 The port the design proposes: list messages in a location, look up a message, list a thread, search Sent, report the owner, apply a planned action and list attachments. Two engine changes make it clean: a neutral `calendarMethod` on `EmailRecord` in place of Outlook's `messageClass` and `@odata.type`, with Gmail's invitation subject prefixes added to the fallback; and a configurable triage root in place of the `_TRIAGE` constant, with the adapter supplying the message identity key.
 
@@ -47,7 +47,7 @@ Full gates; replay against the example rule fixture; an import check that nothin
 
 ### Engine home
 
-The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_THREADS/email-routing/decisions.md)): the canonical engine stays in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. A separate repository waits until a third provider appears.
+The owner answered ENGINE-HOME with option a) on 18 October 2026 (Decision 21 in the email-routing thread's [decisions](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/decisions.md)): the canonical engine stays in `mcp-m365` in a provider-free directory behind a provider port, vendored into `mcp-gsuite` with a SHA-256 manifest and a drift check. A separate repository waits until a third provider appears.
 
 ### Intake authority
 
