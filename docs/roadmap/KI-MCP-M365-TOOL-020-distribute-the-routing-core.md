@@ -3,16 +3,14 @@ id: KI-MCP-M365-TOOL-020
 area: TOOL
 title: Distribute the routing core
 kind: deliver
-horizon: hold
-hold:
-  reason: waiting-for
-  condition: until Kris resumes Humans not Robots work, when hnr.email-routing chooses a horizon afresh (EMAIL-OWNER, Kris, 20 October)
-status: draft
+status: cancelled
+resolution: merged
+resolution_target: KI-MCP-M365-TOOL-018
 blocks: []
-blocked_by: [KI-MCP-M365-TOOL-018]
+blocked_by: []
 baseline_ref: null
 created_at: 2026-10-18T00:19:30Z
-updated_at: 2026-10-19T23:24:19Z
+updated_at: 2026-10-20T04:29:10Z
 ---
 
 ## Goal
@@ -41,6 +39,10 @@ Publishing to any package registry needs the owner's explicit approval and is ou
 Held until a Project opens to own email routing (LANE-OWNERS, Kris, 19 October). Kris answered LANE-OWNERS a) on 19 October 2026: the email-routing draft records in mcp-m365 and mcp-gsuite wait in one hold until a Project opens to own them. The record was at `horizon: soon` before the hold; release chooses a horizon afresh once that Project exists.
 
 Re-validated on 20 October 2026 under TO-DONE: the hold stays. Kris answered EMAIL-OWNER on 20 October ("if that's all to do with H and R, it can go to the H and R area"), so the Project the condition waited for exists, [hnr.email-routing](/Users/krisbrown/workspaces/humans-not-robots/hnr-principal/+/_WORK/hnr.email-routing/work.md), and owns these records; that Project is itself paused until Kris resumes Humans not Robots work, which is now the release condition.
+
+## Cancelled
+
+Approved by Kris on 20 October 2026 under SWEEP-MERGE a), recorded in Knowledge Islands Principal `+/_WORK/ki.ways-of-working/decisions.md` (05:20 BST): "I agree with sweep merge". Merged into [KI-MCP-M365-TOOL-018](KI-MCP-M365-TOOL-018-extract-the-routing-core.md), `mcp-m365/docs/roadmap/KI-MCP-M365-TOOL-018-extract-the-routing-core.md`: extracting the core and publishing its manifest are tasks 1 and 3 of one Gmail routing design, and this record was already blocked by TOOL-018. TOOL-018 now carries this record's goal, boundary, approach, verification and vendoring decision; nothing is left outstanding here.
 
 ## Discussion
 
