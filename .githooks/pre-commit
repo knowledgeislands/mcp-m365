@@ -1,9 +1,10 @@
 #!/bin/sh
-# Committed pre-commit gate, bound by `core.hooksPath` so every working tree runs it.
-# Without its tools it refuses the commit rather than letting it pass unchecked.
+# Canonical pre-commit for a ki-repo-mcp repository with a package.json, composed by ki-repo.
+# Copied byte-exact from ki-repo-mcp's assets/githooks/package/pre-commit; HOOK-4 compares it, so do not edit it here.
 root="$(git rev-parse --show-toplevel)" || exit 1
+git diff --cached --quiet && exit 0
 missing=''
-for tool in lint-staged syncpack; do
+for tool in lint-staged syncpack biome rumdl; do
   [ -x "$root/node_modules/.bin/$tool" ] || missing="$missing $tool"
 done
 if [ -n "$missing" ]; then
@@ -14,5 +15,5 @@ if [ -n "$missing" ]; then
 fi
 PATH="$root/node_modules/.bin:$PATH"
 export PATH
-lint-staged || exit 1
+lint-staged --quiet || exit 1
 syncpack format --check || exit 1
