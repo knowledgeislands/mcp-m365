@@ -12,7 +12,7 @@
   ],
   "project": ["src/**/*.ts", "scripts/**/*.ts"],
   "ignore": ["src/generated/**", ".claude/skills/**", ".agents/skills/**"],
-  "ignoreDependencies": ["@commitlint/cli", "lint-staged", "syncpack"],
   "ignoreExportsUsedInFile": true,
-  "ignoreBinaries": ["printf", "keys"]
+  "ignoreBinaries": ["printf", "keys"],
+  "husky": { "config": [".githooks/pre-commit", ".githooks/commit-msg"] }
 }
