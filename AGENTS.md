@@ -83,7 +83,7 @@ This server holds OAuth refresh tokens that grant Outlook read/write/send, Calen
 10. **If a future tool writes Graph response bytes to disk, add a configurable download root** (e.g. `MCP_M365_DOWNLOAD_PATH`, default `~/Downloads`) and validate `outputPath` via a two-layer (lexical + realpath) helper, mirroring [`assertOutputPathWithinDownloadRoot()`](../mcp-gmail/src/utils/paths.ts) in mcp-gmail. Today, `m365_onedrive_item_download` returns a pre-authenticated URL rather than writing bytes.
 11. **Full URLs are host-pinned before the Bearer token is attached (SSRF — workspace standard §13.5).** `callGraphAPI` only ever receives a full URL via an `@odata.nextLink` echoed back in a prior Graph response; that value is server-controlled and treated as untrusted. `assertGraphUrl()` in [src/main/graph-client/index.ts](./src/main/graph-client/index.ts) asserts the scheme is `https:` and the host is exactly `graph.microsoft.com` (derived from `GRAPH_API_ENDPOINT`) before the token is sent, so a forged/tampered nextLink can never exfiltrate the access token to another origin. Never bypass it when following pagination.
 
-Atomic-write, mode-0600, redacted summary, refresh-dedup, and nextLink host-pin tests live in [src/main/auth/index.test.ts](./src/main/auth/index.test.ts) and [src/main/graph-client/index.test.ts](./src/main/graph-client/index.test.ts).
+Atomic-write, mode-0600, refresh-dedup, and nextLink host-pin tests live in [src/main/auth/index.test.ts](./src/main/auth/index.test.ts) and [src/main/graph-client/index.test.ts](./src/main/graph-client/index.test.ts); the redacted `m365_auth_status` summary is tested in [src/main/auth/handlers.test.ts](./src/main/auth/handlers.test.ts).
 
 ## Tool registration call sites
 
@@ -102,7 +102,7 @@ A deterministic replacement for LLM-interpreted email triage: rules are data, th
 
 Categories follow the same rule: `category:` reads the `categories` Graph already returns with the message, so it needs no lookup. Category names are provider-free and compared case-insensitively, and the optional ` ```categories ` block holds names only — a `key = value` line there is reserved for a provider setting such as a Gmail label prefix, so keep it refused until that setting exists. `hold` is the one action that claims a message without acting on it: it must never reach `applyActions`, count towards `maxActions`, or be tracked.
 
-`parser.ts`, `matcher.ts`, `lint.ts`, `folders.ts` and `lookups.ts` are pure — no clock, no Graph, no I/O (`age:` takes an injected `now`). Keep them that way: `replay.test.ts` asserts the Phase 3 replay findings against exactly the code that runs live, and that only holds while classification is a pure function. `fixtures/routing/email-routing-rules.md` is a vendored snapshot of the rule note so the suite runs without the knowledge base mounted — re-copy it when the note changes.
+`parser.ts`, `matcher.ts`, `lint.ts`, `folders.ts` and `lookups.ts` are pure — no clock, no Graph, no I/O (`age:` takes an injected `now`). Keep them that way: [semantics.test.ts](./src/main/triage/semantics.test.ts) pins the behaviour classes the Phase 3 replay found against exactly the code that runs live, and that only holds while classification is a pure function. Its fixture, [fixtures/routing/example-rules.md](./fixtures/routing/example-rules.md), is synthetic, on reserved domains, and never a copy of a real rule file; a real file is validated in place with the `m365_email_routing_lint` tool.
 
 ## MCP spec conformance
 
