@@ -9,7 +9,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest'
 // own install root; the repository's TypeScript 7 would yield an empty graph.
 const execute = promisify(execFile)
 const root = resolve(import.meta.dirname, '..')
-const tooling = join(root, 'tooling/boundaries')
+const tooling = join(root, 'tooling/depcruise')
 const checker = join(tooling, 'node_modules/.bin/depcruise')
 // Near the real source count, so a parser that stops reading the tree fails.
 const moduleFloor = 120
