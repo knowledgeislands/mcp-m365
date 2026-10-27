@@ -15,6 +15,8 @@ created_at: 2026-10-18T00:19:30Z
 updated_at: 2026-10-20T04:29:10Z
 ---
 
+> **Idea, not on the roadmap.** Put the routing engine's provider-free parts behind a small provider port so a second mail provider can reuse them; the Humans Not Robots email-routing thread's work. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-018`.
+
 ## Goal
 
 The routing engine's provider-free parts sit together behind a small provider port, so a second mail provider can reuse them without carrying Graph code, and Outlook routing behaves exactly as before. Another mail server can then take an exact, verifiable revision of that core and know when its copy is out of date.
@@ -33,7 +35,7 @@ A refactor with no behaviour change: every existing test and the replay fixture 
 
 The canonical core stays in this repository (ENGINE-HOME, answered 18 October 2026): this record gathers it into one provider-free directory behind the port, and that directory is the canonical copy other servers vendor. Keep the directory self-contained, with no import out of it except through the port, so it can be vendored as a unit.
 
-The core is distributed by vendoring: `mcp-gsuite` takes a byte-identical copy. The source side belongs here as the second part of this record: a manifest of the core's source revision and per-file SHA-256 digests in the `ki-repo-mcp` shared-code format, and a check here that fails when the manifest is stale against the core directory. The consumer side, the vendored copy and its drift check, is [KI-MCP-GSUITE-TOOL-008](/Users/krisbrown/workspaces/knowledge-islands/mcp-gsuite/docs/roadmap/KI-MCP-GSUITE-TOOL-008-consume-the-routing-core.md). No separate repository or pinned Git reference is created; that waits until a third provider appears.
+The core is distributed by vendoring: `mcp-gsuite` takes a byte-identical copy. The source side belongs here as the second part of this record: a manifest of the core's source revision and per-file SHA-256 digests in the `ki-repo-mcp` shared-code format, and a check here that fails when the manifest is stale against the core directory. The consumer side, the vendored copy and its drift check, is [KI-MCP-GSUITE-TOOL-008](/Users/krisbrown/workspaces/knowledge-islands/mcp-gsuite/docs/ideas/KI-MCP-GSUITE-TOOL-008-consume-the-routing-core.md). No separate repository or pinned Git reference is created; that waits until a third provider appears.
 
 Publishing to any package registry needs the owner's explicit approval and is outside this record.
 

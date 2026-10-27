@@ -15,6 +15,8 @@ created_at: 2026-10-17T13:59:45Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Save each distinct attachment once, so the same receipt on several messages does not pile up as numbered copies; a small fix kept with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-015`.
+
 ## Goal
 
 The `save-attachments:` action saves each distinct document once, so the same receipt arriving on several messages does not pile up as numbered copies in the destination folder.

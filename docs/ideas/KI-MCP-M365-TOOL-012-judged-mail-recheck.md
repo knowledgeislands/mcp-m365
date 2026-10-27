@@ -15,6 +15,8 @@ created_at: 2026-10-17T13:59:45Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Let every run see where each judgment-filed message now stands and settle it once the owner has acted; follows the judgment verdict hook, held with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-012`.
+
 ## Goal
 
 Every run can see where each judgment-filed message now stands, settle it once the owner has accepted, moved it or a rule has claimed it, and tell the owner's corrections of judgment apart from corrections of rules.

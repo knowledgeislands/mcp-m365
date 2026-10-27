@@ -15,6 +15,8 @@ created_at: 2026-10-17T13:59:45Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Show which routing rules still fire and which have not fired for months, so the disposal list can be pruned on evidence; rollout phase 4, held with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-013`.
+
 ## Goal
 
 The rule owner can see which rules still fire and which have not fired for months, so a long disposal list can be pruned on evidence rather than guesswork.

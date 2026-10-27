@@ -15,6 +15,8 @@ created_at: 2026-10-18T00:19:30Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Learn from real mail whether held messages ever fill a folder's listing window, and size the window apart from the action cap if they do; Kris said size later, with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-017`.
+
 ## Goal
 
 Know, from real mail, whether held messages ever fill a folder's listing window, and if they do, size the window apart from `maxActions` so the aged pass still reaches mail it can act on.

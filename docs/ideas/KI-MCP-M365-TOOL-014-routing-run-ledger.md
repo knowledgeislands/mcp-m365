@@ -15,6 +15,8 @@ created_at: 2026-10-17T13:59:45Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Leave one validated summary record per routing run in an append-only ledger, so the owner can see what every run did and notice when runs stop; rollout phase 4, held with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-014`.
+
 ## Goal
 
 Each routing run leaves one validated summary record in an append-only ledger, so a dashboard or the owner can see what every run did and notice when runs stop.

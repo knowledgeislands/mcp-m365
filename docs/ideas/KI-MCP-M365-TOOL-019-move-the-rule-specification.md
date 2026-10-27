@@ -15,6 +15,8 @@ created_at: 2026-10-18T00:19:30Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Give the routing rule language one normative specification beside the engine, which both mail servers conform to; follows the core extraction, with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-019`.
+
 ## Goal
 
 The routing rule language has one normative specification beside the engine that implements it, which both mail servers conform to, instead of a grammar held in one deployment's knowledge base.

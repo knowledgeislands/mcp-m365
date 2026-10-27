@@ -15,6 +15,8 @@ created_at: 2026-10-18T00:19:30Z
 updated_at: 2026-10-19T23:24:19Z
 ---
 
+> **Idea, not on the roadmap.** Stop a reply following its thread into a disposal folder, so a live conversation is not deleted because an earlier message was junk; Kris said keep and fix later, with the Humans Not Robots email-routing thread. Moved out of `docs/roadmap/` on 27 October 2026 under the roadmap sweep, with its record kept in full here so that it can return when Kris brings it back; it was `KI-MCP-M365-TOOL-016`.
+
 ## Goal
 
 A reply never follows its thread into a folder the rules use to dispose of mail, so a live conversation is not deleted because an earlier message in it was junk.
