@@ -7,10 +7,6 @@ name: Update ki pin
 # file alone and main's rules require status checks; otherwise a person
 # reviews it (XDR-KI-HARNESS-001).
 on:
-  repository_dispatch:
-    types: [tool-release-published]
-  schedule:
-    - cron: '41 6 * * *'
   workflow_dispatch:
 
 permissions:
