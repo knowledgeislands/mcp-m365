@@ -93,10 +93,10 @@
   "license": "MIT",
   "lint-staged": {
     "*.{ts,tsx,js,jsx,json,jsonc}": [
-      "biome check --write --no-errors-on-unmatched"
+      "biome check --no-errors-on-unmatched"
     ],
     "*.md": [
-      "rumdl check --fix"
+      "rumdl check"
     ]
   },
   "main": "dist/mcp-server/index.js",

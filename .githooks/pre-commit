@@ -15,5 +15,5 @@ if [ -n "$missing" ]; then
 fi
 PATH="$root/node_modules/.bin:$PATH"
 export PATH
-lint-staged --quiet || exit 1
+lint-staged --quiet --no-stash || exit 1
 syncpack format --check || exit 1
