@@ -53,7 +53,7 @@ jobs:
           ki diag | tee "$KI_ROOT/ki-diag.txt"
           grep -F "Configuration: valid" "$KI_ROOT/ki-diag.txt"
           grep -F "Registry: valid" "$KI_ROOT/ki-diag.txt"
-          ki harness list | grep -F 'knowledgeislands/ki-agentic-harness'
+          ki harness list | grep -E 'knowledgeislands/ki-agent(ic-harness|-backpack)'
           {
             echo "KI_CLI_INSTALL_DIR=$KI_CLI_INSTALL_DIR"
             echo "KI_MAN_INSTALL_DIR=$KI_MAN_INSTALL_DIR"
