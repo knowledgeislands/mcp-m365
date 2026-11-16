@@ -1,12 +1,6 @@
 # AGENTS.md
 
-## Runtime
-
-Use Bun (>= 1.3) for installation, development, and tests; use `bun run test`, never `bun test`. The published `dist/` servers run under Node (>= 22). Keep `NODE_ENV=development` confined to development and inspector commands; production configuration comes from the host environment.
-
-## MCP architecture
-
-Keep configuration injectable: no module-level environment reads or configuration singleton. The MCP and OAuth servers each load configuration once and pass the smallest required slice into registration or implementation functions. Tool modules validate and adapt MCP envelopes only; implementation belongs in `src/main/`. Register every tool through the annotation-driven access gate with an explicit annotation preset.
+Engineering follows `ki-engineering`, and the server's shape follows `ki-repo-mcp`: its layout, configuration injection, tool naming, annotation-driven access gate and security invariants.
 
 ## OAuth and data safety
 
@@ -20,9 +14,8 @@ Repository-specific implementation guidance follows. User-facing setup and tool 
 
 ## Bun vs Node
 
-This project uses Bun (≥ 1.3) for install and dev scripts, but the compiled `dist/` runs under Node (≥ 22) — that's what Claude Desktop launches.
+The Bun-install, Node-run split, the `bun test` trap and the `.env` parity rule are `ki-engineering`'s. In this server:
 
-- `bun run test` (NOT `bun test` — the latter invokes Bun's own runner instead of vitest).
 - Bun auto-loads `.env.${NODE_ENV}` from the CWD; Node needs the explicit `process.loadEnvFile()` call inside `loadConfig()` in [src/config/index.ts](./src/config/index.ts). The try/catch swallows the `TypeError` Bun raises (no `process.loadEnvFile`), so the same code works under both.
 - `NODE_ENV` is set to `development` only by `server:*:dev` and `ki:server:mcp:inspect`. Claude Desktop doesn't set it, so `.env.*` is ignored in production — `MCP_M365_CLIENT_ID` / `MCP_M365_CLIENT_SECRET` must come from the Claude Desktop config `env` block.
 
