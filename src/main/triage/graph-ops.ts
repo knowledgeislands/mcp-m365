@@ -17,6 +17,7 @@ import type { AttachmentSaver } from '../attachments/save.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import type { GraphContext } from '../graph-client/index.js'
 import { callGraphAPI } from '../graph-client/index.js'
+import { type EnforcedProtection, findHits, PROTECTED_REFUSED } from '../protected/index.js'
 import { resolveMoveTarget } from './folders.js'
 import { normaliseSubject } from './lookups.js'
 import { TRIAGE_EXPAND, TRIAGE_SELECT_FIELDS, toEmailRecord } from './message.js'
@@ -255,6 +256,8 @@ export interface ActionContext extends GraphContext {
   saveAttachments?: AttachmentSaver
   /** Destination name → path, as declared in the rule note being run. */
   attachmentDestinations?: Readonly<Record<string, string>>
+  /** The protected list, resolved once for a live pass; absent when nothing is enforced. */
+  protection?: EnforcedProtection
 }
 
 export interface AppliedAction {
@@ -381,6 +384,33 @@ export const applyActions = async (
       applied: [{ action: 'resolve', ok: false, detail: 'message no longer found by subject + sender + received' }],
       resolvedId: null
     }
+
+  // The protected list refuses the message's whole action list before any of
+  // it runs: its folder or a category it carries, a move into a protected
+  // folder, or a protected category tagged or untagged.
+  if (ctx.protection) {
+    const executable = actions.filter(isExecutable)
+    const hits = await findHits(ctx, accessToken, ctx.protection, {
+      messageIds: [resolvedId],
+      folderIds: executable
+        .filter((a) => a.kind === 'move')
+        .map((a) => map.idByPath.get(resolveMoveTarget(a).toLowerCase()))
+        .filter((id): id is string => Boolean(id)),
+      categories: executable.filter((a) => a.kind === 'tag' || a.kind === 'untag').map((a) => String(a.value))
+    })
+    const first = hits[0]
+    if (first)
+      return {
+        applied: [
+          {
+            action: 'protected',
+            ok: false,
+            detail: `${PROTECTED_REFUSED}: protected by ${first.entry.name} (${first.entry.kind} ${first.entry.id}); nothing was changed`
+          }
+        ],
+        resolvedId
+      }
+  }
 
   const applied: AppliedAction[] = []
   let messageId = resolvedId

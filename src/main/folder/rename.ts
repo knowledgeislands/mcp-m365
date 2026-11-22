@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
 export const handleRenameFolder = async (ctx: GraphContext, args: any): Promise<any> => {
@@ -27,6 +28,9 @@ export const handleRenameFolder = async (ctx: GraphContext, args: any): Promise<
     if (!folderId) {
       return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
     }
+
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_folder_rename', { folderIds: [folderId] })
+    if (refused) return refused
 
     await callGraphAPI(ctx.graphApiEndpoint, accessToken, 'PATCH', `me/mailFolders/${folderId}`, {
       displayName: newName

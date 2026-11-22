@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 
 export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Promise<any> => {
   const emailId = args.id
@@ -17,6 +18,9 @@ export const handleDeleteEmail = async (ctx: GraphContext, args: any = {}): Prom
 
   try {
     const accessToken = await ctx.ensureAuthenticated()
+    // Checked on the preview too, so a dry run shows the refusal the real call would meet.
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_message_delete', { messageIds: [emailId] })
+    if (refused) return refused
 
     if (dry_run) {
       const msg = await callGraphAPI(

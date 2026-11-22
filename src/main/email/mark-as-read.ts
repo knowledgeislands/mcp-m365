@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 
 export const handleMarkAsRead = async (ctx: GraphContext, args: any): Promise<any> => {
   const emailId = args.id
@@ -16,6 +17,8 @@ export const handleMarkAsRead = async (ctx: GraphContext, args: any): Promise<an
 
   try {
     const accessToken = await ctx.ensureAuthenticated()
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_message_mark_read', { messageIds: [emailId] })
+    if (refused) return refused
 
     const endpoint = `me/messages/${encodeURIComponent(emailId)}`
     const updateData = { isRead }

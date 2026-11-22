@@ -17,6 +17,7 @@ import { z } from 'zod'
 import { errMessage } from '../../utils/errors.js'
 import { assertWithinRoots } from '../../utils/paths.js'
 import { errorResult, errorText } from '../../utils/results.js'
+import { blockedResult, resolveProtection } from '../protected/index.js'
 import type { TriageContext } from './context.js'
 import { isThreadTarget, resolveMoveTarget, TRIAGE_ROOT } from './folders.js'
 import {
@@ -414,6 +415,11 @@ const runPass = async (
   if ('error' in tracking) return errorText(tracking.error)
 
   const accessToken = await ctx.ensureAuthenticated()
+  // A live pass resolves the protected list once. An unusable list refuses the
+  // whole pass before any mailbox work; an enforced one is checked per message.
+  const protection = mode === 'live' ? await resolveProtection(ctx, accessToken) : null
+  if (protection?.mode === 'blocked')
+    return blockedResult(blockLabel === 'inbound' ? 'm365_email_routing_triage' : 'm365_email_routing_aged', protection)
   const map = await buildFolderMap(ctx, accessToken)
   const { records, truncated } = await collect(accessToken, map, maxActions + 1, selected.block.rules)
 
@@ -504,7 +510,11 @@ const runPass = async (
 
   // The destinations a `save-attachments:` action may name are declared in the
   // note that was just parsed, so they are per-call data rather than context.
-  const actionCtx: ActionContext = { ...ctx, attachmentDestinations: destinationPaths(parsed) }
+  const actionCtx: ActionContext = {
+    ...ctx,
+    attachmentDestinations: destinationPaths(parsed),
+    ...(protection?.mode === 'enforced' ? { protection } : {})
+  }
 
   const batch = candidates.slice(0, maxActions)
   const items: TriageRunResult['items'] = []

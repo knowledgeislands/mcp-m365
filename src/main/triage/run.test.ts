@@ -1360,3 +1360,55 @@ describe('category-aware rules — the judged shield', () => {
     expect(mockCall).not.toHaveBeenCalled()
   })
 })
+
+describe('the protected list in a live pass', () => {
+  const list = async (text: string) => {
+    const file = path.join(dir, 'protected.toml')
+    await fs.writeFile(file, text)
+    Object.assign(ctx, { protectedFile: file })
+  }
+  const posts = () => mockCall.mock.calls.filter((call) => call[2] !== 'GET')
+
+  it('refuses the whole pass before any mailbox work while the list is invalid', async () => {
+    await list('version = 1\nbogus = true')
+    stubInbox([message()])
+    const triage = await handleTriageRun(ctx, { rules: RULES, mode: 'live' })
+    expect(triage.structuredContent).toMatchObject({
+      code: 'PROTECTED_LIST_INVALID',
+      tool: 'm365_email_routing_triage'
+    })
+    const aged = await handleAgedRun(ctx, { rules: RULES, mode: 'live' })
+    expect(aged.structuredContent).toMatchObject({ code: 'PROTECTED_LIST_INVALID', tool: 'm365_email_routing_aged' })
+    expect(posts()).toEqual([])
+    expect(await readTracking(ctx.trackingPath)).toEqual({ entries: [] })
+  })
+
+  it('refuses a message whose move lands in a protected folder, and records nothing for it', async () => {
+    await list('version = 1\n[[protected]]\nkind = "folder"\nid = "triage-id"\nname = "Triage"')
+    stubInbox([message()])
+    const result = await handleTriageRun(ctx, { rules: RULES, mode: 'live' })
+    expect(result.structuredContent.items[0].applied).toEqual([
+      {
+        action: 'protected',
+        ok: false,
+        detail: 'PROTECTED_REFUSED: protected by Triage (folder triage-id); nothing was changed'
+      }
+    ])
+    expect(posts()).toEqual([])
+    expect(await readTracking(ctx.trackingPath)).toEqual({ entries: [] })
+  })
+
+  it('routes as before when nothing it touches is protected', async () => {
+    await list('version = 1\n[[protected]]\nkind = "category"\nid = "Evidence"')
+    stubInbox([message()])
+    const result = await handleTriageRun(ctx, { rules: RULES, mode: 'live' })
+    expect(result.structuredContent.items[0].applied).toEqual([{ action: 'move:_TRIAGE/991 Junk', ok: true }])
+  })
+
+  it('leaves report mode alone, even with an invalid list', async () => {
+    await list('not toml')
+    stubInbox([message()])
+    const result = await handleTriageRun(ctx, { rules: RULES })
+    expect(result.structuredContent).toMatchObject({ mode: 'report', acted: 1 })
+  })
+})

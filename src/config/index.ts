@@ -173,6 +173,12 @@ export interface Config {
   attachmentRoots: string[]
   /** Path to the `pdftotext` binary used to read a transaction total out of a saved PDF. */
   pdftotextPath: string
+  /**
+   * The account's protected-list file (MCP_M365_PROTECTED_FILE), or null when
+   * unset. Read afresh on every check by `main/protected`. Unset or absent
+   * means no list: writes behave as before.
+   */
+  protectedFile: string | null
 }
 
 const parseScopes = (raw: string | undefined): string[] => {
@@ -292,6 +298,7 @@ export const loadConfig = (env: NodeJS.ProcessEnv = process.env): Config => {
     attachmentRoots,
     pdftotextPath: env.MCP_M365_PDFTOTEXT_PATH?.trim()
       ? expandHome(env.MCP_M365_PDFTOTEXT_PATH)
-      : '/opt/homebrew/bin/pdftotext'
+      : '/opt/homebrew/bin/pdftotext',
+    protectedFile: env.MCP_M365_PROTECTED_FILE?.trim() ? expandHome(env.MCP_M365_PROTECTED_FILE) : null
   }
 }

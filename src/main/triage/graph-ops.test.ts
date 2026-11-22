@@ -2,6 +2,7 @@ import type { Mock } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { getAllFolders } from '../email/folder-utils.js'
 import { callGraphAPI } from '../graph-client/index.js'
+import type { EnforcedProtection } from '../protected/index.js'
 import {
   applyActions,
   attachmentNames,
@@ -552,5 +553,66 @@ describe('applyActions', () => {
     mockCall.mockResolvedValueOnce(graphMessage()).mockRejectedValueOnce('just a string')
     const { applied } = await applyActions(ctx, TOKEN, record({ id: 'msg-1' }), [{ kind: 'delete' }], await withMap())
     expect(applied[0]).toMatchObject({ ok: false, detail: 'just a string' })
+  })
+})
+
+describe('applyActions with the protected list', () => {
+  const entry = (kind: 'folder' | 'category', id: string) => ({
+    kind,
+    id,
+    name: id,
+    current_name: id,
+    subtree: true,
+    covers: []
+  })
+  const protection: EnforcedProtection = {
+    mode: 'enforced',
+    source: '/list.toml',
+    entries: [entry('folder', 'emerge-id'), entry('category', 'Evidence')],
+    byFolderId: new Map([
+      ['emerge-id', entry('folder', 'emerge-id')],
+      ['deep-id', entry('folder', 'emerge-id')]
+    ]),
+    byCategory: new Map([['evidence', entry('category', 'Evidence')]])
+  }
+  const guarded = { ...ctx, protection }
+  const posts = () => mockCall.mock.calls.filter((call) => call[2] !== 'GET')
+
+  it.each([
+    ['a move into a protected folder', [{ kind: 'move', value: '111 Partner' }], graphMessage()],
+    ['a protected category tagged', [{ kind: 'tag', value: 'EVIDENCE' }], graphMessage()],
+    ['a protected category untagged', [{ kind: 'untag', value: 'evidence' }], graphMessage()],
+    ['a message in a protected subfolder', [{ kind: 'delete' }], graphMessage({ parentFolderId: 'deep-id' })],
+    [
+      'a message carrying a protected category',
+      [{ kind: 'mark', value: 'read' }],
+      graphMessage({ categories: ['Evidence'] })
+    ]
+  ] as const)('refuses %s with no change', async (_label, actions, found) => {
+    mockCall.mockResolvedValue(found)
+    const { applied, resolvedId } = await applyActions(
+      guarded,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      actions as any,
+      await buildFolderMap(ctx, TOKEN)
+    )
+    expect(resolvedId).toBe('msg-1')
+    expect(applied).toEqual([{ action: 'protected', ok: false, detail: expect.stringMatching(/^PROTECTED_REFUSED: /) }])
+    expect(posts()).toEqual([])
+  })
+
+  it('runs the actions when nothing they touch is protected', async () => {
+    mockCall.mockResolvedValueOnce(graphMessage()).mockResolvedValueOnce(graphMessage()).mockResolvedValue({})
+    const { applied } = await applyActions(
+      guarded,
+      TOKEN,
+      record({ id: 'msg-1' }),
+      [{ kind: 'suggest' }, { kind: 'move', value: 'Nowhere' }, { kind: 'mark', value: 'read' }],
+      await buildFolderMap(ctx, TOKEN)
+    )
+    expect(applied).toEqual([
+      { action: 'move:_TRIAGE/Nowhere', ok: false, detail: 'destination folder does not exist' }
+    ])
   })
 })

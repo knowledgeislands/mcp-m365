@@ -182,6 +182,17 @@ describe('triageRulesPath', () => {
   })
 })
 
+describe('protectedFile', () => {
+  it('is null when MCP_M365_PROTECTED_FILE is unset or blank', () => {
+    expect(loadConfig(baseEnv({})).protectedFile).toBeNull()
+    expect(loadConfig(baseEnv({ MCP_M365_PROTECTED_FILE: '  ' })).protectedFile).toBeNull()
+  })
+
+  it('resolves the file to an absolute path', () => {
+    expect(loadConfig(baseEnv({ MCP_M365_PROTECTED_FILE: '/etc/ki/hnr.toml' })).protectedFile).toBe('/etc/ki/hnr.toml')
+  })
+})
+
 describe('attachment saving', () => {
   it('parses its own roots, independent of the engine roots', () => {
     const cfg = loadConfig(

@@ -49,6 +49,7 @@ console.error(
 )
 // Print the engine's filesystem surface at boot, so a mistyped root or tracking
 // path is visible in the server log rather than at 06:00 in a scheduled run.
+console.error(`  MCP_M365_PROTECTED_FILE=${config.protectedFile || '(unset — no protected list)'}`)
 console.error(`  MCP_M365_TRIAGE_ROOTS=${config.triageRoots.join(', ') || '(none — engine file access disabled)'}`)
 console.error(`  MCP_M365_TRIAGE_TRACKING_PATH=${config.triageTrackingPath || '(unset)'}`)
 console.error(`  MCP_M365_TRIAGE_RULES_PATH=${config.triageRulesPath || '(unset)'}`)
@@ -62,7 +63,8 @@ console.error(
 const tokenStorage = createTokenStorage(config)
 const ctx: GraphContext = {
   graphApiEndpoint: config.graphApiEndpoint,
-  ensureAuthenticated: makeEnsureAuthenticated(tokenStorage)
+  ensureAuthenticated: makeEnsureAuthenticated(tokenStorage),
+  protectedFile: config.protectedFile
 }
 // The routing engine additionally owns a tracking cache; its location is
 // configuration, never a tool parameter.

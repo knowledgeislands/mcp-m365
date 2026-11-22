@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
 export const handleCreateFolder = async (ctx: GraphContext, args: any): Promise<any> => {
@@ -21,7 +22,8 @@ export const handleCreateFolder = async (ctx: GraphContext, args: any): Promise<
 
   try {
     const accessToken = await ctx.ensureAuthenticated()
-    const result = await createMailFolder(ctx.graphApiEndpoint, accessToken, folderName, parentFolder)
+    const result = await createMailFolder(ctx, accessToken, folderName, parentFolder)
+    if (result.refused) return result.refused
 
     return {
       content: [{ type: 'text', text: result.message }]
@@ -50,11 +52,17 @@ const formatFolderError = (error: any, context: any): string => {
 }
 
 const createMailFolder = async (
-  graphApiEndpoint: string,
+  ctx: GraphContext,
   accessToken: string,
   folderName: string,
   parentFolderName: string
-): Promise<{ success: boolean; message: string; folderId?: string }> => {
+): Promise<{
+  success: boolean
+  message: string
+  folderId?: string
+  refused?: Exclude<Awaited<ReturnType<typeof guardWrite>>, null>
+}> => {
+  const { graphApiEndpoint } = ctx
   const existingFolder = await getFolderIdByName(graphApiEndpoint, accessToken, folderName)
   if (existingFolder) {
     return {
@@ -72,6 +80,10 @@ const createMailFolder = async (
         message: `Parent folder "${parentFolderName}" not found. Please specify a valid parent folder or leave it blank to create at the root level.`
       }
     }
+
+    // A folder created beneath a protected one would join its subtree.
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_folder_create', { folderIds: [parentId] })
+    if (refused) return { success: false, message: '', refused }
 
     endpoint = `me/mailFolders/${parentId}/childFolders`
   }

@@ -24,6 +24,7 @@ import {
   inlineAttachmentsSchema
 } from '../../main/email/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
+import { handleListProtected, protectedListOutputSchema } from '../../main/protected/index.js'
 import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
@@ -364,5 +365,17 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: READ_ONLY_REMOTE
     },
     (args) => handleSearchEmails(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_protected_list',
+    {
+      description:
+        'Lists the protected list: the folders and categories no write tool will change, the file it comes from, whether it is enforced, and what each folder entry covers beneath it now. Read-only; the list is changed only by editing the file.',
+      inputSchema: z.object({}).strict(),
+      outputSchema: protectedListOutputSchema,
+      annotations: READ_ONLY_REMOTE
+    },
+    () => handleListProtected(ctx)
   )
 }

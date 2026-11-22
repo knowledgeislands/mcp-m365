@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
 export const handleMoveEmails = async (ctx: GraphContext, args: any): Promise<any> => {
@@ -33,8 +34,9 @@ export const handleMoveEmails = async (ctx: GraphContext, args: any): Promise<an
       return errorText('No valid email IDs provided.')
     }
 
-    const result = await moveEmailsToFolder(ctx.graphApiEndpoint, accessToken, ids, targetFolder, sourceFolder)
+    const result = await moveEmailsToFolder(ctx, accessToken, ids, targetFolder, sourceFolder)
 
+    if (result.refused) return result.refused
     if (!result.success) {
       return errorText(result.message)
     }
@@ -68,16 +70,18 @@ const formatMoveError = (error: any, context: any): string => {
 interface MoveResult {
   success: boolean
   message: string
+  refused?: Exclude<Awaited<ReturnType<typeof guardWrite>>, null>
   results?: { successful: string[]; failed: { id: string; error: string }[] }
 }
 
 const moveEmailsToFolder = async (
-  graphApiEndpoint: string,
+  ctx: GraphContext,
   accessToken: string,
   emailIds: string[],
   targetFolderName: string,
   _sourceFolderName: string
 ): Promise<MoveResult> => {
+  const { graphApiEndpoint } = ctx
   const targetFolderId = await getFolderIdByName(graphApiEndpoint, accessToken, targetFolderName)
   if (!targetFolderId) {
     return {
@@ -94,6 +98,14 @@ const moveEmailsToFolder = async (
       message: `Resolved folder "${targetFolderName}" to ID ${targetFolderId}, but that folder is not reachable: ${error.message}`
     }
   }
+
+  // All or nothing: a protected message, or a protected destination, refuses
+  // the whole move before any message is touched.
+  const refused = await guardWrite(ctx, accessToken, 'm365_email_messages_move', {
+    messageIds: emailIds,
+    folderIds: [targetFolderId]
+  })
+  if (refused) return { success: false, message: '', refused }
 
   const results = {
     successful: [] as string[],

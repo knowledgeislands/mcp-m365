@@ -21,6 +21,8 @@ import { errMessage } from '../../utils/errors.js'
 export interface GraphContext {
   graphApiEndpoint: string
   ensureAuthenticated: (forceNew?: boolean) => Promise<string>
+  /** The protected-list file every mail-changing handler checks; absent or null means none. */
+  protectedFile?: string | null
 }
 
 export interface GraphCallOptions {

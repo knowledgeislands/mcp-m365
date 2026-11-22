@@ -5,6 +5,7 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getFolderIdByName } from './folder-utils.js'
 
 export const handleDeleteFolder = async (ctx: GraphContext, args: any): Promise<any> => {
@@ -23,6 +24,10 @@ export const handleDeleteFolder = async (ctx: GraphContext, args: any): Promise<
     if (!folderId) {
       return errorText(`Folder "${folder}" not found. Use a valid full path for custom folders.`)
     }
+
+    // Checked on the preview too, so a dry run shows the refusal the real call would meet.
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_folder_delete', { folderIds: [folderId] })
+    if (refused) return refused
 
     if (dry_run) {
       return {
