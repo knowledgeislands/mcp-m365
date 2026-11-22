@@ -62,15 +62,46 @@ Changing a path does not migrate the file that was at the old one. Move it yours
 
 | Level | Registers | Adds |
 | --- | --- | --- |
-| `read` (default) | 14 tools | Read-only tools: listing and searching mail, reading messages and bounded file attachments, listing folders, rules, events and OneDrive items, linting a rule file, and the two meta tools. |
-| `write` | 36 tools | 22 non-destructive mutations: sending and drafting mail, replying and forwarding, marking read, moving messages, creating folders and rules, creating and responding to events, uploading and sharing OneDrive files, and starting a sign-in. |
-| `destructive` | 44 tools | 8 destructive tools: deleting a message, folder, event or OneDrive item, cancelling an event, and the three routing-engine run tools. |
+| `read` (default) | 17 tools | Read-only tools: listing and searching mail, reading messages, mail changes and bounded file attachments, listing folders, rules, categories, the protected list, events and OneDrive items, linting a rule file, and the two meta tools. |
+| `write` | 42 tools | 25 non-destructive mutations: sending and drafting mail, replying and forwarding, marking read, categorising and moving messages, creating folders, categories and rules, updating rules, creating and responding to events, uploading and sharing OneDrive files, and starting a sign-in. |
+| `destructive` | 51 tools | 9 destructive tools: deleting a message, folder, rule, event or OneDrive item, cancelling an event, and the three routing-engine run tools. |
 
 The levels nest, so `destructive` includes everything at `write`, which includes everything at `read`. An unrecognised value aborts startup rather than falling back to a default.
 
 The level of each tool is derived from its MCP annotations rather than from its name: `readOnlyHint: true` derives `read`; `destructiveHint: true` derives `destructive`; an explicit `readOnlyHint: false` with `destructiveHint: false` derives `write`; and a tool with no annotations derives `destructive`, which is the fail-safe. A tool registers when its derived level is at or below the configured level.
 
 Start at `read` and raise it deliberately. If a tool you expect is missing from the client's list, the access level is the first thing to check — see [Troubleshoot](troubleshooting.md).
+
+## Protect folders and categories from change
+
+`MCP_M365_PROTECTED_FILE` names a TOML file that lists folders and categories the server refuses to change, whoever calls it; a leading `~/` is expanded. Use one file per server entry, since each entry is one account, such as `~/.config/ki/mail-protected/hnr-mcp-m365.toml`:
+
+```toml
+version = 1
+enforce = true
+
+[[protected]]
+kind = "folder"                      # held by folder id, so a rename does not lift it
+id = "AAMkAGVmMDEz..."               # from m365_email_folders_list
+name = "Legal"                       # for people; the id rules
+subtree = true                       # default true: every folder beneath it too
+reason = "Why, who and when"         # optional
+
+[[protected]]
+kind = "category"
+id = "Legal hold"                    # a category is held by its name, compared case-insensitively
+```
+
+Take each folder id from `m365_email_folders_list`. The file is read afresh on every check, so an edit applies to the next call with no restart. `m365_email_protected_list` reports the file, whether it is enforced, and the folders each entry covers now.
+
+While it is enforced, every tool that changes mail checks its targets before calling Graph and refuses with `PROTECTED_REFUSED` when any is protected: a message in a protected folder or carrying a protected category (read from Graph, not taken from the caller), moving mail into a protected folder, adding or removing a protected category, creating a folder beneath a protected one, renaming or deleting a protected folder, and creating, reordering, updating or deleting a rule that names one. A batch is refused whole, naming every refused target, and previews are refused as well. The routing engine's live passes check each message the same way and leave a refused one untouched; an unusable list refuses the whole live pass. Sending and drafting are not refused. There is no override: only editing the file lifts protection.
+
+| State | `enforced` | Writes |
+| --- | --- | --- |
+| Variable unset, or no file at the path | `false` | Behave as before. |
+| `enforce = false` | `false` | Behave as before. |
+| File unreadable or invalid, or a folder id no longer resolves | `false`, with `error` | Every guarded write is refused with `PROTECTED_LIST_INVALID` until the file is fixed. |
+| Valid file with `enforce = true` | `true` | Protected targets are refused. |
 
 ## The audit log
 

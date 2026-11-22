@@ -32,7 +32,7 @@ Setting this up takes three steps, in this order, and each has its own guide:
 
 The tables below are a capability catalogue, so that you can see whether this server does what you need. They are maintained by hand and the authoritative list is executable: call `tools/list` from any MCP client to see exactly what your build registered at your configured access level.
 
-Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 44 tools, 14 derive `read`, a further 22 derive `write`, and the remaining 8 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
+Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 51 tools, 17 derive `read`, a further 25 derive `write`, and the remaining 9 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
 
 ### Auth & meta
 
@@ -61,6 +61,11 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_draft_forward`     | Preview or create a forward draft without sending.                     |
 | `m365_email_message_mark_read` | Mark email as read/unread.                                              |
 | `m365_email_message_delete`    | Move an email to Deleted Items (or hard delete with `permanent: true`). |
+| `m365_email_messages_categorise` | Set, add or remove Outlook categories on messages.                    |
+| `m365_email_messages_delta`    | Read mail changes in a folder since a checkpoint, headers only.         |
+| `m365_email_categories_list`   | List the master category list (needs `MailboxSettings.Read`).           |
+| `m365_email_category_create`   | Add a master category (needs `MailboxSettings.ReadWrite`).              |
+| `m365_email_protected_list`    | Report the protected list, whether it is enforced, and what it covers.  |
 | `m365_calendar_availability_get` | Read bounded UTC free/busy availability; work/school accounts only. |
 | `m365_calendar_events_list`    | List calendar events.                                                   |
 | `m365_calendar_event_create`   | Create calendar event.                                                  |
@@ -76,8 +81,14 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_rules_list`        | List inbox rules.                                                       |
 | `m365_email_rule_create`       | Create inbox rule.                                                      |
 | `m365_email_rules_reorder`     | Change the execution order of an existing inbox rule.                   |
+| `m365_email_rule_update`       | Preview, then rename, enable or disable, reorder or change a rule. ‡     |
+| `m365_email_rule_delete`       | Preview, then delete an inbox rule. ‡                                    |
 
 † Searches by `query`, `subject`, `from`, `to`, flags and date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. Every term given is applied together as one Graph search and none is dropped or relaxed: a search Graph rejects, or a term with nothing searchable left once quotes are removed, is returned as an error rather than as other mail. The result names the exact Graph search it ran.
+
+‡ The inbox rule tools need the `MailboxSettings.ReadWrite` scope, which the default scope list does not request; add it through `MCP_M365_SCOPES` and sign in again.
+
+With `MCP_M365_PROTECTED_FILE` set to a valid list, every tool that changes mail refuses a protected folder or category with `PROTECTED_REFUSED`, all or nothing, with no override. See [Protect folders and categories from change](./docs/guides/user/configuration.md#protect-folders-and-categories-from-change).
 
 `m365_email_messages_list` and `m365_email_messages_search` accept either a `folder` — a well-known name such as `inbox`, or a full custom path such as `Projects/2026/Q2` — or an explicit `folderId` returned by `m365_email_folders_list`. When both are given, `folderId` wins and is used directly.
 
@@ -159,6 +170,7 @@ Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the ap
 - The auth server binds to `localhost:3333` only and accepts a single OAuth callback at a time; pending CSRF state entries expire after 10 minutes.
 - Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them — and the same annotations drive the access-level gate, so an unannotated tool fails safe to `destructive` and is not registered by default.
 - Every path the routing engine touches, configured or caller-supplied, is checked lexically and then through `realpath` against the configured roots, so neither `..` traversal nor a symlink out of a root gets through.
+- An optional protected list (`MCP_M365_PROTECTED_FILE`) makes every mail-changing tool, the routing engine's live passes among them, refuse protected folders, their subfolders, protected categories, their messages, and rules that name them, whoever calls.
 - Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
 
 Report a vulnerability via [SECURITY.md](./SECURITY.md) rather than a public issue.

@@ -4,6 +4,9 @@ All notable changes are documented here. The format follows [Keep a Changelog](h
 
 ## [Unreleased]
 
+- Protected list: `MCP_M365_PROTECTED_FILE` names a per-account TOML file of folders (by id, with their subfolders) and categories that every mail-changing tool refuses with `PROTECTED_REFUSED`, all or nothing and previews included; the routing engine's live passes leave a protected message untouched. An unusable file refuses every guarded write with `PROTECTED_LIST_INVALID`; no file changes nothing. `m365_email_protected_list` reports the list and what it covers.
+- Rules: `m365_email_rule_update` renames, enables or disables, reorders or changes an inbox rule, and `m365_email_rule_delete` deletes one; both preview by default.
+- Categories and changes: `m365_email_messages_categorise` sets, adds or removes categories on messages, `m365_email_categories_list` and `m365_email_category_create` read and extend the master category list, and `m365_email_messages_delta` reads a folder's mail changes since a checkpoint, headers only.
 - Device-code authentication against Microsoft 365, with status reporting.
 - Mail: list, search, read, send, draft, move, delete, mark read, and folder management.
 - Calendar: list, create, cancel, and delete events, and accept or decline invitations.
