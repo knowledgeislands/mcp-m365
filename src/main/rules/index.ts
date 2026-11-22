@@ -5,3 +5,4 @@
 export { handleCreateRule } from './create.js'
 export { handleEditRuleSequence } from './edit-sequence.js'
 export { getInboxRules, handleListRules } from './list.js'
+export { handleDeleteRule, handleUpdateRule, ruleTargets } from './manage.js'

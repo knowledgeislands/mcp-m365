@@ -6,6 +6,7 @@ import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { getFolderIdByName } from '../folder/folder-utils.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getInboxRules } from './list.js'
 
 export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<any> => {
@@ -42,7 +43,7 @@ export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<an
   try {
     const accessToken = await ctx.ensureAuthenticated()
 
-    const result = await createInboxRule(ctx.graphApiEndpoint, accessToken, {
+    const result = await createInboxRule(ctx, accessToken, {
       name,
       fromAddresses,
       containsSubject,
@@ -53,6 +54,7 @@ export const handleCreateRule = async (ctx: GraphContext, args: any): Promise<an
       sequence
     })
 
+    if (result.refused) return result.refused
     let responseText = result.message
 
     if (!sequence && !result.error) {
@@ -77,13 +79,11 @@ interface CreateRuleResult {
   message: string
   ruleId?: string
   error?: boolean
+  refused?: Exclude<Awaited<ReturnType<typeof guardWrite>>, null>
 }
 
-const createInboxRule = async (
-  graphApiEndpoint: string,
-  accessToken: string,
-  ruleOptions: any
-): Promise<CreateRuleResult> => {
+const createInboxRule = async (ctx: GraphContext, accessToken: string, ruleOptions: any): Promise<CreateRuleResult> => {
+  const { graphApiEndpoint } = ctx
   const { name, fromAddresses, containsSubject, hasAttachments, moveToFolder, markAsRead, isEnabled, sequence } =
     ruleOptions
 
@@ -145,6 +145,8 @@ const createInboxRule = async (
       }
 
       rule.actions.moveToFolder = folderId
+      const refused = await guardWrite(ctx, accessToken, 'm365_email_rule_create', { folderIds: [folderId] })
+      if (refused) return { success: false, message: '', refused }
     } catch (folderError: any) {
       return {
         success: false,

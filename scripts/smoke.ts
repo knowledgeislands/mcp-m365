@@ -66,7 +66,9 @@ const EXPECTED_TOOLS = [
   'm365_email_routing_aged',
   'm365_email_routing_lint',
   'm365_email_routing_drift',
-  'm365_email_protected_list'
+  'm365_email_protected_list',
+  'm365_email_rule_update',
+  'm365_email_rule_delete'
 ] as const
 
 const die = (msg: string, detail?: unknown): never => {

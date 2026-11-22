@@ -5,7 +5,9 @@
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
+import { guardWrite } from '../protected/index.js'
 import { getInboxRules } from './list.js'
+import { ruleTargets } from './manage.js'
 
 export const handleEditRuleSequence = async (ctx: GraphContext, args: any): Promise<any> => {
   const { ruleName, sequence } = args
@@ -26,6 +28,9 @@ export const handleEditRuleSequence = async (ctx: GraphContext, args: any): Prom
     if (!rule) {
       return errorText(`Rule with name "${ruleName}" not found.`)
     }
+
+    const refused = await guardWrite(ctx, accessToken, 'm365_email_rules_reorder', ruleTargets(rule))
+    if (refused) return refused
 
     await callGraphAPI(
       ctx.graphApiEndpoint,

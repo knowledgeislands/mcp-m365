@@ -16,6 +16,9 @@ import { handleDeleteFolder } from '../folder/delete.js'
 import { handleMoveEmails } from '../folder/move.js'
 import { handleRenameFolder } from '../folder/rename.js'
 import { callGraphAPI } from '../graph-client/index.js'
+import { handleCreateRule } from '../rules/create.js'
+import { handleEditRuleSequence } from '../rules/edit-sequence.js'
+import { handleDeleteRule, handleUpdateRule } from '../rules/manage.js'
 import { PROTECTED_LIST_INVALID, PROTECTED_REFUSED } from './index.js'
 
 vi.mock('../graph-client/index.js', () => ({ callGraphAPI: vi.fn() }))
@@ -140,6 +143,48 @@ const CASES: Array<{
     refused: () => handleRenameFolder(ctx, { folder: 'Legal', newName: 'Other' }),
     targets: ['legal'],
     allowed: () => handleRenameFolder(ctx, { folder: 'Plain', newName: 'Other' })
+  },
+  {
+    tool: 'm365_email_rule_create',
+    refused: () => handleCreateRule(ctx, { name: 'R', containsSubject: 'x', moveToFolder: 'Legal/Sub' }),
+    targets: ['legal-sub'],
+    allowed: () => handleCreateRule(ctx, { name: 'R', containsSubject: 'x', moveToFolder: 'Plain' })
+  },
+  {
+    tool: 'm365_email_rules_reorder',
+    refused: () => handleEditRuleSequence(ctx, { ruleName: 'Into Legal', sequence: 5 }),
+    targets: ['legal-sub'],
+    allowed: () => handleEditRuleSequence(ctx, { ruleName: 'Into Plain', sequence: 5 })
+  },
+  {
+    tool: 'm365_email_rule_update',
+    refused: () => handleUpdateRule(ctx, { ruleName: 'Into Plain', moveToFolder: 'Legal', dry_run: false }),
+    targets: ['legal'],
+    allowed: () => handleUpdateRule(ctx, { ruleName: 'Into Plain', isEnabled: false, dry_run: false })
+  },
+  {
+    tool: 'm365_email_rule_update',
+    refused: () => handleUpdateRule(ctx, { ruleName: 'Tagger', isEnabled: false, dry_run: false }),
+    targets: ['Evidence'],
+    allowed: () => handleUpdateRule(ctx, { ruleName: 'Into Plain', categories: ['Other'], dry_run: false })
+  },
+  {
+    tool: 'm365_email_rule_delete',
+    refused: () => handleDeleteRule(ctx, { ruleName: 'Copy', dry_run: false }),
+    targets: ['legal'],
+    allowed: () => handleDeleteRule(ctx, { ruleName: 'Into Plain', dry_run: false })
+  },
+  {
+    tool: 'm365_email_rule_delete',
+    refused: () => handleDeleteRule(ctx, { ruleName: 'Cond', dry_run: false }),
+    targets: ['EVIDENCE'],
+    allowed: () => handleDeleteRule(ctx, { ruleId: 'r-plain', dry_run: false })
+  },
+  {
+    tool: 'm365_email_rule_delete',
+    refused: () => handleDeleteRule(ctx, { ruleName: 'Except', dry_run: false }),
+    targets: ['Evidence'],
+    allowed: () => handleDeleteRule(ctx, { ruleId: 'r-plain', dry_run: false })
   }
 ]
 
@@ -179,6 +224,10 @@ describe('previews', () => {
   it('a dry run meets the same refusal as the real call', async () => {
     expectRefused(await handleDeleteEmail(ctx, { id: 'm-legal' }), 'm365_email_message_delete', ['m-legal'])
     expectRefused(await handleDeleteFolder(ctx, { folder: 'Legal' }), 'm365_email_folder_delete', ['legal'])
+    expectRefused(await handleDeleteRule(ctx, { ruleName: 'Into Legal' }), 'm365_email_rule_delete', ['legal-sub'])
+    expectRefused(await handleUpdateRule(ctx, { ruleName: 'Into Legal', isEnabled: false }), 'm365_email_rule_update', [
+      'legal-sub'
+    ])
   })
 
   it('a protection lift by rename does not happen: the folder is held by id', async () => {

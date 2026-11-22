@@ -4,8 +4,20 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
 import type { GraphContext } from '../../main/graph-client/index.js'
-import { handleCreateRule, handleEditRuleSequence, handleListRules } from '../../main/rules/index.js'
-import { READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import {
+  handleCreateRule,
+  handleDeleteRule,
+  handleEditRuleSequence,
+  handleListRules,
+  handleUpdateRule
+} from '../../main/rules/index.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import { graphIdSchema } from '../../utils/odata-helpers.js'
+
+const ruleRef = {
+  ruleId: graphIdSchema.optional().describe('ID of the rule (from m365_email_rules_list)'),
+  ruleName: z.string().min(1).optional().describe('Exact name of the rule, when it is unique')
+}
 
 export const registerRulesTools = (server: McpServer, ctx: GraphContext): void => {
   server.registerTool(
@@ -38,6 +50,47 @@ export const registerRulesTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_REMOTE
     },
     (args) => handleCreateRule(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_rule_delete',
+    {
+      description:
+        'Deletes an inbox rule. Refused when the rule touches a protected folder or category. Preview by default.',
+      inputSchema: z
+        .object({
+          ...ruleRef,
+          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to delete the rule')
+        })
+        .strict(),
+      annotations: DESTRUCTIVE_REMOTE
+    },
+    (args) => handleDeleteRule(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_rule_update',
+    {
+      description:
+        'Updates an inbox rule: rename, enable or disable, reorder, or change its conditions and actions. Conditions and actions given replace those fields only; the rest of the rule is kept. Refused when the rule touches a protected folder or category, before or after. Preview by default.',
+      inputSchema: z
+        .object({
+          ...ruleRef,
+          name: z.string().min(1).optional().describe('New name'),
+          isEnabled: z.boolean().optional().describe('Enable (true) or disable (false) the rule'),
+          sequence: z.number().int().min(0).max(10000).optional().describe('New execution order'),
+          fromAddresses: z.string().optional().describe('Comma-separated sender addresses'),
+          containsSubject: z.string().optional().describe('Subject text the email must contain'),
+          hasAttachments: z.boolean().optional().describe('Match emails with attachments'),
+          moveToFolder: z.string().optional().describe('Folder path to move matching emails to'),
+          markAsRead: z.boolean().optional().describe('Mark matching emails as read'),
+          categories: z.array(z.string().min(1).max(255)).max(25).optional().describe('Categories to assign'),
+          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to update the rule')
+        })
+        .strict(),
+      annotations: WRITE_IDEMPOTENT_REMOTE
+    },
+    (args) => handleUpdateRule(ctx, args)
   )
 
   server.registerTool(
