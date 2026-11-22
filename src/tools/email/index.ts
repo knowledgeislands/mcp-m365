@@ -7,16 +7,22 @@ import { draftRecipientSchema } from '../../main/email/draft-actions.js'
 import {
   attachmentGetResultSchema,
   attachmentListResultSchema,
+  CATEGORY_COLOURS,
+  deltaResultSchema,
   emailListResultSchema,
   emailSearchResultSchema,
+  handleCategoriseMessages,
+  handleCreateCategory,
   handleDeleteEmail,
   handleDraftAction,
   handleDraftEmail,
   handleForwardEmail,
   handleGetAttachment,
   handleListAttachments,
+  handleListCategories,
   handleListEmails,
   handleMarkAsRead,
+  handleMessagesDelta,
   handleReadEmail,
   handleReplyEmail,
   handleSearchEmails,
@@ -75,6 +81,32 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: READ_ONLY_REMOTE
     },
     (args) => handleListAttachments(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_categories_list',
+    {
+      description: 'Lists the mailbox master category list: names and colours. Needs the MailboxSettings.Read scope.',
+      inputSchema: z.object({}).strict(),
+      annotations: READ_ONLY_REMOTE
+    },
+    () => handleListCategories(ctx)
+  )
+
+  server.registerTool(
+    'm365_email_category_create',
+    {
+      description:
+        'Adds a category to the mailbox master category list. Needs the MailboxSettings.ReadWrite scope. Refused for a protected category name.',
+      inputSchema: z
+        .object({
+          displayName: z.string().min(1).max(255).describe('Category name'),
+          color: z.enum(CATEGORY_COLOURS).optional().describe('Preset colour, default none')
+        })
+        .strict(),
+      annotations: WRITE_REMOTE
+    },
+    (args) => handleCreateCategory(ctx, args)
   )
 
   server.registerTool(
@@ -277,6 +309,45 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_REMOTE
     },
     (args) => handleSendEmail(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_messages_categorise',
+    {
+      description:
+        'Sets Outlook categories on messages: either `set` the whole list, or `add` and `remove` names (compared case-insensitively). All or nothing against the protected list.',
+      inputSchema: z
+        .object({
+          messageIds: z.array(graphIdSchema).min(1).max(100).describe('IDs of the messages to categorise'),
+          set: z.array(z.string().min(1).max(255)).max(25).optional().describe('Replace the categories with these'),
+          add: z.array(z.string().min(1).max(255)).max(25).optional().describe('Categories to add'),
+          remove: z.array(z.string().min(1).max(255)).max(25).optional().describe('Categories to remove')
+        })
+        .strict(),
+      annotations: WRITE_IDEMPOTENT_REMOTE
+    },
+    (args) => handleCategoriseMessages(ctx, args)
+  )
+
+  server.registerTool(
+    'm365_email_messages_delta',
+    {
+      description:
+        'Reads mail changes in one folder since a checkpoint, headers only (no body or preview). Call without deltaLink to start; pass back nextLink to page, and save deltaLink as the checkpoint for the next call.',
+      inputSchema: z
+        .object({
+          folder: z
+            .string()
+            .max(1024)
+            .optional()
+            .describe('Folder name or path (default inbox); ignored with deltaLink'),
+          deltaLink: z.url().optional().describe('A nextLink or deltaLink returned by this tool')
+        })
+        .strict(),
+      outputSchema: deltaResultSchema,
+      annotations: READ_ONLY_REMOTE
+    },
+    (args) => handleMessagesDelta(ctx, args)
   )
 
   server.registerTool(

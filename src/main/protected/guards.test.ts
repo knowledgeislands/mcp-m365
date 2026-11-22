@@ -8,6 +8,7 @@ import os from 'node:os'
 import path from 'node:path'
 import type { Mock } from 'vitest'
 import { GRAPH_API_ENDPOINT } from '../../config/index.js'
+import { handleCategoriseMessages, handleCreateCategory } from '../email/categorise.js'
 import { handleDeleteEmail } from '../email/delete.js'
 import { getAllFolders, getFolderIdByName } from '../email/folder-utils.js'
 import { handleMarkAsRead } from '../email/mark-as-read.js'
@@ -185,6 +186,24 @@ const CASES: Array<{
     refused: () => handleDeleteRule(ctx, { ruleName: 'Except', dry_run: false }),
     targets: ['Evidence'],
     allowed: () => handleDeleteRule(ctx, { ruleId: 'r-plain', dry_run: false })
+  },
+  {
+    tool: 'm365_email_messages_categorise',
+    refused: () => handleCategoriseMessages(ctx, { messageIds: ['m-plain'], add: ['evidence'] }),
+    targets: ['evidence'],
+    allowed: () => handleCategoriseMessages(ctx, { messageIds: ['m-plain'], add: ['Other'] })
+  },
+  {
+    tool: 'm365_email_messages_categorise',
+    refused: () => handleCategoriseMessages(ctx, { messageIds: ['m-plain', 'm-tagged'], remove: ['Other'] }),
+    targets: ['m-tagged'],
+    allowed: () => handleCategoriseMessages(ctx, { messageIds: ['m-plain'], set: ['Other'] })
+  },
+  {
+    tool: 'm365_email_category_create',
+    refused: () => handleCreateCategory(ctx, { displayName: 'EVIDENCE' }),
+    targets: ['EVIDENCE'],
+    allowed: () => handleCreateCategory(ctx, { displayName: 'Other' })
   }
 ]
 

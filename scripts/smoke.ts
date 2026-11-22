@@ -67,6 +67,10 @@ const EXPECTED_TOOLS = [
   'm365_email_routing_lint',
   'm365_email_routing_drift',
   'm365_email_protected_list',
+  'm365_email_messages_categorise',
+  'm365_email_categories_list',
+  'm365_email_category_create',
+  'm365_email_messages_delta',
   'm365_email_rule_update',
   'm365_email_rule_delete'
 ] as const

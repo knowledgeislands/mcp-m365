@@ -11,7 +11,15 @@ export {
   handleListAttachments,
   inlineAttachmentsSchema
 } from './attachments.js'
+export {
+  CATEGORY_COLOURS,
+  handleCategoriseMessages,
+  handleCreateCategory,
+  handleListCategories,
+  nextCategories
+} from './categorise.js'
 export { handleDeleteEmail } from './delete.js'
+export { DELTA_SELECT_FIELDS, deltaResultSchema, handleMessagesDelta } from './delta.js'
 export { handleDraftEmail } from './draft.js'
 export { handleDraftAction } from './draft-actions.js'
 export {
