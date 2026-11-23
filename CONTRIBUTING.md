@@ -13,7 +13,7 @@ bun install
 bun install --cwd tooling/depcruise
 ```
 
-`bun install` triggers `prepare` which configures the husky pre-commit hook — so every commit will auto-run `lint-staged` and format your changes. The second install provides the isolated module-boundary checker that `bun run test` drives.
+`bun install` triggers `prepare`, which points Git at the committed `.githooks/pre-commit` hook, so every commit runs `lint-staged` and the `syncpack` format check on what you stage. The second install provides the isolated module-boundary checker that `bun run test` drives.
 
 ## Dev loop
 
@@ -21,13 +21,13 @@ bun install --cwd tooling/depcruise
 bun run ki:server:mcp:dev      # bun --watch — runs the MCP server from source
 bun run ki:server:auth:dev     # bun --watch — runs the OAuth server from source
 bun run ki:server:mcp:inspect  # MCP Inspector against the TS source
-bun run ki:lint:types          # tsc --noEmit
-bun run test                # vitest (use `bun run test`, not `bun test`)
-bun run test:watch          # vitest in watch mode
-bun run test:coverage       # vitest with v8 coverage report
-bun run ki:lint:check          # Biome lint + format check
-bun run ki:lint:fix            # Biome auto-fix
-bun run ki:lint:md             # prettier + markdownlint for *.md
+bun run build                  # tsc build into dist/
+bun run ki:test:smoke          # build, then boot the server and check its tool surface
+ki repo audit --repo .         # the main gate: Biome, TypeScript, syncpack, knip, coverage, rumdl
+ki repo conform --repo .       # the safe fixes the audit can apply
+bun run test                   # vitest (use `bun run test`, not `bun test`)
+bun run test:watch             # vitest in watch mode
+bun run test:coverage          # vitest with v8 coverage report
 ```
 
 ## Conventions
@@ -67,10 +67,9 @@ Add `!` for breaking changes (`feat!:` / `fix!:`) — bumps major.
 
 ## Before opening a PR
 
-- [ ] `bun run ki:lint:check` passes
-- [ ] `bun run ki:lint:types` passes
-- [ ] `bun run test:coverage` passes (no threshold failures)
+- [ ] `ki repo audit --repo .` reports no failures (it runs Biome, TypeScript, syncpack, knip and coverage)
+- [ ] `bun run ki:test:smoke` passes
 - [ ] Commit messages follow Conventional Commits
-- [ ] If you added/removed/renamed a tool, update `README.md` and `CLAUDE.md`
+- [ ] If you added/removed/renamed a tool, update `README.md` and `AGENTS.md`
 
 CI runs all of the above on every PR.

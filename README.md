@@ -14,7 +14,7 @@ Setting this up takes three steps, in this order, and each has its own guide:
 2. **[Install and connect the server](docs/guides/user/installation.md)** — build it and point your MCP client at it.
 3. **[Sign in](docs/guides/user/authentication.md)** — authorise the server against your account.
 
-[All guides](docs/guides/README.md) covers the rest: what every setting does, driving the email routing engine, recovering from failures, and changing the code.
+[All guides](docs/guides/_index.md) covers the rest: what every setting does, driving the email routing engine, recovering from failures, and changing the code.
 
 ## Features
 
