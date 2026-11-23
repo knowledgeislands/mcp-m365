@@ -13,7 +13,7 @@ bun install
 bun install --cwd tooling/depcruise
 ```
 
-`bun install` triggers `prepare`, which points Git at the committed `.githooks/pre-commit` hook, so every commit runs `lint-staged` and the `syncpack` format check on what you stage. The second install provides the isolated module-boundary checker that `bun run test` drives.
+`bun install` triggers `prepare`, which points Git at the committed `.githooks/` hooks, so every commit runs `lint-staged` and the `syncpack` format check on what you stage, and `commitlint` over the message. The second install provides the isolated module-boundary checker that `bun run test` drives.
 
 ## Dev loop
 
