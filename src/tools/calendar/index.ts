@@ -10,16 +10,13 @@ import { z } from 'zod'
 import {
   AvailabilityInputSchema,
   AvailabilityResultSchema,
-  handleAcceptEvent,
-  handleCancelEvent,
   handleCreateEvent,
-  handleDeclineEvent,
   handleDeleteEvent,
   handleGetAvailability,
   handleListEvents
 } from '../../main/calendar/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
-import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_IDEMPOTENT_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
+import { DESTRUCTIVE_REMOTE, READ_ONLY_REMOTE, WRITE_REMOTE } from '../../utils/annotations.js'
 import { graphIdSchema } from '../../utils/odata-helpers.js'
 
 export const registerCalendarTools = (server: McpServer, ctx: GraphContext): void => {
@@ -36,49 +33,15 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   )
 
   server.registerTool(
-    'm365_calendar_event_accept',
-    {
-      description: 'Accepts a calendar event',
-      inputSchema: z
-        .object({
-          eventId: graphIdSchema.describe('The ID of the event to accept'),
-          comment: z.string().optional().describe('Optional comment for accepting the event')
-        })
-        .strict(),
-      annotations: WRITE_IDEMPOTENT_REMOTE
-    },
-    (args) => handleAcceptEvent(ctx, args)
-  )
-
-  server.registerTool(
-    'm365_calendar_event_cancel',
-    {
-      description: 'Cancels a calendar event. `dry_run` defaults to true — pass false to actually cancel.',
-      inputSchema: z
-        .object({
-          eventId: graphIdSchema.describe('The ID of the event to cancel'),
-          comment: z.string().optional().describe('Optional comment for cancelling the event'),
-          dry_run: z
-            .boolean()
-            .optional()
-            .describe('Preview only; do not cancel. Default true — pass false to actually cancel.')
-        })
-        .strict(),
-      annotations: DESTRUCTIVE_REMOTE
-    },
-    (args) => handleCancelEvent(ctx, args)
-  )
-
-  server.registerTool(
     'm365_calendar_event_create',
     {
-      description: 'Creates a new calendar event',
+      description:
+        'Creates a personal calendar event with no attendees. Never sends an invitation: the server is draft-only, so attendees are not accepted.',
       inputSchema: z
         .object({
           subject: z.string().describe('The subject of the event'),
           start: z.string().describe('The start time of the event in ISO 8601 format'),
           end: z.string().describe('The end time of the event in ISO 8601 format'),
-          attendees: z.array(z.string()).optional().describe('List of attendee email addresses'),
           body: z.string().optional().describe('Optional body content for the event')
         })
         .strict(),
@@ -88,32 +51,10 @@ export const registerCalendarTools = (server: McpServer, ctx: GraphContext): voi
   )
 
   server.registerTool(
-    'm365_calendar_event_decline',
-    {
-      description:
-        'Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run fetches the event metadata and returns what would happen.',
-      inputSchema: z
-        .object({
-          eventId: graphIdSchema.describe('The ID of the event to decline'),
-          comment: z.string().optional().describe('Optional comment for declining the event'),
-          dry_run: z
-            .boolean()
-            .optional()
-            .describe('Preview only; do not decline. Default true — pass false to actually decline.')
-        })
-        .strict(),
-      // Declining an invite is a non-destructive, idempotent RSVP (end state =
-      // declined), same risk class as accept — not a destructive mutation.
-      annotations: WRITE_IDEMPOTENT_REMOTE
-    },
-    (args) => handleDeclineEvent(ctx, args)
-  )
-
-  server.registerTool(
     'm365_calendar_event_delete',
     {
       description:
-        'Deletes a calendar event. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
+        'Deletes a personal calendar event. Refused for a meeting (any event with attendees, or one you did not organise), because deleting a meeting notifies its attendees or organiser. `dry_run` defaults to true — pass false to actually delete; dry-run fetches the event metadata and returns what would happen.',
       inputSchema: z
         .object({
           eventId: graphIdSchema.describe('The ID of the event to delete'),

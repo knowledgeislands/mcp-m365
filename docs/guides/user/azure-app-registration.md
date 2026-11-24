@@ -49,9 +49,9 @@ What each one buys:
 | `User.Read` | Reads your own profile, which is how the server resolves whose mailbox it is talking to. |
 | `Mail.Read` | Lists, searches, and reads messages and mail folders. |
 | `Mail.ReadWrite` | Creates drafts, marks messages read, moves messages between folders, creates and deletes folders, and manages inbox rules. |
-| `Mail.Send` | Sends a message. Separate from `Mail.ReadWrite` in Graph, and separately consented. |
+| `Mail.Send` | Unused: the server is draft-only and sends nothing. It is still in the default scope list, so it is still consented; you may leave it out of the registration and set `MCP_M365_SCOPES` without it. |
 | `Calendars.Read` | Lists calendar events. |
-| `Calendars.ReadWrite` | Creates, accepts, declines, cancels, and deletes events. |
+| `Calendars.ReadWrite` | Creates personal events and deletes them. The server never responds to, cancels or invites anyone to a meeting. |
 | `Files.Read` | Lists, searches, and downloads OneDrive items. |
 | `Files.ReadWrite` | Uploads, creates folders, creates sharing links, and deletes items. |
 

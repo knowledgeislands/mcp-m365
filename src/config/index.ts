@@ -94,7 +94,7 @@ export const ONEDRIVE_UPLOAD_THRESHOLD = 4 * 1024 * 1024
 /**
  * Single ordinal access level. Each level implies all lower ones:
  *   `read`        — only readOnly tools registered.
- *   `write`       — readOnly + non-destructive mutations (create, send, toggle).
+ *   `write`       — readOnly + non-destructive mutations (create, draft, toggle); nothing sends.
  *   `destructive` — everything, including delete / overwrite / prune.
  *
  * The gate uses ACCESS_LEVEL_RANK for ordinal comparison; a tool registers when

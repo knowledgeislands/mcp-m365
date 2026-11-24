@@ -4,9 +4,9 @@ These guides are for anyone running `mcp-m365` against their own Microsoft 365 a
 
 Read [Register an Azure application](azure-app-registration.md), [Install and connect the server](installation.md), and [Sign in](authentication.md) in that order the first time. They form one route from nothing to a working connection, and each names what the next one assumes. After that, come back to whichever guide matches the task in front of you.
 
-Two things are worth knowing before you start. The server registers only read-only tools until you widen `MCP_M365_ACCESS_LEVEL`, so a fresh installation cannot send, move, or delete anything. And the destructive tools it can register act on a real mailbox, so read [Configure the server](configuration.md) before raising that level rather than after.
+Two things are worth knowing before you start. The server registers only read-only tools until you widen `MCP_M365_ACCESS_LEVEL`, so a fresh installation cannot draft, move, or delete anything. No level lets it send: the server is draft-only. And the destructive tools it can register act on a real mailbox, so read [Configure the server](configuration.md) before raising that level rather than after.
 
-For an existing message, [preview and send a reply or reply-all](replying-to-mail.md) with explicit effect control.
+For an existing message, [draft a reply, reply-all or forward](replying-to-mail.md) to review and send from Outlook.
 
 For file attachments, [list metadata, download a small file, or attach bounded base64 data to a new message](email-attachments.md).
 

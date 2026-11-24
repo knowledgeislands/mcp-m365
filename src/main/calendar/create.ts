@@ -1,5 +1,8 @@
 /**
- * Create event functionality
+ * Create event functionality. The server is draft-only: Graph sends an
+ * invitation to every attendee of a new event and offers no way to suppress
+ * it, so an event is created without attendees and a request that names any
+ * is refused before authentication.
  */
 
 import { DEFAULT_TIMEZONE } from '../../config/index.js'
@@ -7,11 +10,18 @@ import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { errorText } from '../../utils/results.js'
 import { callGraphAPI, type GraphContext } from '../graph-client/index.js'
 
+export const ATTENDEES_REFUSED =
+  'Attendees are not supported: this server never sends calendar invitations. Create the event without attendees and invite people from Outlook.'
+
 export const handleCreateEvent = async (ctx: GraphContext, args: any): Promise<any> => {
   const { subject, start, end, attendees, body } = args
 
   if (!subject || !start || !end) {
     return errorText('Subject, start, and end times are required to create an event.')
+  }
+
+  if (attendees !== undefined && (!Array.isArray(attendees) || attendees.length > 0)) {
+    return errorText(ATTENDEES_REFUSED)
   }
 
   try {
@@ -23,7 +33,6 @@ export const handleCreateEvent = async (ctx: GraphContext, args: any): Promise<a
       subject,
       start: { dateTime: start.dateTime || start, timeZone: start.timeZone || DEFAULT_TIMEZONE },
       end: { dateTime: end.dateTime || end, timeZone: end.timeZone || DEFAULT_TIMEZONE },
-      attendees: attendees?.map((email: string) => ({ emailAddress: { address: email }, type: 'required' })),
       body: { contentType: 'HTML', content: body || '' }
     }
 

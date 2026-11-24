@@ -56,7 +56,7 @@ Replace `/path/to/mcp-m365` with the absolute path of your checkout. A starter f
 
 Restart the client after editing its configuration. Most MCP clients read the file once at startup and will not notice an edit made while they are running.
 
-By default the server registers only its read-only tools. That is deliberate and it is the right place to start: confirm the connection works before widening it. When you are ready to send, move, or delete anything, add `MCP_M365_ACCESS_LEVEL` to the same `env` block and read the access-level section of [Configure the server](configuration.md) first.
+By default the server registers only its read-only tools. That is deliberate and it is the right place to start: confirm the connection works before widening it. When you are ready to draft, move, or delete anything, add `MCP_M365_ACCESS_LEVEL` to the same `env` block and read the access-level section of [Configure the server](configuration.md) first.
 
 ### Installation source
 

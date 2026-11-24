@@ -25,6 +25,17 @@ export const ruleTargets = (rule: any): Required<Pick<WriteTargets, 'folderIds' 
   ]
 })
 
+/** Rule actions that make Exchange send mail on the rule's behalf. */
+const SENDING_ACTIONS = ['forwardTo', 'forwardAsAttachmentTo', 'redirectTo'] as const
+
+/**
+ * The sending actions a rule carries. The server is draft-only, so it never
+ * turns on a rule that forwards or redirects mail: enabling one would make
+ * Exchange send for it.
+ */
+const sendingActions = (rule: any): string[] =>
+  SENDING_ACTIONS.filter((key) => Array.isArray(rule?.actions?.[key]) && rule.actions[key].length > 0)
+
 const mergeTargets = (a: ReturnType<typeof ruleTargets>, b: ReturnType<typeof ruleTargets>): WriteTargets => ({
   folderIds: [...a.folderIds, ...b.folderIds],
   categories: [...a.categories, ...b.categories]
@@ -63,6 +74,13 @@ export const handleUpdateRule = async (ctx: GraphContext, args: any): Promise<an
     const found = await findRule(ctx, accessToken, args)
     if ('error' in found) return errorText(found.error)
     const { rule } = found
+
+    const sending = sendingActions(rule)
+    if (args.isEnabled === true && sending.length > 0) {
+      return errorText(
+        `Refused: rule "${rule.displayName}" forwards or redirects mail (${sending.join(', ')}), and this server never sends. Enable it from Outlook if that is intended.`
+      )
+    }
 
     const conditions: Record<string, unknown> = {}
     if (args.fromAddresses !== undefined) {

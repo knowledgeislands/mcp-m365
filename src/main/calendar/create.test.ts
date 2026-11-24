@@ -2,7 +2,7 @@ import type { Mock } from 'vitest'
 import { DEFAULT_TIMEZONE, GRAPH_API_ENDPOINT } from '../../config/index.js'
 import { AUTH_REQUIRED_MESSAGE } from '../../utils/errors.js'
 import { callGraphAPI } from '../graph-client/index.js'
-import { handleCreateEvent } from './create.js'
+import { ATTENDEES_REFUSED, handleCreateEvent } from './create.js'
 
 vi.mock('../graph-client/index.js')
 
@@ -160,7 +160,7 @@ describe('handleCreateEvent', () => {
     expect(result.content[0].text).toBe('Error creating event: Graph API Error')
   })
 
-  test('maps attendees into required-attendee entries', async () => {
+  test('never notifies attendees: the Graph body carries no attendees', async () => {
     mockEnsureAuthenticated.mockResolvedValue('dummy_access_token')
     mockCallGraphAPI.mockResolvedValue({ id: 'test_event_id' })
 
@@ -168,15 +168,29 @@ describe('handleCreateEvent', () => {
       subject: 'Test Event',
       start: '2024-03-10T10:00:00',
       end: '2024-03-10T11:00:00',
-      attendees: ['a@example.com', 'b@example.com'],
+      attendees: [],
       body: '<p>agenda</p>'
     })
 
+    expect(mockCallGraphAPI).toHaveBeenCalledTimes(1)
     const sent = mockCallGraphAPI.mock.calls[0][4]
-    expect(sent.attendees).toEqual([
-      { emailAddress: { address: 'a@example.com' }, type: 'required' },
-      { emailAddress: { address: 'b@example.com' }, type: 'required' }
-    ])
+    expect(sent).not.toHaveProperty('attendees')
     expect(sent.body.content).toBe('<p>agenda</p>')
   })
+
+  test.each([[['a@example.com']], ['a@example.com'], [[{ emailAddress: { address: 'a@example.com' } }]]])(
+    'refuses attendees %j before authentication, so no invitation is sent',
+    async (attendees) => {
+      const result = await handleCreateEvent(ctx, {
+        subject: 'Test Event',
+        start: '2024-03-10T10:00:00',
+        end: '2024-03-10T11:00:00',
+        attendees
+      })
+      expect(result.isError).toBe(true)
+      expect(result.content[0].text).toBe(ATTENDEES_REFUSED)
+      expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
+      expect(mockCallGraphAPI).not.toHaveBeenCalled()
+    }
+  )
 })

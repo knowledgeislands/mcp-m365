@@ -48,18 +48,6 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
       return wrapCallResult(raw).callResult;
     },
 
-    async m365_calendar_event_accept(params: Parameters<HnrMcpM365Tools["m365_calendar_event_accept"]>[0]) {
-      const tool = proxy.m365CalendarEventAccept as (args: Parameters<HnrMcpM365Tools["m365_calendar_event_accept"]>[0]) => Promise<unknown>;
-      const raw = await tool(params);
-      return wrapCallResult(raw).callResult;
-    },
-
-    async m365_calendar_event_decline(params: Parameters<HnrMcpM365Tools["m365_calendar_event_decline"]>[0]) {
-      const tool = proxy.m365CalendarEventDecline as (args: Parameters<HnrMcpM365Tools["m365_calendar_event_decline"]>[0]) => Promise<unknown>;
-      const raw = await tool(params);
-      return wrapCallResult(raw).callResult;
-    },
-
     async m365_calendar_event_create(params: Parameters<HnrMcpM365Tools["m365_calendar_event_create"]>[0]) {
       const tool = proxy.m365CalendarEventCreate as (args: Parameters<HnrMcpM365Tools["m365_calendar_event_create"]>[0]) => Promise<unknown>;
       const raw = await tool(params);
@@ -80,12 +68,6 @@ export async function createHnrMcpM365Client(options: CreateClientOptions = {}):
 
     async m365_email_message_get(params: Parameters<HnrMcpM365Tools["m365_email_message_get"]>[0]) {
       const tool = proxy.m365EmailMessageGet as (args: Parameters<HnrMcpM365Tools["m365_email_message_get"]>[0]) => Promise<unknown>;
-      const raw = await tool(params);
-      return wrapCallResult(raw).callResult;
-    },
-
-    async m365_email_message_send(params: Parameters<HnrMcpM365Tools["m365_email_message_send"]>[0]) {
-      const tool = proxy.m365EmailMessageSend as (args: Parameters<HnrMcpM365Tools["m365_email_message_send"]>[0]) => Promise<unknown>;
       const raw = await tool(params);
       return wrapCallResult(raw).callResult;
     },

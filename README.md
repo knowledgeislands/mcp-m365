@@ -6,6 +6,8 @@ An MCP (Model Context Protocol) server that connects Claude with Microsoft 365 s
 
 It runs on your machine as a subprocess of your MCP client, talks only to Microsoft Graph, and acts as you: every permission is delegated, so it can never reach anything you could not reach yourself. By default it registers only its read-only tools.
 
+The server is **draft-only**: no tool sends anything. It saves new messages, replies and forwards as drafts for you to review and send from Outlook, and it has no tool to accept, decline or cancel a meeting. Calendar writes never notify anyone: events are created without attendees, and only a personal event with no attendees can be deleted. No access level, environment variable or flag turns sending back on.
+
 ## Getting started
 
 Setting this up takes three steps, in this order, and each has its own guide:
@@ -19,7 +21,7 @@ Setting this up takes three steps, in this order, and each has its own guide:
 ## Features
 
 - **OAuth 2.0** — a standalone auth server handles the user consent flow; tokens are cached locally and refreshed transparently.
-- **Outlook coverage** — read/search/send/delete email, manage folders + rules, create/accept/decline/cancel calendar events.
+- **Outlook coverage** — read/search/draft/delete email, manage folders + rules, create and delete personal calendar events. Nothing is ever sent.
 - **OneDrive coverage** — list/search/download/upload (with chunked >4 MB upload), create folders, share files.
 - **Deterministic email routing** — a first-match-wins rule engine in a small line DSL, with report-then-live runs and filesystem access bounded to directories you allowlist.
 - **Access-level gate** — tools are registered according to an ordinal `read` / `write` / `destructive` setting derived from each tool's own MCP annotations, so a tool below the configured level is never offered to the client at all.
@@ -32,7 +34,7 @@ Setting this up takes three steps, in this order, and each has its own guide:
 
 The tables below are a capability catalogue, so that you can see whether this server does what you need. They are maintained by hand and the authoritative list is executable: call `tools/list` from any MCP client to see exactly what your build registered at your configured access level.
 
-Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 51 tools, 17 derive `read`, a further 25 derive `write`, and the remaining 9 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
+Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '…' }] }`) and carry honest annotations (`readOnlyHint`, `destructiveHint`, `idempotentHint`, `openWorldHint`). Of the 45 tools, 18 derive `read`, a further 19 derive `write`, and the remaining 8 derive `destructive` — see [Configure the server](docs/guides/user/configuration.md) for what each level registers.
 
 ### Auth & meta
 
@@ -51,10 +53,6 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_message_get`       | Read email content.                                                     |
 | `m365_email_attachments_list`  | List bounded attachment metadata pages without file bytes.            |
 | `m365_email_attachment_get`    | Retrieve one file up to 256 KiB as untrusted base64 data.             |
-| `m365_email_message_send`      | Send a new email, optionally with bounded inline file attachments.    |
-| `m365_email_message_reply`     | Preview, then explicitly send a reply to one message.                  |
-| `m365_email_message_reply_all` | Preview, then explicitly send a reply-all to one message.              |
-| `m365_email_message_forward`   | Preview, then explicitly forward one message to chosen recipients.     |
 | `m365_email_draft_create`      | Save an email draft, optionally with bounded inline file attachments. |
 | `m365_email_draft_reply`       | Preview or create a threaded reply draft without sending.             |
 | `m365_email_draft_reply_all`   | Preview or create a threaded reply-all draft without sending.         |
@@ -68,11 +66,8 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_protected_list`    | Report the protected list, whether it is enforced, and what it covers.  |
 | `m365_calendar_availability_get` | Read bounded UTC free/busy availability; work/school accounts only. |
 | `m365_calendar_events_list`    | List calendar events.                                                   |
-| `m365_calendar_event_create`   | Create calendar event.                                                  |
-| `m365_calendar_event_accept`   | Accept event invitation.                                                |
-| `m365_calendar_event_decline`  | Decline event invitation.                                               |
-| `m365_calendar_event_cancel`   | Cancel a calendar event.                                                |
-| `m365_calendar_event_delete`   | Delete calendar event.                                                  |
+| `m365_calendar_event_create`   | Create a personal event; attendees are refused, so no invitation is sent. |
+| `m365_calendar_event_delete`   | Delete a personal event; a meeting is refused, so no cancellation is sent. |
 | `m365_email_folders_list`      | List mail folders.                                                      |
 | `m365_email_folder_create`     | Create mail folder.                                                     |
 | `m365_email_folder_rename`     | Rename an existing mail folder.                                         |
@@ -81,12 +76,14 @@ Tool results follow the standard MCP shape (`{ content: [{ type: 'text', text: '
 | `m365_email_rules_list`        | List inbox rules.                                                       |
 | `m365_email_rule_create`       | Create inbox rule.                                                      |
 | `m365_email_rules_reorder`     | Change the execution order of an existing inbox rule.                   |
-| `m365_email_rule_update`       | Preview, then rename, enable or disable, reorder or change a rule. ‡     |
+| `m365_email_rule_update`       | Preview, then rename, enable or disable, reorder or change a rule. ‡ §   |
 | `m365_email_rule_delete`       | Preview, then delete an inbox rule. ‡                                    |
 
 † Searches by `query`, `subject`, `from`, `to`, flags and date range (`receivedAfter`/`receivedBefore`), in inbox, folder path, or explicit folder ID. Every term given is applied together as one Graph search and none is dropped or relaxed: a search Graph rejects, or a term with nothing searchable left once quotes are removed, is returned as an error rather than as other mail. The result names the exact Graph search it ran.
 
 ‡ The inbox rule tools need the `MailboxSettings.ReadWrite` scope, which the default scope list does not request; add it through `MCP_M365_SCOPES` and sign in again.
+
+§ It refuses to enable a rule that forwards or redirects mail, since Exchange would then send on the rule's behalf.
 
 With `MCP_M365_PROTECTED_FILE` set to a valid list, every tool that changes mail refuses a protected folder or category with `PROTECTED_REFUSED`, all or nothing, with no override. See [Protect folders and categories from change](./docs/guides/user/configuration.md#protect-folders-and-categories-from-change).
 
@@ -149,7 +146,7 @@ Claude calls [`m365_email_messages_search`](#outlook-email--calendar) with `quer
 
 > "Find Alice's invite for tomorrow's planning sync and draft a reply confirming I'll be there."
 
-Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then [`m365_email_draft_create`](#outlook-email--calendar) to save the response in your Drafts folder. (Sending an email goes through `m365_email_message_send` — the server exposes both; calendar invites can be accepted directly via [`m365_calendar_event_accept`](#outlook-email--calendar).)
+Claude uses `m365_email_messages_search` + `m365_email_message_get` to locate the invite, then [`m365_email_draft_reply`](#outlook-email--calendar) to save a threaded reply in your Drafts folder. You review and send it from Outlook; the server never sends, and it does not accept or decline invitations.
 
 **Upload a file to OneDrive:**
 
@@ -159,9 +156,9 @@ Claude calls [`m365_onedrive_folder_create`](#onedrive) for the missing path, th
 
 **Review the week's calendar:**
 
-> "Show me my calendar for next week and accept the marketing review invite if it's still open."
+> "Show me my calendar for next week and block out two hours of focus time on Tuesday morning."
 
-Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds the marketing review by subject, and runs [`m365_calendar_event_accept`](#outlook-email--calendar) to send the acceptance.
+Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the appropriate date range, finds a free slot on Tuesday morning, and runs [`m365_calendar_event_create`](#outlook-email--calendar) to add a personal event with no attendees.
 
 ## Security Model
 
@@ -171,6 +168,7 @@ Claude calls [`m365_calendar_events_list`](#outlook-email--calendar) with the ap
 - Tool annotations honestly mark destructive operations (`m365_email_message_delete`, `m365_calendar_event_delete`, `m365_email_folder_delete`, `m365_onedrive_item_delete`, etc.) so MCP clients can prompt before invoking them — and the same annotations drive the access-level gate, so an unannotated tool fails safe to `destructive` and is not registered by default.
 - Every path the routing engine touches, configured or caller-supplied, is checked lexically and then through `realpath` against the configured roots, so neither `..` traversal nor a symlink out of a root gets through.
 - An optional protected list (`MCP_M365_PROTECTED_FILE`) makes every mail-changing tool, the routing engine's live passes among them, refuse protected folders, their subfolders, protected categories, their messages, and rules that name them, whoever calls.
+- The server is draft-only, and no configuration changes that: no registered tool calls Graph's `sendMail`, `send`, `reply`, `replyAll`, `forward`, `accept`, `decline`, `tentativelyAccept` or `cancel`, event creation sends no attendees, event deletion refuses meetings, and a rule that forwards or redirects mail is never enabled. A test registers every tool at every access level and fails if a sending tool appears.
 - Every Graph API call goes through [`src/main/graph-client/index.ts`](./src/main/graph-client/index.ts), which centralises retries and 401 → token-refresh handling.
 
 Report a vulnerability via [SECURITY.md](./SECURITY.md) rather than a public issue.

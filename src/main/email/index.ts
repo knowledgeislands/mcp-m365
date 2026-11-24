@@ -29,10 +29,7 @@ export {
   resolveFolderPath,
   WELL_KNOWN_FOLDERS
 } from './folder-utils.js'
-export { handleForwardEmail } from './forward.js'
 export { type EmailListResult, emailListResultSchema, handleListEmails } from './list.js'
 export { handleMarkAsRead } from './mark-as-read.js'
 export { handleReadEmail } from './read.js'
-export { handleReplyEmail } from './reply.js'
 export { type EmailSearchResult, emailSearchResultSchema, handleSearchEmails } from './search.js'
-export { handleSendEmail } from './send.js'

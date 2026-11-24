@@ -25,6 +25,12 @@ const RULES = [
     conditions: { subjectContains: ['news'] },
     actions: { moveToFolder: 'f-old', stopProcessingRules: true }
   },
+  {
+    id: 'r4',
+    displayName: 'Relay',
+    isEnabled: false,
+    actions: { forwardTo: [{ emailAddress: { address: 'a@example.com' } }], redirectTo: [] }
+  },
   { id: 'r2', displayName: 'Twin' },
   { id: 'r3', displayName: 'Twin' }
 ]
@@ -129,6 +135,20 @@ describe('handleUpdateRule', () => {
       name: 'Bare',
       patch: { conditions: { subjectContains: ['x'] }, actions: { markAsRead: true } }
     })
+  })
+
+  it.each([true, false])('never turns on a rule that forwards mail (dry_run %s)', async (dry_run) => {
+    const r = await handleUpdateRule(ctx, { ruleId: 'r4', isEnabled: true, dry_run })
+    expect(r.isError).toBe(true)
+    expect(r.content[0].text).toBe(
+      'Refused: rule "Relay" forwards or redirects mail (forwardTo), and this server never sends. Enable it from Outlook if that is intended.'
+    )
+    expect(mockCall.mock.calls.some((call) => call[2] === 'PATCH')).toBe(false)
+  })
+
+  it('still lets a forwarding rule be disabled', async () => {
+    const r = await handleUpdateRule(ctx, { ruleId: 'r4', isEnabled: false, dry_run: false })
+    expect(body(r)).toMatchObject({ updated: true, patch: { isEnabled: false } })
   })
 
   it('refuses a missing target folder', async () => {

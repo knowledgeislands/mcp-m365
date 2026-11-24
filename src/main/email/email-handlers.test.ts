@@ -1,5 +1,5 @@
 /**
- * Coverage tests for the small email handlers (read/draft/send/delete/mark-as-read).
+ * Coverage tests for the small email handlers (read/draft/delete/mark-as-read).
  * list/search/folder-utils have their own focused test files.
  */
 import type { Mock, MockInstance } from 'vitest'
@@ -11,7 +11,6 @@ import { handleDeleteEmail } from './delete.js'
 import { handleDraftEmail } from './draft.js'
 import { handleMarkAsRead } from './mark-as-read.js'
 import { handleReadEmail } from './read.js'
-import { handleSendEmail } from './send.js'
 
 vi.mock('../graph-client/index.js')
 vi.mock('../../utils/html-sanitizer')
@@ -238,100 +237,6 @@ describe('handleDraftEmail', () => {
     mockCallGraphAPI.mockRejectedValue(new Error('boom'))
     const r = await handleDraftEmail(ctx, { subject: 'h', body: 'b' })
     expect(r.content[0].text).toMatch(/Error creating draft email: boom/)
-  })
-})
-
-describe('handleSendEmail', () => {
-  it('rejects malformed inline attachments before authentication', async () => {
-    const response = await handleSendEmail(ctx, {
-      to: 'a@x.com',
-      subject: 's',
-      body: 'b',
-      attachments: [{ name: 'bad', contentType: 'text/plain', contentBytes: '@@@' }]
-    })
-    expect(response.isError).toBe(true)
-    expect(mockEnsureAuthenticated).not.toHaveBeenCalled()
-  })
-
-  it('sends a standalone message with a bounded file attachment', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    const attachments = [{ name: 'a.txt', contentType: 'text/plain', contentBytes: 'YQ==' }]
-    await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: 'b', attachments })
-    expect(mockCallGraphAPI.mock.calls[0][4].message.attachments).toEqual([
-      { '@odata.type': '#microsoft.graph.fileAttachment', ...attachments[0] }
-    ])
-    expect(mockCallGraphAPI.mock.calls[0][6]).toEqual({ redactErrorBody: true })
-  })
-  it('sends to multiple recipients and saves to Sent Items by default', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    const r = await handleSendEmail(ctx, { to: 'a@x.com,b@x.com', subject: 'Hi', body: 'Hello' })
-    const callBody = mockCallGraphAPI.mock.calls[0][4]
-    expect(callBody.message.toRecipients).toHaveLength(2)
-    expect(callBody.saveToSentItems).toBe(true)
-    expect(r.content[0].text).toMatch(/Email sent successfully/)
-  })
-
-  it('trims cc and bcc recipient addresses', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    await handleSendEmail(ctx, { to: 'a@x.com', cc: ' c@x.com , c2@x.com ', bcc: ' d@x.com ', subject: 's', body: 'b' })
-    const msg = mockCallGraphAPI.mock.calls[0][4].message
-    expect(msg.ccRecipients).toEqual([
-      { emailAddress: { address: 'c@x.com' } },
-      { emailAddress: { address: 'c2@x.com' } }
-    ])
-    expect(msg.bccRecipients).toEqual([{ emailAddress: { address: 'd@x.com' } }])
-  })
-
-  it('forces HTML when isHtml=true', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: 'plain', isHtml: true })
-    expect(mockCallGraphAPI.mock.calls[0][4].message.body.contentType).toBe('html')
-  })
-
-  it('forces text when isHtml=false', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: '<html>x</html>', isHtml: false })
-    expect(mockCallGraphAPI.mock.calls[0][4].message.body.contentType).toBe('text')
-  })
-
-  it('auto-detects HTML when body contains <HTML', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockResolvedValue({})
-    await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: '<HTML>X</HTML>' })
-    expect(mockCallGraphAPI.mock.calls[0][4].message.body.contentType).toBe('html')
-  })
-
-  it('rejects when to is missing', async () => {
-    const r = await handleSendEmail(ctx, { subject: 's', body: 'b' })
-    expect(r.content[0].text).toBe('Recipient (to) is required.')
-  })
-
-  it('rejects when subject is missing', async () => {
-    const r = await handleSendEmail(ctx, { to: 'a@x.com', body: 'b' })
-    expect(r.content[0].text).toBe('Subject is required.')
-  })
-
-  it('rejects when body is missing', async () => {
-    const r = await handleSendEmail(ctx, { to: 'a@x.com', subject: 's' })
-    expect(r.content[0].text).toBe('Body content is required.')
-  })
-
-  it('handles authentication errors', async () => {
-    mockEnsureAuthenticated.mockRejectedValue(new Error('Authentication required'))
-    const r = await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: 'b' })
-    expect(r.content[0].text).toMatch(/Authentication required/)
-  })
-
-  it('handles Graph API errors', async () => {
-    mockEnsureAuthenticated.mockResolvedValue('tok')
-    mockCallGraphAPI.mockRejectedValue(new Error('boom'))
-    const r = await handleSendEmail(ctx, { to: 'a@x.com', subject: 's', body: 'b' })
-    expect(r.content[0].text).toMatch(/Error sending email: boom/)
   })
 })
 

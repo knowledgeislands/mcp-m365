@@ -16,7 +16,6 @@ import {
   handleDeleteEmail,
   handleDraftAction,
   handleDraftEmail,
-  handleForwardEmail,
   handleGetAttachment,
   handleListAttachments,
   handleListCategories,
@@ -24,9 +23,7 @@ import {
   handleMarkAsRead,
   handleMessagesDelta,
   handleReadEmail,
-  handleReplyEmail,
   handleSearchEmails,
-  handleSendEmail,
   inlineAttachmentsSchema
 } from '../../main/email/index.js'
 import type { GraphContext } from '../../main/graph-client/index.js'
@@ -191,28 +188,6 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
   )
 
   server.registerTool(
-    'm365_email_message_forward',
-    {
-      description:
-        'Preview a forward by default; pass dry_run: false to send through Graph once. Graph carries the original content and attachments. A successful call means accepted for delivery, not delivered.',
-      inputSchema: z
-        .object({
-          id: graphIdSchema.describe('ID of the original email'),
-          recipients: z
-            .array(draftRecipientSchema)
-            .min(1)
-            .max(50)
-            .describe('Forward to 1 to 50 validated email addresses'),
-          comment: z.string().max(10000).optional().describe('Optional plain-text comment'),
-          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
-        })
-        .strict(),
-      annotations: WRITE_REMOTE
-    },
-    (args) => handleForwardEmail(ctx, args)
-  )
-
-  server.registerTool(
     'm365_email_message_get',
     {
       description:
@@ -246,69 +221,6 @@ export const registerEmailTools = (server: McpServer, ctx: GraphContext): void =
       annotations: WRITE_IDEMPOTENT_REMOTE
     },
     (args) => handleMarkAsRead(ctx, args)
-  )
-
-  server.registerTool(
-    'm365_email_message_reply',
-    {
-      description:
-        'Preview a reply by default; pass dry_run: false to send one Graph reply action. Graph chooses recipient and threading. A successful call means accepted for delivery, not delivered.',
-      inputSchema: z
-        .object({
-          id: graphIdSchema.describe('ID of the original email'),
-          comment: z.string().min(1).max(10000).describe('Plain-text reply comment, at most 10000 characters'),
-          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
-        })
-        .strict(),
-      annotations: WRITE_REMOTE
-    },
-    (args) => handleReplyEmail(ctx, args, 'reply')
-  )
-
-  server.registerTool(
-    'm365_email_message_reply_all',
-    {
-      description:
-        'Preview a reply-all by default; pass dry_run: false to send one Graph replyAll action. Graph chooses original recipients and threading. A successful call means accepted for delivery, not delivered.',
-      inputSchema: z
-        .object({
-          id: graphIdSchema.describe('ID of the original email'),
-          comment: z.string().min(1).max(10000).describe('Plain-text reply-all comment, at most 10000 characters'),
-          dry_run: z.boolean().default(true).describe('Preview only by default; pass false to send')
-        })
-        .strict(),
-      annotations: WRITE_REMOTE
-    },
-    (args) => handleReplyEmail(ctx, args, 'replyAll')
-  )
-
-  server.registerTool(
-    'm365_email_message_send',
-    {
-      description: 'Composes and sends a new email. Supports both plain text and HTML content.',
-      inputSchema: z
-        .object({
-          to: z.string().describe('Comma-separated list of recipient email addresses'),
-          cc: z.string().optional().describe('Comma-separated list of CC recipient email addresses'),
-          bcc: z.string().optional().describe('Comma-separated list of BCC recipient email addresses'),
-          subject: z.string().describe('Email subject'),
-          body: z.string().describe('Email body content (plain text or HTML)'),
-          attachments: inlineAttachmentsSchema
-            .optional()
-            .describe('Up to 10 base64 file attachments; 2 MiB decoded aggregate and request-size limits apply'),
-          isHtml: z
-            .boolean()
-            .optional()
-            .describe(
-              'Set to true to send as HTML, false for plain text. If not specified, auto-detects based on <html> tag presence.'
-            ),
-          importance: z.enum(['normal', 'high', 'low']).optional().describe('Email importance (normal, high, low)'),
-          saveToSentItems: z.boolean().optional().describe('Whether to save the email to sent items')
-        })
-        .strict(),
-      annotations: WRITE_REMOTE
-    },
-    (args) => handleSendEmail(ctx, args)
   )
 
   server.registerTool(

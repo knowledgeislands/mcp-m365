@@ -35,33 +35,14 @@ export interface HnrMcpM365Tools {
   m365_calendar_events_list(count?: number, startDateTime?: string, endDateTime?: string): Promise<CallResult>;
 
   /**
-   * Accepts a calendar event
-   *
-   * @param eventId The ID of the event to accept
-   * @param comment? Optional comment for accepting the event
-   */
-  m365_calendar_event_accept(eventId: string, comment?: string): Promise<CallResult>;
-
-  /**
-   * Declines a calendar event. `dry_run` defaults to true — pass false to actually decline; dry-run
-   * fetches the event metadata and returns what would happen.
-   *
-   * @param eventId The ID of the event to decline
-   * @param comment? Optional comment for declining the event
-   * @param dry_run? Preview only; do not decline. Default true — pass false to actually decline.
-   */
-  m365_calendar_event_decline(eventId: string, comment?: string, dry_run?: boolean): Promise<CallResult>;
-
-  /**
    * Creates a new calendar event
    *
    * @param subject The subject of the event
    * @param start The start time of the event in ISO 8601 format
    * @param end The end time of the event in ISO 8601 format
-   * @param attendees? List of attendee email addresses
    * @param body? Optional body content for the event
    */
-  m365_calendar_event_create(subject: string, start: string, end: string, attendees?: string[], body?: string): Promise<CallResult>;
+  m365_calendar_event_create(subject: string, start: string, end: string, body?: string): Promise<CallResult>;
 
   /**
    * Lists recent emails from your inbox
@@ -108,22 +89,6 @@ export interface HnrMcpM365Tools {
    *                        prompt injection content)
    */
   m365_email_message_get(id: string, includeRawHtml?: boolean): Promise<CallResult>;
-
-  /**
-   * Composes and sends a new email. Supports both plain text and HTML content.
-   *
-   * @param to Comma-separated list of recipient email addresses
-   * @param cc? Comma-separated list of CC recipient email addresses
-   * @param bcc? Comma-separated list of BCC recipient email addresses
-   * @param subject Email subject
-   * @param body Email body content (plain text or HTML)
-   * @param isHtml? Set to true to send as HTML, false for plain text. If not specified, auto-detects
-   *                based on <html> tag presence.
-   * @param importance? Email importance (normal, high, low)
-   * @param saveToSentItems? Whether to save the email to sent items
-   */
-  m365_email_message_send(to: string, cc?: string, bcc?: string, subject: string, body: string): Promise<CallResult>;
-  // optional (3): isHtml, importance, saveToSentItems
 
   /**
    * Creates and saves an email draft in Outlook
