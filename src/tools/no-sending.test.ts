@@ -46,10 +46,11 @@ const registeredAt = (level: AccessLevel): Map<string, { inputSchema?: z.ZodType
   return tools
 }
 
-// A sending verb as a whole name segment. Draft tools save a draft only and are
-// the one sanctioned use of reply and forward.
+// A sending verb as a whole name segment. The reply and forward draft tools save
+// a draft only and are the one sanctioned use of those verbs; a draft tool that
+// sends, such as a `_draft_send`, is still caught.
 const SENDING = /(^|_)(send|reply|reply_all|forward|accept|decline|cancel|tentative|respond|invite)(_|$)/
-const isSending = (name: string) => SENDING.test(name) && !/^m365_email_draft_/.test(name)
+const isSending = (name: string) => SENDING.test(name) && !/^m365_email_draft_(reply|reply_all|forward)$/.test(name)
 
 describe('the draft-only tool surface', () => {
   it.each(ACCESS_LEVELS)('registers no sending tool at the %s access level', (level) => {
@@ -72,13 +73,14 @@ describe('the draft-only tool surface', () => {
 
   it.each([
     'm365_email_message_send',
+    'm365_email_draft_send',
     'm365_email_message_reply',
     'm365_email_message_reply_all',
     'm365_email_message_forward',
     'm365_calendar_event_accept',
     'm365_calendar_event_decline',
     'm365_calendar_event_cancel'
-  ])('the pattern recognises the removed %s', (name) => {
+  ])('the pattern recognises a sending name such as %s', (name) => {
     expect(isSending(name)).toBe(true)
   })
 
